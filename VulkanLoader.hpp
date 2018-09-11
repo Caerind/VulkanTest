@@ -213,7 +213,7 @@ class VulkanLoader
 			FrameResources& operator=(const FrameResources&) = delete;
 		};
 
-		// Chapter 1
+		// Instances & Devices
 		static bool loadDynamicLibrary(DynamicLibrary& dynamicLibrary);
 		static bool loadFunctionExportedFromDynamicLibrary(const DynamicLibrary& dynamicLibrary);
 		static bool loadGlobalLevelFunctions();
@@ -234,7 +234,7 @@ class VulkanLoader
 		static void destroyInstance(VkInstance& instance);
 		static void releaseDynamicLibrary(DynamicLibrary& dynamicLibrary);
 
-		// Chapter 2
+		// Image Presentation
 		static bool createInstanceWithWsiExtensionsEnabled(std::vector<const char*>& desiredExtensions, const std::string& applicationName, VkInstance& instance);
 		static bool createPresentationSurface(VkInstance instance, const WindowParameters& windowParameters, VkSurfaceKHR& presentationSurface);
 		static bool selectQueueFamilyThatSupportsPresentationToGivenSurface(VkPhysicalDevice physicalDevice, VkSurfaceKHR presentationSurface, uint32_t& queueFamilyIndex);
@@ -254,7 +254,7 @@ class VulkanLoader
 		static void destroySwapchain(VkDevice logicalDevice, VkSwapchainKHR& swapchain);
 		static void destroyPresentationSurface(VkInstance instance, VkSurfaceKHR& presentationSurface);
 
-		// Chapter 3
+		// Command Buffers & Synchronization
 		static bool createCommandPool(VkDevice logicalDevice, VkCommandPoolCreateFlags parameters, uint32_t queueFamily, VkCommandPool& commandPool);
 		static bool allocateCommandBuffers(VkDevice logicalDevice, VkCommandPool commandPool, VkCommandBufferLevel level, uint32_t count, std::vector<VkCommandBuffer>& commandBuffers);
 		static bool beginCommandBufferRecordingOperation(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags usage, VkCommandBufferInheritanceInfo* secondaryCommandBufferInfo);
@@ -275,7 +275,7 @@ class VulkanLoader
 		static void freeCommandBuffers(VkDevice logicalDevice, VkCommandPool commandPool, std::vector<VkCommandBuffer>& commandBuffers);
 		static void destroyCommandPool(VkDevice logicalDevice, VkCommandPool& commandPool);
 
-		// Chapter 4
+		// Resources & Memory
 		static bool createBuffer(VkDevice logicalDevice, VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer& buffer);
 		static bool allocateAndBindMemoryObjectToBuffer(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkBuffer buffer, VkMemoryPropertyFlagBits memoryProperties, VkDeviceMemory& memoryObject);
 		static void setBufferMemoryBarrier(VkCommandBuffer commandBuffer, VkPipelineStageFlags generatingStages, VkPipelineStageFlags consumingStages, std::vector<BufferTransition> bufferTransitions);
@@ -298,7 +298,7 @@ class VulkanLoader
 		static void freeMemoryObject(VkDevice logicalDevice, VkDeviceMemory& memoryObject);
 		static void destroyBuffer(VkDevice logicalDevice, VkBuffer& buffer);
 
-		// Chapter 5
+		// Descriptor Sets
 		static bool createSampler(VkDevice logicalDevice, VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, float lodBias, bool anisotropyEnable, float maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, float minLod, float maxLod, VkBorderColor borderColor, bool unnormalizedCoords, VkSampler& sampler);
 		static bool createSampledImage(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkImageUsageFlags usage, bool cubemap, VkImageViewType viewType, VkImageAspectFlags aspect, bool linearFiltering, VkImage& sampledImage, VkDeviceMemory& memoryObject, VkImageView& sampledImageView);
 		static bool createCombinedImageSampler(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkImageUsageFlags usage, bool cubemap, VkImageViewType viewType, VkImageAspectFlags aspect, VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, float lodBias, bool anisotropyEnable, float maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, float minLod, float maxLod, VkBorderColor borderColor, bool unnormalizedCoords, VkSampler& sampler, VkImage& sampledImage, VkDeviceMemory& memoryObject, VkImageView& sampledImageView);
@@ -320,7 +320,7 @@ class VulkanLoader
 		static void destroyDescriptorSetLayout(VkDevice logicalDevice, VkDescriptorSetLayout& descriptorSetLayout);
 		static void destroySampler(VkDevice logicalDevice, VkSampler& sampler);
 
-		// Chapter 6
+		// Render Passes & Framebuffers
 		static void specifyAttachmentsDescriptions(const std::vector<VkAttachmentDescription>& attachmentsDescriptions);
 		static void specifySubpassDescriptions(const std::vector<SubpassParameters>& subpassParameters, std::vector<VkSubpassDescription>& subpassDescriptions);
 		static void specifyDependenciesBetweenSubpasses(const std::vector<VkSubpassDependency>& subpassesDependencies);
@@ -334,7 +334,7 @@ class VulkanLoader
 		static void destroyFramebuffer(VkDevice logicalDevice, VkFramebuffer& framebuffer);
 		static void destroyRenderPass(VkDevice logicalDevice, VkRenderPass& renderPass);
 
-		// Chapter 8
+		// Graphics & Compute Pipelines
 		static bool createShaderModule(VkDevice logicalDevice, const std::vector<unsigned char>& sourceCode, VkShaderModule& shaderModule);
 		static void specifyPipelineShaderStages(const std::vector<ShaderStageParameters>& shaderStageParams, std::vector<VkPipelineShaderStageCreateInfo>& shaderStageCreateInfos);
 		static void specifyPipelineVertexInputState(const std::vector<VkVertexInputBindingDescription>& bindingDescriptions, const std::vector<VkVertexInputAttributeDescription>& attributeDescriptions, VkPipelineVertexInputStateCreateInfo& vertexInputStateCreateInfo);
@@ -362,7 +362,7 @@ class VulkanLoader
 		static void destroyPipelineLayout(VkDevice logicalDevice, VkPipelineLayout& pipelineLayout);
 		static void destroyShaderModule(VkDevice logicalDevice, VkShaderModule& shaderModule);
 
-		// Chapter 9
+		// Command Recording & Drawing
 		static void clearColorImage(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout imageLayout, const std::vector<VkImageSubresourceRange>& imageSubresourceRanges, VkClearColorValue& clearColor);
 		static void clearDepthStencilImage(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout imageLayout, const std::vector<VkImageSubresourceRange>& imageSubresourceRanges, VkClearDepthStencilValue& clearValue);
 		static void clearRenderPassAttachments(VkCommandBuffer commandBuffer, const std::vector<VkClearAttachment>& attachments, const std::vector<VkClearRect>& rects);

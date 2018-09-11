@@ -97,14 +97,6 @@ bool VulkanLoader::load()
 
 
 
-
-
-
-
-
-
-
-
 	/*
 
 
@@ -1509,7 +1501,7 @@ bool VulkanLoader::createImageView(VkDevice logicalDevice, VkImage image, VkImag
 		nullptr,                                    // const void               * pNext
 		0,                                          // VkImageViewCreateFlags     flags
 		image,                                      // VkImage                    image
-		viewType,                                  // VkImageViewType            viewType
+		viewType,                                   // VkImageViewType            viewType
 		format,                                     // VkFormat                   format
 		{                                           // VkComponentMapping         components
 			VK_COMPONENT_SWIZZLE_IDENTITY,              // VkComponentSwizzle         r
@@ -1581,7 +1573,7 @@ bool VulkanLoader::mapUpdateAndUnmapHostVisibleMemory(VkDevice logicalDevice, Vk
 	VkResult result;
 	void* localPointer;
 
-	result = vkMapMemory(logicalDevice, memoryObject, offset, dataSize, 0, &localPointer);
+	result = vkMapMemory(logicalDevice, memoryObject, offset, dataSize, 0, &localPointer); // TODO : Use offset
 	if (result != VK_SUCCESS)
 	{
 		// TODO : Use Numea System Log
@@ -1700,22 +1692,14 @@ bool VulkanLoader::useStagingBufferToUpdateBufferWithDeviceLocalMemoryBound(VkPh
 
 bool VulkanLoader::useStagingBufferToUpdateImageWithDeviceLocalMemoryBound(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkDeviceSize dataSize, void* data, VkImage destinationImage, VkImageSubresourceLayers destinationImageSubresource, VkOffset3D destinationImageOffset, VkExtent3D destinationImageSize, VkImageLayout destinationImageCurrentLayout, VkImageLayout destinationImageNewLayout, VkAccessFlags destinationImageCurrentAccess, VkAccessFlags destinationImageNewAccess, VkImageAspectFlags destinationImageAspect, VkPipelineStageFlags destinationImageGeneratingStages, VkPipelineStageFlags destinationImageConsumingStages, VkQueue queue, VkCommandBuffer commandBuffer, std::vector<VkSemaphore> signalSemaphores)
 {
-	// TODO : VkDestroyer
-	//VkDestroyer(VkBuffer) stagingBuffer;
-	//InitVkDestroyer(logical_device, stagingBuffer);
-	
-	VkBuffer stagingBuffer;
-	if (!createBuffer(logicalDevice, dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stagingBuffer)) 
+	VkSmartBuffer stagingBuffer(logicalDevice);
+	if (!createBuffer(logicalDevice, dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stagingBuffer.getHandle())) 
 	{
 		return false;
 	}
 
-	// TODO : VkDestroyer
-	//VkDestroyer(VkDeviceMemory) memoryObject;
-	//InitVkDestroyer(logical_device, memory_object);
-
-	VkDeviceMemory memoryObject;
-	if (!allocateAndBindMemoryObjectToBuffer(physicalDevice, logicalDevice, stagingBuffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, memoryObject)) 
+	VkSmartDeviceMemory memoryObject(logicalDevice);
+	if (!allocateAndBindMemoryObjectToBuffer(physicalDevice, logicalDevice, stagingBuffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, memoryObject.getHandle())) 
 	{
 		return false;
 	}
@@ -1725,7 +1709,8 @@ bool VulkanLoader::useStagingBufferToUpdateImageWithDeviceLocalMemoryBound(VkPhy
 		return false;
 	}
 
-	if (!beginCommandBufferRecordingOperation(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, nullptr)) {
+	if (!beginCommandBufferRecordingOperation(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, nullptr)) 
+	{
 		return false;
 	}
 
@@ -1774,30 +1759,21 @@ bool VulkanLoader::useStagingBufferToUpdateImageWithDeviceLocalMemoryBound(VkPhy
 		return false;
 	}
 
-	// TODO : VkDestroyer
-	//VkDestroyer(VkFence) fence;
-	//InitVkDestroyer(logical_device, fence);
-	
-	VkFence fence;
-	if (!createFence(logicalDevice, false, fence)) 
+	VkSmartFence fence(logicalDevice);
+	if (!createFence(logicalDevice, false, fence.getHandle())) 
 	{
 		return false;
 	}
 
-	if (!submitCommandBuffersToQueue(queue, {}, { commandBuffer }, signalSemaphores, fence)) 
+	if (!submitCommandBuffersToQueue(queue, {}, { commandBuffer }, signalSemaphores, fence.getHandle())) 
 	{
 		return false;
 	}
 
-	if (!waitForFences(logicalDevice, { fence }, VK_FALSE, 500000000)) 
+	if (!waitForFences(logicalDevice, { fence.getHandle() }, VK_FALSE, 500000000)) 
 	{
 		return false;
 	}
-
-	// TODO : VkDestroyer
-	destroyBuffer(logicalDevice, stagingBuffer);
-	freeMemoryObject(logicalDevice, memoryObject);
-	destroyFence(logicalDevice, fence);
 
 	return true;
 }
@@ -1882,17 +1858,18 @@ bool VulkanLoader::createSampler(VkDevice logicalDevice, VkFilter magFilter, VkF
 
 bool VulkanLoader::createSampledImage(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkImageUsageFlags usage, bool cubemap, VkImageViewType viewType, VkImageAspectFlags aspect, bool linearFiltering, VkImage& sampledImage, VkDeviceMemory& memoryObject, VkImageView& sampledImageView)
 {
-	// TODO : Cache this ?
+	// TODO : Cache this
 	VkFormatProperties formatProperties;
 	vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);
-
+	
+	// TODO : Debug build only
 	if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) 
 	{
 		// TODO : Use Numea System Log
 		printf("Provided format is not supported for a sampled image\n");
 		return false;
 	}
-
+	// TODO : Debug build only
 	if (linearFiltering && !(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) 
 	{
 		// TODO : Use Numea System Log
@@ -1936,16 +1913,18 @@ bool VulkanLoader::createCombinedImageSampler(VkPhysicalDevice physicalDevice, V
 
 bool VulkanLoader::createStorageImage(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkImageUsageFlags usage, VkImageViewType viewType, VkImageAspectFlags aspect, bool atomicOperations, VkImage& storageImage, VkDeviceMemory& memoryObject, VkImageView& storageImageView)
 {
-	// TODO : Cache this ?
+	// TODO : Cache this
 	VkFormatProperties formatProperties;
 	vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);
 
+	// TODO : Debug build only
 	if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)) 
 	{
 		// TODO : Use Numea System Log
 		printf("Provided format is not supported for a storage image\n");
 		return false;
 	}
+	// TODO : Debug build only
 	if (atomicOperations && !(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT)) 
 	{
 		// TODO : Use Numea System Log
@@ -1972,10 +1951,11 @@ bool VulkanLoader::createStorageImage(VkPhysicalDevice physicalDevice, VkDevice 
 
 bool VulkanLoader::createUniformTexelBuffer(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkFormat format, VkDeviceSize size, VkImageUsageFlags usage, VkBuffer& uniformTexelBuffer, VkDeviceMemory& memoryObject, VkBuffer& uniformTexelBufferView)
 {
-	// TODO : Cache this ?
+	// TODO : Cache this
 	VkFormatProperties formatProperties;
 	vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);
 
+	// TODO : Debug build only
 	if (!(formatProperties.bufferFeatures & VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT)) 
 	{
 		// TODO : Use Numea System Log
@@ -2003,17 +1983,18 @@ bool VulkanLoader::createUniformTexelBuffer(VkPhysicalDevice physicalDevice, VkD
 
 bool VulkanLoader::createStorageTexelBuffer(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkFormat format, VkDeviceSize size, VkBufferUsageFlags usage, bool atomicOperations, VkBuffer& storageTexelBuffer, VkDeviceMemory& memoryObject, VkBufferView& storageTexelBufferView)
 {
-	// TODO : Cache this ?
+	// TODO : Cache this
 	VkFormatProperties formatProperties;
 	vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);
 
+	// TODO : Debug build only
 	if (!(formatProperties.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT)) 
 	{
 		// TODO : Use Numea System Log
 		printf("Provided format is not supported for a uniform texel buffer\n");
 		return false;
 	}
-
+	// TODO : Debug build only
 	if (atomicOperations && !(formatProperties.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT)) 
 	{
 		// TODO : Use Numea System Log
@@ -2071,7 +2052,7 @@ bool VulkanLoader::createStorageBuffer(VkPhysicalDevice physicalDevice, VkDevice
 
 bool VulkanLoader::createInputAttachment(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkImageType type, VkFormat format, VkExtent3D size, VkImageUsageFlags usage, VkImageViewType viewType, VkImageAspectFlags aspect, VkImage& inputAttachment, VkDeviceMemory& memoryObject, VkImageView& inputAttachmentImageView)
 {
-	// TODO : Cache this ?
+	// TODO : Cache this
 	VkFormatProperties formatProperties;
 	vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);
 
@@ -3250,7 +3231,7 @@ bool VulkanLoader::createMultipleGraphicsPipelineOnMultipleThreads(VkDevice logi
 		return false;
 	}
 
-	// TODO : TODO ? This was already by the author
+	// TODO : Save cache to file
 	//if( !SaveBinaryFile( pipeline_cache_filename, cache_data ) ) {
 	//  return false;
 	//}
