@@ -3,7 +3,7 @@
 
 #define VK_NO_PROTOTYPES
 #define VK_USE_PLATFORM_WIN32_KHR // TODO : Cross platform
-#include "VulkanHeaderFiles/vulkan.h"
+#include "ThirdParty/vulkan.h"
 
 namespace nu
 {

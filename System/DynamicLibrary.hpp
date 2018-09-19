@@ -1,12 +1,11 @@
 #ifndef NU_DYNAMIC_LIBRARY_HPP
 #define NU_DYNAMIC_LIBRARY_HPP
 
-// TODO : Use Numea Prerequisites instead
-#if defined(WIN32)
-	#include <Windows.h>
-#endif
+#include "Prerequisites.hpp"
 
-#include <string>
+#if defined(NU_PLATFORM_WINDOWS)
+	#include <Windows.h> // TODO : Don't include if already included
+#endif
 
 namespace nu
 {
@@ -28,10 +27,10 @@ class DynamicLibrary
 
 	private:
 		// TODO : Use Numea Prerequisites instead
-		#if defined(WIN32)
-		HMODULE mLibraryHandle;
-		#elif defined(__linux)
-		void* mLibraryHandle;
+		#if defined(NU_PLATFORM_WINDOWS)
+			HMODULE mLibraryHandle;
+		#elif defined(NU_PLATFORM_LINUX)
+			void* mLibraryHandle;
 		#endif
 
 		std::string mLibraryName;

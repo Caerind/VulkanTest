@@ -1,126 +1,22 @@
 #include "VulkanLoader.hpp"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "ThirdParty/stb_image.h"
+
+#define TINYOBJLOADER_IMPLEMENTATION 
+#include "ThirdParty/tiny_obj_loader.h"
+
 namespace nu
 {
 	
 bool VulkanLoader::load()
 {
-	// Defining inputs
-
-
-	std::vector<const char*> desiredInstanceExtensions;
-	desiredInstanceExtensions.emplace_back(VK_KHR_SURFACE_EXTENSION_NAME);
-	#if defined(VK_USE_PLATFORM_WIN32_KHR)
-		desiredInstanceExtensions.emplace_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-	#elif defined(VK_USE_PLATFORM_XCB_KHR)
-		desiredInstanceExtensions.emplace_back(VK_KHR_XCB_SURFACE_EXTENSION_NAME);
-	#elif defined(VK_USE_PLATFORM_XLIB_KHR)  
-		desiredInstanceExtensions.emplace_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
-	#endif
-
-	std::vector<const char*> desiredDeviceExtensions;
-	desiredDeviceExtensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-
-	VkPhysicalDeviceFeatures desiredDeviceFeatures;
-	desiredDeviceFeatures.geometryShader = VK_TRUE;
-
-	std::string applicationName = "VulkanCookbook";
-
-
-	// Start loading
-
-
-	DynamicLibrary dyn;
-	loadDynamicLibrary(dyn);
-	loadFunctionExportedFromDynamicLibrary(dyn);
-	loadGlobalLevelFunctions();
-
-	printf("Available Instance Extensions : \n");
-	std::vector<VkExtensionProperties> availableInstanceExtensions;
-	queryAvailableInstanceExtensions(availableInstanceExtensions);
-	for (auto& extension : availableInstanceExtensions)
-	{
-		printf("\t%s\n", extension.extensionName);
-	}
-
-	VkInstance instance;
-	createInstance(desiredInstanceExtensions, applicationName, instance);
-	loadInstanceLevelFunctions(instance, desiredInstanceExtensions);
-
-	printf("Available Physical Devices : \n");
-	std::vector<int> physicalDeviceScores;
-	std::vector<VkPhysicalDevice> availablePhysicalDevices;
-	queryAvailablePhysicalDevices(instance, availablePhysicalDevices);
-	for (auto& physicalDevice : availablePhysicalDevices)
-	{
-		std::vector<VkExtensionProperties> availableDeviceExtensions;
-		queryAvailableDeviceExtensions(physicalDevice, availableDeviceExtensions);
-
-		VkPhysicalDeviceFeatures physicalDeviceFeatures;
-		VkPhysicalDeviceProperties physicalDeviceProperties;
-		queryFeaturesAndPropertiesOfPhysicalDevice(physicalDevice, physicalDeviceFeatures, physicalDeviceProperties);
-
-		std::vector<VkQueueFamilyProperties> availableQueueFamilies;
-		queryAvailableQueueFamiliesAndTheirProperties(physicalDevice, availableQueueFamilies);
-
-		int physicalDeviceScore = 0;
-
-		// TODO : Compute score
-		if (desiredDeviceFeatures.geometryShader == VK_TRUE && physicalDeviceFeatures.geometryShader == VK_TRUE)
-		{
-			physicalDeviceScore += 1000;
-		}
-		else if (desiredDeviceFeatures.geometryShader == VK_TRUE && physicalDeviceFeatures.geometryShader == VK_FALSE)
-		{
-			physicalDeviceScore = -1;
-		}
-
-		physicalDeviceScores.push_back(physicalDeviceScore);
-
-		printf("\t%s : \n", physicalDeviceProperties.deviceName);
-
-		printf("\t\tAvailable Device Extensions : \n");
-		for (auto& extension : availableDeviceExtensions)
-		{
-			printf("\t\t\t%s\n", extension.extensionName);
-		}
-
-		printf("\t\tAvailable Queue Families : \n");
-		for (auto& queueFamily : availableQueueFamilies)
-		{
-			printf("\t\t\tType : %d, Count : %d\n", queueFamily.queueFlags, queueFamily.queueCount);
-		}
-	}
-
-	// TODO : Create physical device with the best score
-
-
-
-
-	/*
-
-
-	// Create Surface
-	VkSmartSurfaceKHR presentationSurface(instance);
-	LoadAndCheck(createPresentationSurface(windowParameters));
-
-	// Create Physical/Logical Devices
-	std::vector<const char*> desiredDeviceExtensions;
-	desiredDeviceExtensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-	VkPhysicalDeviceFeatures* desiredDeviceFeatures = nullptr;
-	// TODO : desiredDeviceExtensions
-	// TODO : desiredDeviceFeatures
-	// TODO : desiredDeviceProperties ???
-	LoadAndCheck(createDevices(desiredDeviceExtensions, desiredDeviceFeatures));
-
-	*/
-	 
 	return true;
 }
 
 bool VulkanLoader::isLoaded()
 {
-	return true; // TODO : Vulkan is Loaded ?
+	return true;
 }
 
 void VulkanLoader::unload()
@@ -195,7 +91,7 @@ bool VulkanLoader::queryAvailableInstanceExtensions(std::vector<VkExtensionPrope
 
 bool VulkanLoader::createInstance(const std::vector<const char*>& desiredExtensions, const std::string& applicationName, VkInstance& instance)
 {
-	// TODO : Cache this ?
+	// TODO : Cache this
 	std::vector<VkExtensionProperties> availableInstanceExtensions;
 	queryAvailableInstanceExtensions(availableInstanceExtensions);
 
@@ -206,6 +102,32 @@ bool VulkanLoader::createInstance(const std::vector<const char*>& desiredExtensi
 			// TODO : Use Numea System Log
 			printf("Extension named '%s' is not supported by an instance object\n", extension);
 			return false;
+		}
+	}
+
+	bool enableValidationLayer = true; // TODO : Move
+	bool validationLayerAvailable = false;
+
+	std::vector<const char*> desiredLayers;
+	if (enableValidationLayer)
+	{
+		desiredLayers.push_back("VK_LAYER_LUNARG_standard_validation");
+
+		// TODO : Cache this
+		uint32_t layerCount;
+		if (vkEnumerateInstanceLayerProperties(&layerCount, nullptr) == VK_SUCCESS && layerCount > 0)
+		{
+			std::vector<VkLayerProperties> availableLayers(layerCount);
+			vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+			for (const auto& layerProperties : availableLayers)
+			{
+				if (strcmp(desiredLayers[0], layerProperties.layerName) == 0)
+				{
+					validationLayerAvailable = true;
+					break;
+				}
+			}
 		}
 	}
 
@@ -221,7 +143,6 @@ bool VulkanLoader::createInstance(const std::vector<const char*>& desiredExtensi
 		VK_MAKE_VERSION(1, 0, 0)                           // uint32_t                  apiVersion
 	};
 	
-	// TODO : Validation Layer (see here : https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Validation_layers)
 	VkInstanceCreateInfo instanceCreateInfo = {
 		VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,             // VkStructureType           sType
 		nullptr,                                            // const void              * pNext
@@ -232,6 +153,12 @@ bool VulkanLoader::createInstance(const std::vector<const char*>& desiredExtensi
 		static_cast<uint32_t>(desiredExtensions.size()),    // uint32_t                  enabledExtensionCount
 		desiredExtensions.data()                            // const char * const      * ppEnabledExtensionNames
 	};
+
+	if (enableValidationLayer && validationLayerAvailable)
+	{
+		instanceCreateInfo.enabledLayerCount = static_cast<uint32_t>(desiredLayers.size());
+		instanceCreateInfo.ppEnabledLayerNames = desiredLayers.data();
+	}
 
 	VkResult result = vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
 	if ((result != VK_SUCCESS) || (instance == VK_NULL_HANDLE)) 
@@ -1646,12 +1573,12 @@ bool VulkanLoader::useStagingBufferToUpdateBufferWithDeviceLocalMemoryBound(VkPh
 	}
 
 	VkSmartDeviceMemory memoryObject(logicalDevice);
-	if (!allocateAndBindMemoryObjectToBuffer(physicalDevice, logicalDevice, stagingBuffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, memoryObject.getHandle())) 
+	if (!allocateAndBindMemoryObjectToBuffer(physicalDevice, logicalDevice, stagingBuffer.getHandle(), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, memoryObject.getHandle())) 
 	{
 		return false;
 	}
 
-	if (!mapUpdateAndUnmapHostVisibleMemory(logicalDevice, memoryObject, 0, dataSize, data, true, nullptr)) 
+	if (!mapUpdateAndUnmapHostVisibleMemory(logicalDevice, memoryObject.getHandle(), 0, dataSize, data, true, nullptr))
 	{
 		return false;
 	}
@@ -1663,7 +1590,7 @@ bool VulkanLoader::useStagingBufferToUpdateBufferWithDeviceLocalMemoryBound(VkPh
 
 	setBufferMemoryBarrier(commandBuffer, destinationBufferGeneratingStages, VK_PIPELINE_STAGE_TRANSFER_BIT, { { destinationBuffer, destinationBufferCurrentAccess, VK_ACCESS_TRANSFER_WRITE_BIT, VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED } });
 
-	copyDataBetweenBuffers(commandBuffer, stagingBuffer, destinationBuffer, { { 0, destinationOffset, dataSize } });
+	copyDataBetweenBuffers(commandBuffer, stagingBuffer.getHandle(), destinationBuffer, { { 0, destinationOffset, dataSize } });
 
 	setBufferMemoryBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, destinationBufferConsumingStages, { { destinationBuffer, VK_ACCESS_TRANSFER_WRITE_BIT, destinationBufferNewAccess, VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED } });
 
@@ -1678,12 +1605,12 @@ bool VulkanLoader::useStagingBufferToUpdateBufferWithDeviceLocalMemoryBound(VkPh
 		return false;
 	}
 
-	if (!submitCommandBuffersToQueue(queue, {}, { commandBuffer }, signalSemaphores, fence)) 
+	if (!submitCommandBuffersToQueue(queue, {}, { commandBuffer }, signalSemaphores, fence.getHandle()))
 	{
 		return false;
 	}
 
-	if (!waitForFences(logicalDevice, { fence }, VK_FALSE, 500000000)) {
+	if (!waitForFences(logicalDevice, { fence.getHandle() }, VK_FALSE, 500000000)) {
 		return false;
 	}
 
@@ -1699,12 +1626,12 @@ bool VulkanLoader::useStagingBufferToUpdateImageWithDeviceLocalMemoryBound(VkPhy
 	}
 
 	VkSmartDeviceMemory memoryObject(logicalDevice);
-	if (!allocateAndBindMemoryObjectToBuffer(physicalDevice, logicalDevice, stagingBuffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, memoryObject.getHandle())) 
+	if (!allocateAndBindMemoryObjectToBuffer(physicalDevice, logicalDevice, stagingBuffer.getHandle(), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, memoryObject.getHandle()))
 	{
 		return false;
 	}
 
-	if (!mapUpdateAndUnmapHostVisibleMemory(logicalDevice, memoryObject, 0, dataSize, data, true, nullptr)) 
+	if (!mapUpdateAndUnmapHostVisibleMemory(logicalDevice, memoryObject.getHandle(), 0, dataSize, data, true, nullptr))
 	{
 		return false;
 	}
@@ -1728,7 +1655,7 @@ bool VulkanLoader::useStagingBufferToUpdateImageWithDeviceLocalMemoryBound(VkPhy
 		} 
 	});
 
-	copyDataFromBufferToImage(commandBuffer, stagingBuffer, destinationImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+	copyDataFromBufferToImage(commandBuffer, stagingBuffer.getHandle(), destinationImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 	{
 		{
 			0,                                        // VkDeviceSize               bufferOffset
@@ -1949,7 +1876,7 @@ bool VulkanLoader::createStorageImage(VkPhysicalDevice physicalDevice, VkDevice 
 	return true;
 }
 
-bool VulkanLoader::createUniformTexelBuffer(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkFormat format, VkDeviceSize size, VkImageUsageFlags usage, VkBuffer& uniformTexelBuffer, VkDeviceMemory& memoryObject, VkBuffer& uniformTexelBufferView)
+bool VulkanLoader::createUniformTexelBuffer(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkFormat format, VkDeviceSize size, VkImageUsageFlags usage, VkBuffer& uniformTexelBuffer, VkDeviceMemory& memoryObject, VkBufferView& uniformTexelBufferView)
 {
 	// TODO : Cache this
 	VkFormatProperties formatProperties;
@@ -3214,19 +3141,19 @@ bool VulkanLoader::createMultipleGraphicsPipelineOnMultipleThreads(VkDevice logi
 	}
 
 	// Merge all the caches into one, retrieve its contents and store them in the file
-	VkPipelineCache targetCache = pipelineCaches.back();
+	VkSmartPipelineCache targetCache = std::move(pipelineCaches.back());
 	std::vector<VkPipelineCache> sourceCaches(pipelineCaches.size() - 1);
 	for (size_t i = 0; i < pipelineCaches.size() - 1; ++i) 
 	{
-		sourceCaches[i] = pipelineCaches[i];
+		sourceCaches[i] = pipelineCaches[i].getHandle();
 	}
 
-	if (!mergeMultiplePipelineCacheObjects(logicalDevice, targetCache, sourceCaches)) 
+	if (!mergeMultiplePipelineCacheObjects(logicalDevice, targetCache.getHandle(), sourceCaches)) 
 	{
 		return false;
 	}
 
-	if (!retrieveDataFromPipelineCache(logicalDevice, targetCache, cacheData)) 
+	if (!retrieveDataFromPipelineCache(logicalDevice, targetCache.getHandle(), cacheData)) 
 	{
 		return false;
 	}
@@ -3600,7 +3527,7 @@ const char* VulkanLoader::toErrorString(VkResult result)
 		//CASE(VK_ERROR_OUT_OF_POOL_MEMORY_KHR);
 		//CASE(VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR);
 
-		default: return std::to_string(result).c_str(); break;
+		default: return nu::toString(result).c_str(); break;
 	}
 
 	#undef CASE
@@ -3639,6 +3566,263 @@ bool VulkanLoader::loadBinaryFile(const std::string& filename, std::vector<unsig
 	file.close();
 
 	return true;
+}
+
+bool VulkanLoader::loadTextureDataFromFile(const std::string& filename, int numRequestedComponents, std::vector<unsigned char>& imageData, int* imageWidth, int* imageHeight, int* imageNumComponents, int* imageDataSize)
+{
+	int width = 0;
+	int height = 0;
+	int numComponents = 0;
+	std::unique_ptr<unsigned char, void(*)(void*)> stbi_data(stbi_load(filename.c_str(), &width, &height, &numComponents, numRequestedComponents), stbi_image_free);
+
+	if ((!stbi_data) || (width <= 0) || (height <= 0) || (numComponents <= 0)) 
+	{
+		// TODO : Use Numea System Log
+		printf("Could not read image\n");
+		return false;
+	}
+
+	int dataSize = width * height * (numRequestedComponents > 0 ? numRequestedComponents : numComponents);
+	if (imageDataSize) 
+	{
+		*imageDataSize = dataSize;
+	}
+	if (imageWidth) 
+	{
+		*imageWidth = width;
+	}
+	if (imageHeight) 
+	{
+		*imageHeight = height;
+	}
+	if (imageNumComponents) 
+	{
+		*imageNumComponents = numComponents;
+	}
+
+	imageData.resize(dataSize);
+	std::memcpy(imageData.data(), stbi_data.get(), dataSize);
+
+	return true;
+}
+
+bool VulkanLoader::loadModelFromObjFile(const std::string& filename, bool loadNormals, bool loadTexCoords, bool generateTangentSpaceVectors, bool unify, Mesh& mesh, uint32_t* vertexStride)
+{
+	// Load model
+	tinyobj::attrib_t attribs;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+	std::string error;
+
+	bool result = tinyobj::LoadObj(&attribs, &shapes, &materials, &error, filename.c_str());
+	if (!result) 
+	{
+		// TODO : Use Numea System Log
+		printf("Could not open the '%s' file. %s\n", filename.c_str(), error.c_str());
+		return false;
+	}
+
+	// Normal vectors and texture coordinates are required to generate tangent and bitangent vectors
+	if (!loadNormals || !loadTexCoords) 
+	{
+		generateTangentSpaceVectors = false;
+	}
+
+	// Load model data and unify (normalize) its size and position
+	float minX = attribs.vertices[0];
+	float maxX = attribs.vertices[0];
+	float minY = attribs.vertices[1];
+	float maxY = attribs.vertices[1];
+	float minZ = attribs.vertices[2];
+	float maxZ = attribs.vertices[2];
+
+	mesh = {};
+	uint32_t offset = 0;
+	for (auto& shape : shapes) 
+	{
+		uint32_t partOffset = offset;
+		for (auto& index : shape.mesh.indices) 
+		{
+			mesh.data.emplace_back(attribs.vertices[3 * index.vertex_index + 0]);
+			mesh.data.emplace_back(attribs.vertices[3 * index.vertex_index + 1]);
+			mesh.data.emplace_back(attribs.vertices[3 * index.vertex_index + 2]);
+			offset++;
+
+			if (loadNormals) 
+			{
+				if (attribs.normals.size() == 0) 
+				{
+					printf("Could not load normal vectors data in the '%s' file\n", filename.c_str());
+					return false;
+				}
+				else 
+				{
+					mesh.data.emplace_back(attribs.normals[3 * index.normal_index + 0]);
+					mesh.data.emplace_back(attribs.normals[3 * index.normal_index + 1]);
+					mesh.data.emplace_back(attribs.normals[3 * index.normal_index + 2]);
+				}
+			}
+
+			if (loadTexCoords) 
+			{
+				if (attribs.texcoords.size() == 0) 
+				{
+					printf("Could not load texture coordinates data in the '%s' file\n", filename.c_str());
+					return false;
+				}
+				else 
+				{
+					mesh.data.emplace_back(attribs.texcoords[2 * index.texcoord_index + 0]);
+					mesh.data.emplace_back(attribs.texcoords[2 * index.texcoord_index + 1]);
+				}
+			}
+
+			if (generateTangentSpaceVectors) 
+			{
+				// Insert temporary tangent space vectors data
+				for (int i = 0; i < 6; ++i) 
+				{
+					mesh.data.emplace_back(0.0f);
+				}
+			}
+
+			if (unify) 
+			{
+				if (attribs.vertices[3 * index.vertex_index + 0] < minX) 
+				{
+					minX = attribs.vertices[3 * index.vertex_index + 0];
+				}
+				if (attribs.vertices[3 * index.vertex_index + 0] > maxX) 
+				{
+					maxX = attribs.vertices[3 * index.vertex_index + 0];
+				}
+				if (attribs.vertices[3 * index.vertex_index + 1] < minY) 
+				{
+					minY = attribs.vertices[3 * index.vertex_index + 1];
+				}
+				if (attribs.vertices[3 * index.vertex_index + 1] > maxY) 
+				{
+					maxY = attribs.vertices[3 * index.vertex_index + 1];
+				}
+				if (attribs.vertices[3 * index.vertex_index + 2] < minZ) 
+				{
+					minZ = attribs.vertices[3 * index.vertex_index + 2];
+				}
+				if (attribs.vertices[3 * index.vertex_index + 2] > maxZ) 
+				{
+					maxZ = attribs.vertices[3 * index.vertex_index + 2];
+				}
+			}
+		}
+
+		uint32_t partVertexCount = offset - partOffset;
+		if (partVertexCount > 0) 
+		{
+			mesh.parts.push_back({ partOffset, partVertexCount });
+		}
+	}
+
+	uint32_t stride = 3 + (loadNormals ? 3 : 0) + (loadTexCoords ? 2 : 0) + (generateTangentSpaceVectors ? 6 : 0);
+	if (vertexStride) 
+	{
+		*vertexStride = stride * sizeof(float);
+	}
+
+	if (generateTangentSpaceVectors) 
+	{
+		VulkanLoader::generateTangentSpaceVectors(mesh);
+	}
+
+	if (unify) 
+	{
+		float offsetX = 0.5f * (minX + maxX);
+		float offsetY = 0.5f * (minY + maxY);
+		float offsetZ = 0.5f * (minZ + maxZ);
+		float scaleX = abs(minX - offsetX) > abs(maxX - offsetX) ? abs(minX - offsetX) : abs(maxX - offsetX);
+		float scaleY = abs(minY - offsetY) > abs(maxY - offsetY) ? abs(minY - offsetY) : abs(maxY - offsetY);
+		float scaleZ = abs(minZ - offsetZ) > abs(maxZ - offsetZ) ? abs(minZ - offsetZ) : abs(maxZ - offsetZ);
+		float scale = scaleX > scaleY ? scaleX : scaleY;
+		scale = scaleZ > scale ? 1.0f / scaleZ : 1.0f / scale;
+
+		for (size_t i = 0; i < mesh.data.size() - 2; i += stride) 
+		{
+			mesh.data[i + 0] = scale * (mesh.data[i + 0] - offsetX);
+			mesh.data[i + 1] = scale * (mesh.data[i + 1] - offsetY);
+			mesh.data[i + 2] = scale * (mesh.data[i + 2] - offsetZ);
+		}
+	}
+
+	return true;
+}
+
+void VulkanLoader::generateTangentSpaceVectors(Mesh& mesh)
+{
+	size_t const normalOffset = 3;
+	size_t const texCoordOffset = 6;
+	size_t const tangentOffset = 8;
+	size_t const bitangentOffset = 11;
+	size_t const stride = bitangentOffset + 3;
+
+	for (auto& part : mesh.parts) 
+	{
+		for (size_t i = 0; i < mesh.data.size(); i += stride * 3) 
+		{
+			size_t i1 = i;
+			size_t i2 = i1 + stride;
+			size_t i3 = i2 + stride;
+			const Vector3<float> v1 = { mesh.data[i1], mesh.data[i1 + 1], mesh.data[i1 + 2] };
+			const Vector3<float> v2 = { mesh.data[i2], mesh.data[i2 + 1], mesh.data[i2 + 2] };
+			const Vector3<float> v3 = { mesh.data[i3], mesh.data[i3 + 1], mesh.data[i3 + 2] };
+
+			std::array<float, 2> const w1 = { mesh.data[i1 + texCoordOffset], mesh.data[i1 + texCoordOffset + 1] };
+			std::array<float, 2> const w2 = { mesh.data[i2 + texCoordOffset], mesh.data[i2 + texCoordOffset + 1] };
+			std::array<float, 2> const w3 = { mesh.data[i3 + texCoordOffset], mesh.data[i3 + texCoordOffset + 1] };
+
+			float x1 = v2[0] - v1[0];
+			float x2 = v3[0] - v1[0];
+			float y1 = v2[1] - v1[1];
+			float y2 = v3[1] - v1[1];
+			float z1 = v2[2] - v1[2];
+			float z2 = v3[2] - v1[2];
+
+			float s1 = w2[0] - w1[0];
+			float s2 = w3[0] - w1[0];
+			float t1 = w2[1] - w1[1];
+			float t2 = w3[1] - w1[1];
+
+			float r = 1.0f / (s1 * t2 - s2 * t1);
+			Vector3<float> faceTangent = { (t2 * x1 - t1 * x2) * r, (t2 * y1 - t1 * y2) * r, (t2 * z1 - t1 * z2) * r };
+			Vector3<float> faceBitangent = { (s1 * x2 - s2 * x1) * r, (s1 * y2 - s2 * y1) * r, (s1 * z2 - s2 * z1) * r };
+
+			calculateTangentAndBitangent(&mesh.data[i1 + normalOffset], faceTangent, faceBitangent, &mesh.data[i1 + tangentOffset], &mesh.data[i1 + bitangentOffset]);
+			calculateTangentAndBitangent(&mesh.data[i2 + normalOffset], faceTangent, faceBitangent, &mesh.data[i2 + tangentOffset], &mesh.data[i2 + bitangentOffset]);
+			calculateTangentAndBitangent(&mesh.data[i3 + normalOffset], faceTangent, faceBitangent, &mesh.data[i3 + tangentOffset], &mesh.data[i3 + bitangentOffset]);
+		}
+	}
+}
+
+void VulkanLoader::calculateTangentAndBitangent(const float* normalData, const Vector3<float>& faceTangent, const Vector3<float>& faceBitangent, float* tangentData, float* bitangentData)
+{
+	// Based on:
+	// Lengyel, Eric. "Computing Tangent Space Basis Vectors for an Arbitrary Mesh". Terathon Software 3D Graphics Library, 2001.
+	// http://www.terathon.com/code/tangent.html
+
+	// Gram-Schmidt orthogonalize
+	const Vector3<float> normal(normalData[0], normalData[1], normalData[2]);
+	const Vector3<float> tangent = (faceTangent - normal * normal.dotProduct(faceTangent)).normalized();
+
+	// Calculate handedness
+	float handedness = (Vector3<float>::dotProduct(Vector3<float>::crossProduct(normal, tangent), faceBitangent) < 0.0f) ? -1.0f : 1.0f; // TODO : Maybe need to change this
+
+	const Vector3<float> bitangent = handedness * Vector3<float>::crossProduct(normal, tangent);
+
+	tangentData[0] = tangent[0];
+	tangentData[1] = tangent[1];
+	tangentData[2] = tangent[2];
+
+	bitangentData[0] = bitangent[0];
+	bitangentData[1] = bitangent[1];
+	bitangentData[2] = bitangent[2];
 }
 
 void VulkanLoader::describePhysicalDevice(VkPhysicalDevice physicalDevice)

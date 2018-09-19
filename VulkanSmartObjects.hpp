@@ -31,9 +31,19 @@ namespace nu
                                                                                                   \
 			~VkSmart##Name()                                                                      \
 			{                                                                                     \
-				##vkDestroyName(mDeviceHandle, mHandle, nullptr);                                 \
-				mHandle = VK_NULL_HANDLE;                                                         \
-				mDeviceHandle = VK_NULL_HANDLE;                                                   \
+				if (mHandle != VK_NULL_HANDLE)                                                    \
+				{                                                                                 \
+					if (mDeviceHandle != VK_NULL_HANDLE)                                          \
+					{                                                                             \
+						/*##vkDestroyName(mDeviceHandle, mHandle, nullptr);*/                     \
+						mHandle = VK_NULL_HANDLE;                                                 \
+						mDeviceHandle = VK_NULL_HANDLE;                                           \
+					}                                                                             \
+					else                                                                          \
+					{                                                                             \
+						printf("VkSmart%s is not initialized, so it couldn't be destroyed correctly\n", #Name); \
+					}                                                                             \
+				}                                                                                 \
 			}                                                                                     \
                                                                                                   \
 			VkSmart##Name(VkSmart ##Name && other)                                                \
@@ -158,8 +168,11 @@ class VkSmartInstance
 
 		~VkSmartInstance()
 		{
-			vkDestroyInstance(mHandle, nullptr);
-			mHandle = VK_NULL_HANDLE;
+			if (mHandle != VK_NULL_HANDLE)
+			{
+				//vkDestroyInstance(mHandle, nullptr);
+				mHandle = VK_NULL_HANDLE;
+			}
 		} 
 
 		VkSmartInstance(VkSmartInstance&& other) 
@@ -238,8 +251,11 @@ class VkSmartDevice
 
 		~VkSmartDevice()
 		{
-			vkDestroyDevice(mHandle, nullptr);
-			mHandle = VK_NULL_HANDLE;
+			if (mHandle != VK_NULL_HANDLE)
+			{
+				//vkDestroyDevice(mHandle, nullptr);
+				mHandle = VK_NULL_HANDLE;
+			}
 		}
 
 		VkSmartDevice(VkSmartDevice&& other)
@@ -327,9 +343,19 @@ class VkSmartSurfaceKHR
 
 		~VkSmartSurfaceKHR()
 		{
-			vkDestroySurfaceKHR(mInstanceHandle, mHandle, nullptr);
-			mHandle = VK_NULL_HANDLE;
-			mInstanceHandle = VK_NULL_HANDLE;
+			if (mHandle != VK_NULL_HANDLE)
+			{
+				if (mInstanceHandle != VK_NULL_HANDLE)
+				{
+					//vkDestroySurfaceKHR(mInstanceHandle, mHandle, nullptr);
+					mHandle = VK_NULL_HANDLE;
+					mInstanceHandle = VK_NULL_HANDLE;
+				}
+				else
+				{
+					printf("VkSmartSurfaceKHR is not initialized, so it couldn't be destroyed correctly\n");
+				}
+			}
 		}
 
 		VkSmartSurfaceKHR(VkSmartSurfaceKHR&& other)
@@ -356,6 +382,21 @@ class VkSmartSurfaceKHR
 			}
 			return *this;
 		}
+		
+		void initialize(VkInstance instance)
+		{
+			mInstanceHandle = instance;
+		}
+
+		void initialize(const VkSmartInstance& instance)
+		{
+			mInstanceHandle = instance.getHandle();
+		}
+
+		bool isInitialized() const
+		{
+			return mInstanceHandle != VK_NULL_HANDLE;
+		}
 
 		VkSurfaceKHR& getHandle()
 		{
@@ -365,11 +406,6 @@ class VkSmartSurfaceKHR
 		const VkSurfaceKHR& getHandle() const 
 		{
 			return mHandle;
-		}
-
-		VkInstance& getInstanceHandle()
-		{
-			return mInstanceHandle;
 		}
 
 		const VkInstance& getInstanceHandle() const

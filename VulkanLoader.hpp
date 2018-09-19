@@ -1,21 +1,19 @@
 #ifndef NU_VULKAN_LOADER_HPP
 #define NU_VULKAN_LOADER_HPP
 
-#include "DynamicLibrary.hpp"
+#include "System/DynamicLibrary.hpp"
 #include "VulkanFunctions.hpp"
 #include "VulkanSmartObjects.hpp"
+#include "WindowParameters.hpp"
+
+#include "System/String.hpp"
+#include "Math/Vector3.hpp"
 
 #include <cstdio>
 #include <vector>
 #include <array>
 #include <fstream>
 #include <thread>
-
-// TODO : Add const& where necessary
-// TODO : Multiwindow
-// TODO : Separate Loader/Instance
-// TODO : Improve objects passing through core/functions
-// TODO : Maybe combine some functions
 
 namespace nu
 {
@@ -26,25 +24,11 @@ class VulkanLoader
 		VulkanLoader() = delete;
 		~VulkanLoader() = delete;
 
-		struct WindowParameters
-		{
-			#if defined(VK_USE_PLATFORM_WIN32_KHR)
-				HINSTANCE hinstance;
-				HWND hwnd;
-			#elif defined(VK_USE_PLATFORM_XLIB_KHR)
-				Display* dpy;
-				Window window;
-			#elif defined(VK_USE_PLATFORM_XCB_KHR)
-				xcb_connection_t* connection;
-				xcb_window_t window;
-			#endif
-		};
-
 		static bool load();
 		static bool isLoaded();
 		static void unload();
 
-	private:
+	public:
 		struct QueueInfo
 		{
 			uint32_t familyIndex;
@@ -161,7 +145,8 @@ class VulkanLoader
 		struct Mesh
 		{
 			std::vector<float> data;
-			struct Part {
+			struct Part 
+			{
 				uint32_t vertexOffset;
 				uint32_t vertexCount;
 			};
@@ -303,7 +288,7 @@ class VulkanLoader
 		static bool createSampledImage(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkImageUsageFlags usage, bool cubemap, VkImageViewType viewType, VkImageAspectFlags aspect, bool linearFiltering, VkImage& sampledImage, VkDeviceMemory& memoryObject, VkImageView& sampledImageView);
 		static bool createCombinedImageSampler(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkImageUsageFlags usage, bool cubemap, VkImageViewType viewType, VkImageAspectFlags aspect, VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, float lodBias, bool anisotropyEnable, float maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, float minLod, float maxLod, VkBorderColor borderColor, bool unnormalizedCoords, VkSampler& sampler, VkImage& sampledImage, VkDeviceMemory& memoryObject, VkImageView& sampledImageView);
 		static bool createStorageImage(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkImageUsageFlags usage, VkImageViewType viewType, VkImageAspectFlags aspect, bool atomicOperations, VkImage& storageImage, VkDeviceMemory& memoryObject, VkImageView& storageImageView);
-		static bool createUniformTexelBuffer(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkFormat format, VkDeviceSize size, VkImageUsageFlags usage, VkBuffer& uniformTexelBuffer, VkDeviceMemory& memoryObject, VkBuffer& uniformTexelBufferView);
+		static bool createUniformTexelBuffer(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkFormat format, VkDeviceSize size, VkImageUsageFlags usage, VkBuffer& uniformTexelBuffer, VkDeviceMemory& memoryObject, VkBufferView& uniformTexelBufferView);
 		static bool createStorageTexelBuffer(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkFormat format, VkDeviceSize size, VkBufferUsageFlags usage, bool atomicOperations, VkBuffer& storageTexelBuffer, VkDeviceMemory& memoryObject, VkBufferView& storageTexelBufferView);
 		static bool createUniformBuffer(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer& uniformBuffer, VkDeviceMemory& memoryObject);
 		static bool createStorageBuffer(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer& storageBuffer, VkDeviceMemory& memoryObject);
@@ -386,6 +371,10 @@ class VulkanLoader
 		static bool isExtensionSupported(const std::vector<VkExtensionProperties>& availableExtensions, char const * const extension);
 		static const char* toErrorString(VkResult result);
 		static bool loadBinaryFile(const std::string& filename, std::vector<unsigned char>& contents);
+		static bool loadTextureDataFromFile(const std::string& filename, int numRequestedComponents, std::vector<unsigned char>& imageData, int* imageWidth = nullptr, int* imageHeight = nullptr, int* imageNumComponents = nullptr, int* imageDataSize = nullptr);
+		static bool loadModelFromObjFile(const std::string& filename, bool loadNormals, bool loadTexCoords, bool generateTangentSpaceVectors, bool unify, Mesh& mesh, uint32_t* vertexStride = nullptr);
+		static void generateTangentSpaceVectors(Mesh& mesh);
+		static void calculateTangentAndBitangent(const float* normalData, const Vector3<float>& faceTangent, const Vector3<float>& faceBitangent, float* tangentData, float* bitangentData);
 
 		static void describePhysicalDevice(VkPhysicalDevice physicalDevice);
 		static bool areFeaturesSupported(VkPhysicalDeviceFeatures* deviceFeatures, VkPhysicalDeviceFeatures* desiredFeatures);
