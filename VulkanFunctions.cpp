@@ -1,6 +1,8 @@
 #include "VulkanFunctions.hpp"
 
-namespace nu
+namespace nu 
+{
+namespace Vulkan
 {
 
 #define NU_EXPORTED_VULKAN_FUNCTION(name) PFN_##name name;
@@ -12,4 +14,5 @@ namespace nu
 
 #include "ListOfVulkanFunctions.inl"
 
+} // namespace Vulkan
 } // namespace nu

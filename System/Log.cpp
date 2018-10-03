@@ -135,7 +135,7 @@ U32 LogManager::getImportanceFilter()
 
 U32 LogManager::getLoggerCount()
 {
-	return sLoggers.size();
+	return (U32)sLoggers.size();
 }
 
 const char* LogManager::typeToString(LogType type)
@@ -220,8 +220,8 @@ void LogManager::registerLogger(Logger* logger)
 
 void LogManager::unregisterLogger(Logger* logger)
 {
-	U32 size = sLoggers.size();
-	for (U32 i = 0; i < size; i++)
+	size_t size = sLoggers.size();
+	for (size_t i = 0; i < size; i++)
 	{
 		if (sLoggers[i] == logger)
 		{

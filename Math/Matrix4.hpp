@@ -1421,7 +1421,7 @@ inline Matrix4<T> Matrix4<T>::perspective(const T& fov, const T& ratio, const T&
 	const T y = 1 / nu::tan(fov * T(0.5));
 	const T x = y / ratio;
 	const T zDist = zFar - zNear;
-	return Matrix4<T>(x, 0, 0, 0, 0, y, 0, 0, 0, 0, -zFar / zDist, -1, 0, 0, (-1.0f * zFar * zNear) / zDist, 0);
+	return Matrix4<T>(x, 0, 0, 0, 0, -y, 0, 0, 0, 0, -zFar / zDist, -1, 0, 0, (-1.0f * zFar * zNear) / zDist, 0);
 }
 
 template <typename T> const Matrix4<T> Matrix4<T>::zero(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);

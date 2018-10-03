@@ -1,11 +1,18 @@
 #ifndef NU_VULKAN_FUNCTIONS_HPP
 #define NU_VULKAN_FUNCTIONS_HPP
 
+// TODO : Move this
+#define VK_USE_PLATFORM_WIN32_KHR
 #define VK_NO_PROTOTYPES
-#define VK_USE_PLATFORM_WIN32_KHR // TODO : Cross platform
 #include "ThirdParty/vulkan.h"
 
-namespace nu
+#include "VulkanObjectTracker.hpp"
+
+#include <cstdio>
+
+namespace nu 
+{
+namespace Vulkan
 {
 
 #define NU_EXPORTED_VULKAN_FUNCTION(name) extern PFN_##name name;
@@ -17,6 +24,7 @@ namespace nu
 
 #include "ListOfVulkanFunctions.inl"
 
+} // namespace Vulkan
 } // namespace nu
 
 #endif // NU_VULKAN_FUNCTIONS_HPP

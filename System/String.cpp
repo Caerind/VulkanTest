@@ -54,7 +54,7 @@ void toWideString(const std::string& string, std::wstring& wideString)
 
 bool split(std::string& base, std::string& result, char separator)
 {
-	U32 found = base.find(separator);
+	size_t found = base.find(separator);
 	if (found != std::string::npos)
 	{
 		result = base.substr(0, found);
@@ -66,7 +66,7 @@ bool split(std::string& base, std::string& result, char separator)
 
 bool split(std::string& base, std::string& result, const std::string& separator)
 {
-	U32 found = base.find(separator);
+	size_t found = base.find(separator);
 	if (found != std::string::npos)
 	{
 		result = base.substr(0, found);

@@ -1,12 +1,15 @@
 # VulkanTest
 
-My first Vulkan application. Mainly for learning purposes  
+My Vulkan playground ! 
+
+Mainly to learn and improve my skills using it.  
 
 I made some steps to faster the learning of Vulkan :
 - Step 1 : Overview of Vulkan (by following the Vulkan Tutorial entirely)
 - Step 2 : Theory of Vulkan (by following the Vulkan Cookbook, chapters 1 to 9)
-- Step 3 : Practice of Vulkan (by following Vulkan Cookbook, chapters 11 & 12, and then Vulkan Examples by SaschaWillems)
-- Step 4 : DOING WHAT I WANT
+- Step 3 : My Vulkan Wrapper
+- Step 4 : Practice of Vulkan (by following Vulkan Cookbook, chapters 11 & 12, and then Vulkan Examples by SaschaWillems)
+- Step 5 : Add Vulkan to Numea Engine
   
   
   
@@ -14,9 +17,11 @@ Step 1 : DONE : https://github.com/Cmdu76/VulkanTest/tree/671d35ced75e39df5468d2
   
 Step 2 : DONE : https://github.com/Cmdu76/VulkanTest/tree/e024fc0a4ebe238263637fe3a4315ead564de131  
   
-Step 3 : WIP  
+Step 3 : DONE : (But there will always be improvements to made) 
   
 Step 4 : WIP  
+
+Step 5 : WIP
 
 
 
