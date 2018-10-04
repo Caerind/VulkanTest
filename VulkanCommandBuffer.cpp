@@ -124,9 +124,28 @@ void CommandBuffer::bindDescriptorSets(VkPipelineBindPoint pipelineType, VkPipel
 	}
 }
 
-void CommandBuffer::bindPipelineObject(VkPipelineBindPoint pipelineType, VkPipeline pipeline)
+void CommandBuffer::bindPipeline(GraphicsPipeline* pipeline)
 {
-	vkCmdBindPipeline(mCommandBuffer, pipelineType, pipeline);
+	if (pipeline != nullptr && pipeline->isCreated())
+	{
+		vkCmdBindPipeline(mCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->getHandle());
+	}
+	else if (pipeline == nullptr)
+	{
+		// TODO : Use Numea Log System
+		printf("Null pipeline given to command buffer\n");
+	}
+	else
+	{
+		// TODO : Use Numea Log System
+		printf("Non-created pipeline given to command buffer\n");
+	}
+}
+
+void CommandBuffer::bindPipeline(ComputePipeline* pipeline)
+{
+	// TODO : Handle nullptr
+	vkCmdBindPipeline(mCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->getHandle());
 }
 
 void CommandBuffer::provideDataToShadersThroughPushConstants(VkPipelineLayout pipelineLayout, VkShaderStageFlags pipelineStages, uint32_t offset, uint32_t size, void* data)

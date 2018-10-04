@@ -1,34 +1,9 @@
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the "Software"),
-// to deal in the Software without restriction, including without limitation
-// the rights to use, copy, modify, merge, publish, distribute, sublicense,
-// and / or sell copies of the Software, and to permit persons to whom the
-// Software is furnished to do so, subject to the following conditions:
-//
-// The below copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL
-// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-// DEALINGS IN THE SOFTWARE.
-//
-// Vulkan Cookbook
-// ISBN: 9781786468154
-// © Packt Publishing Limited
-//
-// Author:   Pawel Lapinski
-// LinkedIn: https://www.linkedin.com/in/pawel-lapinski-84522329
-//
-// Common
-
 #include "Common.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "../ThirdParty/stb_image.h"
+
 #include <fstream>
-#include <iostream>
 #include <cmath>
 
 bool getBinaryFileContents(const std::string& filename, std::vector<unsigned char>& contents)
@@ -60,6 +35,44 @@ bool getBinaryFileContents(const std::string& filename, std::vector<unsigned cha
 	file.seekg(0, std::ios::beg);
 	file.read(reinterpret_cast<char*>(contents.data()), end - begin);
 	file.close();
+
+	return true;
+}
+
+bool loadTextureDataFromFile(const std::string& filename, int numRequestedComponents, std::vector<unsigned char>& data, int* width, int* height, int* numComponents, int* dataSize)
+{
+	int imgWidth = 0;
+	int imgHeight = 0;
+	int imgNumComponents = 0;
+	std::unique_ptr<unsigned char, void(*)(void*)> stbi_data(stbi_load(filename.c_str(), &imgWidth, &imgHeight, &imgNumComponents, numRequestedComponents), stbi_image_free);
+
+	if (!stbi_data || imgWidth <= 0 || imgHeight <= 0 || imgNumComponents <= 0) 
+	{
+		// TODO : Use Numea Log System
+		printf("Could not read image '%s'\nReason : %s\n", filename.c_str(), stbi_failure_reason());
+		return false;
+	}
+
+	int imgDataSize = imgWidth * imgHeight * (numRequestedComponents > 0 ? numRequestedComponents : imgNumComponents);
+	if (dataSize) 
+	{
+		*dataSize = imgDataSize;
+	}
+	if (width) 
+	{
+		*width = imgWidth;
+	}
+	if (height) 
+	{
+		*height = imgHeight;
+	}
+	if (numComponents)
+	{
+		*numComponents = imgNumComponents;
+	}
+
+	data.resize(imgDataSize);
+	std::memcpy(data.data(), stbi_data.get(), imgDataSize);
 
 	return true;
 }

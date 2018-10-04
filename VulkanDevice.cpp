@@ -199,9 +199,9 @@ ComputePipeline::Ptr Device::createComputePipeline(const VkPipelineShaderStageCr
 	return ComputePipeline::createComputePipeline(*this, computeShaders, layout, cache, additionalOptions);
 }
 
-GraphicsPipeline::Ptr Device::createGraphicsPipeline(const VkGraphicsPipelineCreateInfo& createInfo, PipelineCache* cache)
+GraphicsPipeline::Ptr Device::initGraphicsPipeline(PipelineLayout& layout, RenderPass& renderPass, PipelineCache* cache)
 {
-	return GraphicsPipeline::createGraphicsPipeline(*this, createInfo, cache);
+	return GraphicsPipeline::initGraphicsPipeline(*this, layout, renderPass, cache);
 }
 
 RenderPass::Ptr Device::createRenderPass(const std::vector<VkAttachmentDescription>& attachmentsDescriptions, const std::vector<SubpassParameters>& subpassParameters, const std::vector<VkSubpassDependency>& subpassDependencies)

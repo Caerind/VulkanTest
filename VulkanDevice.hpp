@@ -104,7 +104,7 @@ class Device
 
 		ComputePipeline::Ptr createComputePipeline(const VkPipelineShaderStageCreateInfo& computeShaders, PipelineLayout* layout, PipelineCache* cache, VkPipelineCreateFlags additionalOptions);
 
-		GraphicsPipeline::Ptr createGraphicsPipeline(const VkGraphicsPipelineCreateInfo& createInfo, PipelineCache* cache);
+		GraphicsPipeline::Ptr initGraphicsPipeline(PipelineLayout& layout, RenderPass& renderPass, PipelineCache* cache = nullptr);
 
 		RenderPass::Ptr createRenderPass(const std::vector<VkAttachmentDescription>& attachmentsDescriptions, const std::vector<SubpassParameters>& subpassParameters, const std::vector<VkSubpassDependency>& subpassDependencies);
 

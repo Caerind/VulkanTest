@@ -11,6 +11,9 @@
 #include "VulkanImage.hpp"
 #include "VulkanDescriptorSet.hpp"
 
+#include "VulkanGraphicsPipeline.hpp"
+#include "VulkanComputePipeline.hpp"
+
 namespace nu
 {
 namespace Vulkan
@@ -75,7 +78,8 @@ class CommandBuffer
 		void bindVertexBuffers(uint32_t firstBinding, const std::vector<VertexBufferParameters>& buffersParameters);
 		void bindIndexBuffer(Buffer* buffer, VkDeviceSize memoryOffset, VkIndexType indexType);
 		void bindDescriptorSets(VkPipelineBindPoint pipelineType, VkPipelineLayout pipelineLayout, uint32_t indexForFirstSet, const std::vector<DescriptorSet*>& descriptorsSets, const std::vector<uint32_t>& dynamicOffsets);
-		void bindPipelineObject(VkPipelineBindPoint pipelineType, VkPipeline pipeline);
+		void bindPipeline(GraphicsPipeline* pipeline);
+		void bindPipeline(ComputePipeline* pipeline);
 
 		// TODO : Pass nu::Vulkan::...* instead
 		void provideDataToShadersThroughPushConstants(VkPipelineLayout pipelineLayout, VkShaderStageFlags pipelineStages, uint32_t offset, uint32_t size, void* data);

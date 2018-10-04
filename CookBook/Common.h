@@ -126,6 +126,7 @@ struct PresentInfo
 };
 
 // TODO : Move this somewhere else
-bool getBinaryFileContents(const std::string& filename, std::vector<unsigned char>& contents);
+bool getBinaryFileContents(const std::string& filename, std::vector<unsigned char>& contents); 
+bool loadTextureDataFromFile(const std::string& filename, int numRequestedComponents, std::vector<unsigned char>& data, int* width = nullptr, int* height = nullptr, int* numComponents = nullptr, int* dataSize = nullptr);
 
 #endif // COMMON
