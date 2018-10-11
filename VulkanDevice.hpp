@@ -112,7 +112,7 @@ class Device
 
 		Semaphore::Ptr createSemaphore();
 		
-		ShaderModule::Ptr createShaderModule(ShaderModule::ShaderStage stage, const std::vector<unsigned char>& sourceCode, const std::string& entryPoint = "main", VkSpecializationInfo* specializationInfo = nullptr);
+		ShaderModule::Ptr initShaderModule();
 
 		Swapchain::Ptr createSwapchain(Surface* surface, std::vector<FrameResources>& framesResources);
 

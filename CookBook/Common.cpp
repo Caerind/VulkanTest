@@ -6,39 +6,6 @@
 #include <fstream>
 #include <cmath>
 
-bool getBinaryFileContents(const std::string& filename, std::vector<unsigned char>& contents)
-{
-	contents.clear();
-
-	std::ifstream file(filename, std::ios::binary);
-	if (file.fail())
-	{
-		// TODO : Use Numea Log System
-		printf("Could not open '%s' file\n", filename.c_str());
-		return false;
-	}
-
-	std::streampos begin;
-	std::streampos end;
-	begin = file.tellg();
-	file.seekg(0, std::ios::end);
-	end = file.tellg();
-
-	if ((end - begin) == 0)
-	{
-		// TODO : Use Numea Log System
-		printf("The '%s' file is empty\n", filename.c_str());
-		return false;
-	}
-
-	contents.resize(static_cast<size_t>(end - begin));
-	file.seekg(0, std::ios::beg);
-	file.read(reinterpret_cast<char*>(contents.data()), end - begin);
-	file.close();
-
-	return true;
-}
-
 bool loadTextureDataFromFile(const std::string& filename, int numRequestedComponents, std::vector<unsigned char>& data, int* width, int* height, int* numComponents, int* dataSize)
 {
 	int imgWidth = 0;

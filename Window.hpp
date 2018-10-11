@@ -5,23 +5,45 @@
 #include <Windows.h>
 #endif
 
-#include "Cookbook/SampleBase.hpp"
+#include "VulkanSurface.hpp"
 
 namespace nu
 {
 
+enum EventType
+{
+	MouseClick,
+	MouseMove,
+	MouseWheel,
+	Resize,
+	Close
+};
+
+struct Event
+{
+	EventType type;
+	int param1;
+	int param2;
+};
+
 class Window
 {
 	public:
-		Window(const char* windowTitle, int x, int y, int width, int height, SampleBase& sample);
+		Window();
+		Window(const std::string& windowTitle, int x, int y, int width, int height);
 		~Window();
 
-		void render();
+		bool create(const std::string& windowTitle, int x, int y, int width, int height);
+		void close();
+		bool isOpen() const;
+
+		bool pollEvent(Event& event);
+
+		const Vulkan::WindowParameters& getParameters() const;
 
 	private:
-		Vulkan::WindowParameters mWindowParams;
-		SampleBase& mSample;
-		bool mCreated;
+		Vulkan::WindowParameters mParameters;
+		bool mOpen;
 };
 
 } // namespace nu

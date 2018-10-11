@@ -219,9 +219,9 @@ Semaphore::Ptr Device::createSemaphore()
 	return Semaphore::createSemaphore(*this);
 }
 
-ShaderModule::Ptr Device::createShaderModule(ShaderModule::ShaderStage stage, const std::vector<unsigned char>& sourceCode, const std::string& entryPoint, VkSpecializationInfo* specializationInfo)
+ShaderModule::Ptr Device::initShaderModule()
 {
-	return ShaderModule::createShaderModule(*this, stage, sourceCode, entryPoint, specializationInfo);
+	return ShaderModule::initShaderModule(*this);
 }
 
 Swapchain::Ptr Device::createSwapchain(Surface* surface, std::vector<FrameResources>& framesResources)

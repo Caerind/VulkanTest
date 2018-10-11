@@ -117,6 +117,11 @@ bool SampleBase::isReady()
 	return mReady;
 }
 
+void SampleBase::wait()
+{
+	mLogicalDevice->waitForAllSubmittedCommands();
+}
+
 void SampleBase::onMouseEvent()
 {
 }

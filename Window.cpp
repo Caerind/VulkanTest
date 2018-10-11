@@ -1,27 +1,29 @@
 #include "Window.hpp"
 
-#include "VulkanFunctions.hpp"
+#include "System/String.hpp"
 
-namespace nu 
+namespace nu
 {
 
 #ifdef VK_USE_PLATFORM_WIN32_KHR
 
-namespace 
+namespace
 {
-	enum UserMessage 
-	{
-		USER_MESSAGE_RESIZE = WM_USER + 1,
-		USER_MESSAGE_QUIT,
-		USER_MESSAGE_MOUSE_CLICK,
-		USER_MESSAGE_MOUSE_MOVE,
-		USER_MESSAGE_MOUSE_WHEEL
-	};
+
+enum UserMessage
+{
+	USER_MESSAGE_RESIZE = WM_USER + 1,
+	USER_MESSAGE_QUIT,
+	USER_MESSAGE_MOUSE_CLICK,
+	USER_MESSAGE_MOUSE_MOVE,
+	USER_MESSAGE_MOUSE_WHEEL
+};
+
 }
 
-LRESULT CALLBACK WindowProcedure( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam ) 
+LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	switch (message) 
+	switch (message)
 	{
 		case WM_LBUTTONDOWN:
 			PostMessage(hWnd, USER_MESSAGE_MOUSE_CLICK, 0, 1);
@@ -46,125 +48,146 @@ LRESULT CALLBACK WindowProcedure( HWND hWnd, UINT message, WPARAM wParam, LPARAM
 			PostMessage(hWnd, USER_MESSAGE_RESIZE, wParam, lParam);
 			break;
 		case WM_KEYDOWN:
-			if (VK_ESCAPE == wParam) 
-			{
+			if (VK_ESCAPE == wParam) {
 				PostMessage(hWnd, USER_MESSAGE_QUIT, wParam, lParam);
 			}
 			break;
 		case WM_CLOSE:
-			PostMessage( hWnd, USER_MESSAGE_QUIT, wParam, lParam);
+			PostMessage(hWnd, USER_MESSAGE_QUIT, wParam, lParam);
 			break;
 		default:
-			return DefWindowProc( hWnd, message, wParam, lParam);
+			return DefWindowProc(hWnd, message, wParam, lParam);
 	}
 	return 0;
 }
 
-Window::Window(const char* windowTitle, int x, int y, int width, int height, SampleBase& sample) 
-	: mWindowParams()
-	, mSample(sample)
-	, mCreated(false) 
+Window::Window()
 {
-	mWindowParams.hinstance = GetModuleHandle(nullptr);
+	mParameters.hinstance = GetModuleHandle(nullptr);
 
-	WNDCLASSEX windowClass = {
-		sizeof( WNDCLASSEX ),             // UINT         cbSize
-										/* Win 3.x */
-		CS_HREDRAW | CS_VREDRAW,          // UINT         style
-		WindowProcedure,                  // WNDPROC      lpfnWndProc
-		0,                                // int          cbClsExtra
-		0,                                // int          cbWndExtra
-		mWindowParams.hinstance,          // HINSTANCE    hInstance
-		nullptr,                          // HICON        hIcon
-		LoadCursor( nullptr, IDC_ARROW ), // HCURSOR      hCursor
-		(HBRUSH)(COLOR_WINDOW + 1),       // HBRUSH       hbrBackground
-		nullptr,                          // LPCSTR       lpszMenuName
-		L"VulkanCookbook",                // LPCSTR       lpszClassName
-										/* Win 4.0 */
-		nullptr                           // HICON        hIconSm
+	WNDCLASSEX windowClass =
+	{
+		sizeof(WNDCLASSEX),                // UINT         cbSize
+
+		/* Win 3.x */
+		CS_HREDRAW | CS_VREDRAW,           // UINT         style
+		WindowProcedure,                   // WNDPROC      lpfnWndProc
+		0,                                 // int          cbClsExtra
+		0,                                 // int          cbWndExtra
+		mParameters.hinstance,             // HINSTANCE    hInstance
+		nullptr,                           // HICON        hIcon
+		LoadCursor(nullptr, IDC_ARROW),    // HCURSOR      hCursor
+		(HBRUSH)(COLOR_WINDOW + 1),        // HBRUSH       hbrBackground
+		nullptr,                           // LPCSTR       lpszMenuName
+		L"NumeaEngine",                    // LPCSTR       lpszClassName
+
+		/* Win 4.0 */
+		nullptr                            // HICON        hIconSm
 	};
 
 	if (!RegisterClassEx(&windowClass))
 	{
 		return;
 	}
-
-	// TODO : Use Window Title Parameter
-
-	mWindowParams.hwnd = CreateWindow(L"VulkanCookbook", L"WindowTitle", WS_OVERLAPPEDWINDOW, x, y, width, height, nullptr, nullptr, mWindowParams.hinstance, nullptr);
-	if (!mWindowParams.hwnd) 
-	{
-		return;
-	}
-
-	mCreated = true;
 }
 
-Window::~Window() 
+Window::Window(const std::string& windowTitle, int x, int y, int width, int height)
+	: Window()
 {
-	if (mWindowParams.hwnd)
-	{
-		DestroyWindow(mWindowParams.hwnd);
-	}
+	create(windowTitle, x, y, width, height);
+}
 
-	if (mWindowParams.hinstance)
+Window::~Window()
+{
+	close();
+	if (mParameters.hinstance)
 	{
-		UnregisterClass(L"VulkanCookbook", mWindowParams.hinstance);
+		UnregisterClass(L"NumeaEngine", mParameters.hinstance);
 	}
 }
 
-void Window::render() 
+bool Window::create(const std::string& windowTitle, int x, int y, int width, int height)
 {
-	if (mCreated && mSample.initialize(mWindowParams)) 
-	{
-		ShowWindow(mWindowParams.hwnd, SW_SHOWNORMAL);
-		UpdateWindow(mWindowParams.hwnd);
+	std::wstring wideWindowTitle;
+	toWideString(windowTitle, wideWindowTitle);
 
-		MSG message;
-		bool loop = true;
-		while (loop) 
+	mParameters.hwnd = CreateWindow(L"NumeaEngine", wideWindowTitle.c_str(), WS_OVERLAPPEDWINDOW, x, y, width, height, nullptr, nullptr, mParameters.hinstance, nullptr);
+	if (!mParameters.hwnd)
+	{
+		return false;
+	}
+
+	ShowWindow(mParameters.hwnd, SW_SHOWNORMAL);
+
+	UpdateWindow(mParameters.hwnd);
+
+	mOpen = true;
+
+	return true;
+}
+
+void Window::close()
+{
+	mOpen = false;
+	if (mParameters.hwnd)
+	{
+		DestroyWindow(mParameters.hwnd);
+		mParameters.hwnd = NULL;
+	}
+}
+
+bool Window::isOpen() const
+{
+	return mOpen;
+}
+
+bool Window::pollEvent(Event& event)
+{
+	MSG message;
+	if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE))
+	{
+		switch (message.message)
 		{
-			if (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) 
-			{
-				switch (message.message) 
-				{
-					case USER_MESSAGE_MOUSE_CLICK:
-						mSample.mouseClick(static_cast<size_t>(message.wParam), message.lParam > 0);
-						break;
-					case USER_MESSAGE_MOUSE_MOVE:
-						mSample.mouseMove(static_cast<int>(message.wParam), static_cast<int>(message.lParam));
-						break;
-					case USER_MESSAGE_MOUSE_WHEEL:
-						mSample.mouseWheel(static_cast<short>(message.wParam) * 0.002f);
-						break;
-					case USER_MESSAGE_RESIZE:
-						// TODO : Resize
-						//if( !Sample.Resize() ) {
-						//  loop = false;
-						//}
-						break;
-					case USER_MESSAGE_QUIT:
-						loop = false;
-						break;
-				}
-				TranslateMessage(&message);
-				DispatchMessage(&message);
-			} 
-			else 
-			{
-				if (mSample.isReady()) 
-				{
-					mSample.updateTime();
-					mSample.draw();
-					mSample.mouseReset();
-				}
-			}
+			case USER_MESSAGE_MOUSE_CLICK:
+				event.type = EventType::MouseClick;
+				event.param1 = message.wParam;
+				event.param2 = (int)(message.lParam > 0);
+				break;
+			case USER_MESSAGE_MOUSE_MOVE:
+				event.type = EventType::MouseMove;
+				event.param1 = message.wParam;
+				event.param2 = message.lParam;
+				break;
+			case USER_MESSAGE_MOUSE_WHEEL:
+				event.type = EventType::MouseWheel;
+				event.param1 = message.wParam;
+				event.param2 = 0;
+				break;
+			case USER_MESSAGE_RESIZE:
+				event.type = EventType::Resize;
+				event.param1 = 0;
+				event.param2 = 0;
+				break;
+			case USER_MESSAGE_QUIT:
+				event.type = EventType::Close;
+				event.param1 = 0;
+				event.param2 = 0;
+				break;
 		}
+		TranslateMessage(&message);
+		DispatchMessage(&message);
+
+		return true;
 	}
 
-	mSample.deinitialize();
+	return false;
 }
 
-#endif // VK_USE_PLATFORM_WIN32_KHR
+const Vulkan::WindowParameters& Window::getParameters() const
+{
+	return mParameters;
+}
+
+#endif
 
 } // namespace nu

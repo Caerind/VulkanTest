@@ -66,7 +66,10 @@ void GraphicsPipeline::setSubpass(uint32_t subpass)
 
 void GraphicsPipeline::addShaderModule(ShaderModule* shaderModule)
 {
-	mShaderStages.push_back(shaderModule->getShaderStageCreateInfo());
+	if (shaderModule != nullptr)
+	{
+		shaderModule->addShaderStages(mShaderStages);
+	}
 }
 
 void GraphicsPipeline::addVertexBinding(uint32_t binding, uint32_t stride, VkVertexInputRate inputRate)

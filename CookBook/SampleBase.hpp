@@ -75,6 +75,7 @@ class SampleBase
 		virtual void mouseReset() final;
 		virtual void updateTime() final;
 		virtual bool isReady() final;
+		virtual void wait() final;
 
 	protected:
 		virtual void onMouseEvent();
