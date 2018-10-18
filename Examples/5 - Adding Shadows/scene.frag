@@ -8,11 +8,13 @@ layout( set = 0, binding = 1 ) uniform sampler2D ShadowMap;
 
 layout( location = 0 ) out vec4 frag_color;
 
-void main() {
+void main() 
+{
   float shadow = 1.0;
   vec4 shadow_coords = vert_texcoords / vert_texcoords.w;
   
-  if( texture( ShadowMap, shadow_coords.xy ).r < shadow_coords.z - 0.005 ) {
+  if (texture( ShadowMap, shadow_coords.xy ).r < shadow_coords.z - 0.005) 
+  {
     shadow = 0.5;
   }
 

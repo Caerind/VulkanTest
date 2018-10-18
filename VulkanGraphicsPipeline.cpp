@@ -7,51 +7,6 @@ namespace nu
 namespace Vulkan
 {
 
-GraphicsPipeline::Ptr GraphicsPipeline::initGraphicsPipeline(Device& device, PipelineLayout& layout, RenderPass& renderPass, PipelineCache* cache)
-{
-	return GraphicsPipeline::Ptr(new GraphicsPipeline(device, layout, renderPass, cache));
-}
-
-GraphicsPipeline::GraphicsPipeline(Device& device, PipelineLayout& layout, RenderPass& renderPass, PipelineCache* cache)
-	: mDevice(device)
-	, mLayout(layout)
-	, mRenderPass(renderPass)
-	, mCache(cache)
-	, mGraphicsPipeline(VK_NULL_HANDLE)
-	, mSubpass(0)
-	, mShaderStages()
-	, mVertexBindingDescriptions()
-	, mVertexAttributeDescriptions()
-	, mInputAssemblyState(nullptr)
-	, mTessellationState(nullptr)
-	, mViewport()
-	, mScissor()
-	, mRasterizationState(nullptr)
-	, mMultisampleState(nullptr)
-	, mDepthStencilState(nullptr)
-	, mBlendAttachments()
-	, mBlendState()
-	, mDynamicStates()
-{
-	ObjectTracker::registerObject(ObjectType_GraphicsPipeline);
-
-	mBlendState = {
-		VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,   // VkStructureType                              sType
-		nullptr,                                                    // const void                                 * pNext
-		0,                                                          // VkPipelineColorBlendStateCreateFlags         flags
-		false,                                                      // VkBool32                                     logicOpEnable
-		VK_LOGIC_OP_COPY,                                           // VkLogicOp                                    logicOp
-		0,                                                          // uint32_t                                     attachmentCount
-		nullptr,                                                    // const VkPipelineColorBlendAttachmentState  * pAttachments
-		{                                                           // float                                        blendConstants[4]
-			1.0f,
-			1.0f,
-			1.0f,
-			1.0f
-		}
-	};
-}
-
 GraphicsPipeline::~GraphicsPipeline()
 {
 	destroy();
@@ -639,6 +594,46 @@ bool GraphicsPipeline::isCreated() const
 const VkPipeline& GraphicsPipeline::getHandle() const
 {
 	return mGraphicsPipeline;
+}
+
+GraphicsPipeline::GraphicsPipeline(Device& device, PipelineLayout& layout, RenderPass& renderPass, PipelineCache* cache)
+	: mDevice(device)
+	, mLayout(layout)
+	, mRenderPass(renderPass)
+	, mCache(cache)
+	, mGraphicsPipeline(VK_NULL_HANDLE)
+	, mSubpass(0)
+	, mShaderStages()
+	, mVertexBindingDescriptions()
+	, mVertexAttributeDescriptions()
+	, mInputAssemblyState(nullptr)
+	, mTessellationState(nullptr)
+	, mViewport()
+	, mScissor()
+	, mRasterizationState(nullptr)
+	, mMultisampleState(nullptr)
+	, mDepthStencilState(nullptr)
+	, mBlendAttachments()
+	, mBlendState()
+	, mDynamicStates()
+{
+	ObjectTracker::registerObject(ObjectType_GraphicsPipeline);
+
+	mBlendState = {
+		VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,   // VkStructureType                              sType
+		nullptr,                                                    // const void                                 * pNext
+		0,                                                          // VkPipelineColorBlendStateCreateFlags         flags
+		false,                                                      // VkBool32                                     logicOpEnable
+		VK_LOGIC_OP_COPY,                                           // VkLogicOp                                    logicOp
+		0,                                                          // uint32_t                                     attachmentCount
+		nullptr,                                                    // const VkPipelineColorBlendAttachmentState  * pAttachments
+		{                                                           // float                                        blendConstants[4]
+			1.0f,
+			1.0f,
+			1.0f,
+			1.0f
+		}
+	};
 }
 
 void GraphicsPipeline::ensuresInputAssemblyStateInitialized()

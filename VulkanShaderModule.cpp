@@ -7,49 +7,11 @@ namespace nu
 namespace Vulkan
 {
 
-ShaderModule::Ptr ShaderModule::initShaderModule(Device& device)
-{
-	return std::unique_ptr<ShaderModule>(new ShaderModule(device));
-}
-
-ShaderModule::ShaderModule(Device& device)
-	: mDevice(device)
-	, mShaderModule(VK_NULL_HANDLE)
-	, mStages(ShaderStageFlags::None)
-	, mSpirvBlob()
-	, mSpecializationInfo(nullptr)
-	, mVertexEntrypointName()
-	, mTessellationControlEntrypointName()
-	, mTessellationEvaluationEntrypointName()
-	, mGeometryEntrypointName()
-	, mFragmentEntrypointName()
-	, mComputeEntrypointName()
-	, mShaderStageCreateInfos()
-{
-	ObjectTracker::registerObject(ObjectType_ShaderModule);
-}
-
 ShaderModule::~ShaderModule()
 {
 	ObjectTracker::unregisterObject(ObjectType_ShaderModule);
 
 	destroy();
-}
-
-void ShaderModule::addShaderStages(std::vector<VkPipelineShaderStageCreateInfo>& shaders)
-{
-	// TODO : Use Numea Assert System
-	assert(isCreated());
-
-	if (mShaderStageCreateInfos.empty())
-	{
-		generateShaderStages();
-	}
-
-	for (size_t i = 0; i < mShaderStageCreateInfos.size(); i++)
-	{
-		shaders.push_back(mShaderStageCreateInfos[i]);
-	}
 }
 
 bool ShaderModule::loadFromFile(const std::string& filename)
@@ -204,6 +166,39 @@ const std::vector<unsigned char>& ShaderModule::getSpirvBlob() const
 const ShaderModule::ShaderStageFlags& ShaderModule::getStages() const
 {
 	return mStages;
+}
+
+ShaderModule::ShaderModule(Device& device)
+	: mDevice(device)
+	, mShaderModule(VK_NULL_HANDLE)
+	, mStages(ShaderStageFlags::None)
+	, mSpirvBlob()
+	, mSpecializationInfo(nullptr)
+	, mVertexEntrypointName()
+	, mTessellationControlEntrypointName()
+	, mTessellationEvaluationEntrypointName()
+	, mGeometryEntrypointName()
+	, mFragmentEntrypointName()
+	, mComputeEntrypointName()
+	, mShaderStageCreateInfos()
+{
+	ObjectTracker::registerObject(ObjectType_ShaderModule);
+}
+
+void ShaderModule::addShaderStages(std::vector<VkPipelineShaderStageCreateInfo>& shaders)
+{
+	// TODO : Use Numea Assert System
+	assert(isCreated());
+
+	if (mShaderStageCreateInfos.empty())
+	{
+		generateShaderStages();
+	}
+
+	for (size_t i = 0; i < mShaderStageCreateInfos.size(); i++)
+	{
+		shaders.push_back(mShaderStageCreateInfos[i]);
+	}
 }
 
 void ShaderModule::generateShaderStages() const

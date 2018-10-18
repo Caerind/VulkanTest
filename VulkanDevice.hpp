@@ -106,7 +106,7 @@ class Device
 
 		GraphicsPipeline::Ptr initGraphicsPipeline(PipelineLayout& layout, RenderPass& renderPass, PipelineCache* cache = nullptr);
 
-		RenderPass::Ptr createRenderPass(const std::vector<VkAttachmentDescription>& attachmentsDescriptions, const std::vector<SubpassParameters>& subpassParameters, const std::vector<VkSubpassDependency>& subpassDependencies);
+		RenderPass::Ptr initRenderPass();
 
 		Sampler::Ptr createSampler(VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, float lodBias, float minLod, float maxLod, bool anisotropyEnable, float maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, VkBorderColor borderColor, bool unnormalizedCoords);
 

@@ -1,5 +1,5 @@
-#ifndef FRAGMENT_SPECULAR_LIGHTNING_HPP
-#define FRAGMENT_SPECULAR_LIGHTNING_HPP
+#ifndef DRAWING_BILLBOARDS_USING_GEOMETRY_SHADERS_HPP
+#define DRAWING_BILLBOARDS_USING_GEOMETRY_SHADERS_HPP
 
 #include "../../CookBook/SampleBase.hpp"
 
@@ -8,65 +8,68 @@
 #include "../../Mesh.hpp"
 #include "../../Window.hpp"
 
-class FragmentSpecularLightning : public SampleBase
+class DrawingBillboardsUsingGeometryShaders : public SampleBase
 {
 	public:
-		nu::Mesh mMesh;
-		nu::Vulkan::Buffer::Ptr mVertexBuffer;
-		nu::Vulkan::MemoryBlock::Ptr mVertexBufferMemory;
+		nu::Mesh mBillboards;
+		nu::Vulkan::Buffer::Ptr mBillboardsVertexBuffer;
+		nu::Vulkan::MemoryBlock::Ptr mBillboardsVertexBufferMemory;
+
+		bool mUpdateUniformBuffer;
+		nu::Vulkan::Buffer::Ptr mUniformBuffer;
+		nu::Vulkan::MemoryBlock::Ptr mUniformBufferMemory;
 
 		nu::Vulkan::DescriptorSetLayout::Ptr mDescriptorSetLayout;
 		nu::Vulkan::DescriptorPool::Ptr mDescriptorPool;
 		std::vector<nu::Vulkan::DescriptorSet::Ptr> mDescriptorSets;
 
 		nu::Vulkan::RenderPass::Ptr mRenderPass;
-		nu::Vulkan::PipelineLayout::Ptr mPipelineLayout;
+		nu::Vulkan::PipelineLayout::Ptr mPipelineLayout; 
 		std::vector<nu::Vulkan::GraphicsPipeline::Ptr> mPipelines;
 		enum PipelineNames
 		{
-			MeshPipeline = 0,
+			BillboardsPipeline = 0,
 			Count
 		};
 
 		nu::Vulkan::Buffer::Ptr mStagingBuffer;
 		nu::Vulkan::MemoryBlock::Ptr mStagingBufferMemory;
-		bool mUpdateUniformBuffer;
-		nu::Vulkan::Buffer::Ptr mUniformBuffer;
-		nu::Vulkan::MemoryBlock::Ptr mUniformBufferMemory;
 
 		uint32_t mFrameIndex = 0;
 
 		virtual bool initialize(nu::Vulkan::WindowParameters windowParameters) override 
 		{
-			if (!initializeVulkan(windowParameters, nullptr)) 
+			VkPhysicalDeviceFeatures deviceFeatures = {};
+			deviceFeatures.geometryShader = true;
+
+			if (!initializeVulkan(windowParameters, &deviceFeatures)) 
 			{
 				return false;
 			}
 
 			// Vertex data
-			if (!mMesh.loadFromFile("../Data/Models/knot.obj", true, false, false, true))
+			if (!mBillboards.loadFromFile("../Data/Models/ice_low.obj", false, false, false, true))
 			{
 				return false;
 			}
-			mVertexBuffer = mLogicalDevice->createBuffer(mMesh.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-			if (mVertexBuffer == nullptr || !mVertexBuffer->isInitialized())
+			mBillboardsVertexBuffer = mLogicalDevice->createBuffer(mBillboards.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+			if (mBillboardsVertexBuffer == nullptr || !mBillboardsVertexBuffer->isInitialized())
 			{
 				return false;
 			}
-			mVertexBufferMemory = mVertexBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-			if (mVertexBufferMemory == nullptr || !mVertexBufferMemory->isInitialized())
+			mBillboardsVertexBufferMemory = mBillboardsVertexBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			if (mBillboardsVertexBufferMemory == nullptr || !mBillboardsVertexBufferMemory->isInitialized())
 			{
 				return false;
 			}
-
-			if (!mGraphicsQueue->useStagingBufferToUpdateBufferAndWait(mMesh.size(), &mMesh.data[0], mVertexBuffer.get(),
+			if (!mGraphicsQueue->useStagingBufferToUpdateBufferAndWait(mBillboards.size(), &mBillboards.data[0], mBillboardsVertexBuffer.get(),
 				0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-				mFramesResources.front().mCommandBuffer.get(), {}, 50000000)) 
+				mFramesResources.front().mCommandBuffer.get(), {}, 50000000))
 			{
 				return false;
 			}
 
-			// Staging buffer
+			// Staging buffer & Uniform buffer
 			mStagingBuffer = mLogicalDevice->createBuffer(2 * 16 * sizeof(float), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 			if (mStagingBuffer == nullptr || !mStagingBuffer->isInitialized())
 			{
@@ -77,8 +80,6 @@ class FragmentSpecularLightning : public SampleBase
 			{
 				return false;
 			}
-
-			// Uniform buffer
 			mUniformBuffer = mLogicalDevice->createBuffer(2 * 16 * sizeof(float), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 			if (mUniformBuffer == nullptr || !mUniformBuffer->isInitialized())
 			{
@@ -89,31 +90,34 @@ class FragmentSpecularLightning : public SampleBase
 			{
 				return false;
 			}
-
 			if (!updateStagingBuffer(true)) 
 			{
 				return false;
 			}
 
-			// Descriptor set with uniform buffer
-			VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = {
-				0,                                          // uint32_t             binding
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          // VkDescriptorType     descriptorType
-				1,                                          // uint32_t             descriptorCount
-				VK_SHADER_STAGE_VERTEX_BIT,                 // VkShaderStageFlags   stageFlags
-				nullptr                                     // const VkSampler    * pImmutableSamplers
+			// Descriptor sets with uniform buffer
+			std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBindings = {
+				{
+					0,                                          // uint32_t             binding
+					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          // VkDescriptorType     descriptorType
+					1,                                          // uint32_t             descriptorCount
+					VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT,                
+					nullptr                                     // const VkSampler    * pImmutableSamplers
+				}
 			};
-			mDescriptorSetLayout = mLogicalDevice->createDescriptorSetLayout({ descriptorSetLayoutBinding });
+			mDescriptorSetLayout = mLogicalDevice->createDescriptorSetLayout(descriptorSetLayoutBindings);
 			if (mDescriptorSetLayout == nullptr || !mDescriptorSetLayout->isInitialized())
 			{
 				return false;
 			}
 
-			VkDescriptorPoolSize descriptorPoolSize = {
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          // VkDescriptorType     type
-				1                                           // uint32_t             descriptorCount
+			std::vector<VkDescriptorPoolSize> descriptorPoolSizes = {
+				{
+					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          // VkDescriptorType     type
+					1                                           // uint32_t             descriptorCount
+				}
 			};
-			mDescriptorPool = mLogicalDevice->createDescriptorPool(false, 1, { descriptorPoolSize });
+			mDescriptorPool = mLogicalDevice->createDescriptorPool(false, 1, descriptorPoolSizes);
 			if (mDescriptorPool == nullptr || !mDescriptorPool->isInitialized())
 			{
 				return false;
@@ -146,23 +150,19 @@ class FragmentSpecularLightning : public SampleBase
 			// Render pass
 			mRenderPass = mLogicalDevice->initRenderPass();
 
-			// Color attachment
 			mRenderPass->addAttachment(mSwapchain->getFormat());
 			mRenderPass->setAttachmentLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR);
 			mRenderPass->setAttachmentStoreOp(VK_ATTACHMENT_STORE_OP_STORE);
 			mRenderPass->setAttachmentFinalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
-			// Depth attachment
 			mRenderPass->addAttachment(mSwapchain->getDepthFormat());
 			mRenderPass->setAttachmentLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR);
 			mRenderPass->setAttachmentFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-			// Subpass
 			mRenderPass->addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS);
 			mRenderPass->addColorAttachmentToSubpass(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 			mRenderPass->addDepthStencilAttachmentToSubpass(1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-			// Subpass Dependencies
 			mRenderPass->addDependency(
 				VK_SUBPASS_EXTERNAL,                            // uint32_t                   srcSubpass
 				0,                                              // uint32_t                   dstSubpass
@@ -189,73 +189,56 @@ class FragmentSpecularLightning : public SampleBase
 
 			// Graphics pipeline
 
-			std::vector<VkPushConstantRange> pushConstantRanges = {
-				{
-					VK_SHADER_STAGE_FRAGMENT_BIT,     // VkShaderStageFlags   stageFlags
-					0,								  // uint32_t			  offset
-					sizeof(float) * 4				  // uint32_t             size
-				}
-			};
-
-			mPipelineLayout = mLogicalDevice->createPipelineLayout({ mDescriptorSetLayout->getHandle() }, pushConstantRanges);
+			mPipelineLayout = mLogicalDevice->createPipelineLayout({ mDescriptorSetLayout->getHandle() }, {});
 			if (mPipelineLayout == nullptr || !mPipelineLayout->isInitialized())
 			{
 				return false;
 			}
 
-
-			nu::Vulkan::ShaderModule::Ptr vertexShaderModule = mLogicalDevice->initShaderModule();
-			if (vertexShaderModule == nullptr || !vertexShaderModule->loadFromFile("../Examples/2 - Fragment Specular Lightning/shader.vert.spv"))
-			{
-				return false;
-			}
-			vertexShaderModule->setVertexEntrypointName("main");
-
-			nu::Vulkan::ShaderModule::Ptr fragmentShaderModule = mLogicalDevice->initShaderModule();
-			if (fragmentShaderModule == nullptr || !fragmentShaderModule->loadFromFile("../Examples/2 - Fragment Specular Lightning/shader.frag.spv"))
-			{
-				return false;
-			}
-			fragmentShaderModule->setFragmentEntrypointName("main");
-
-			if (!vertexShaderModule->create() || !fragmentShaderModule->create())
-			{
-				return false;
-			}
-
-
 			mPipelines.resize(PipelineNames::Count);
-			mPipelines[PipelineNames::MeshPipeline] = mLogicalDevice->initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
+			mPipelines[PipelineNames::BillboardsPipeline] = mLogicalDevice->initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
 
-			nu::Vulkan::GraphicsPipeline* modelPipeline = mPipelines[PipelineNames::MeshPipeline].get();
+			nu::Vulkan::GraphicsPipeline* billboardsPipeline = mPipelines[PipelineNames::BillboardsPipeline].get();
 
-			modelPipeline->setSubpass(0);
+			billboardsPipeline->setSubpass(0);
 
-			modelPipeline->addShaderModule(vertexShaderModule.get());
-			modelPipeline->addShaderModule(fragmentShaderModule.get());
+			nu::Vulkan::ShaderModule::Ptr billboardsVertexShaderModule = mLogicalDevice->initShaderModule();
+			if (billboardsVertexShaderModule == nullptr || !billboardsVertexShaderModule->loadFromFile("../Examples/7 - Drawing Billboards Using Geometry Shaders/shader.vert.spv"))
+			{
+				return false;
+			}
+			billboardsVertexShaderModule->setVertexEntrypointName("main");
 
-			modelPipeline->addVertexBinding(0, 6 * sizeof(float), VK_VERTEX_INPUT_RATE_VERTEX);
-			modelPipeline->addVertexAttribute(0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0);
-			modelPipeline->addVertexAttribute(1, 0, VK_FORMAT_R32G32B32_SFLOAT, 3 * sizeof(float));
+			nu::Vulkan::ShaderModule::Ptr billboardsGeometryShaderModule = mLogicalDevice->initShaderModule();
+			if (billboardsGeometryShaderModule == nullptr || !billboardsGeometryShaderModule->loadFromFile("../Examples/7 - Drawing Billboards Using Geometry Shaders/shader.geom.spv"))
+			{
+				return false;
+			}
+			billboardsGeometryShaderModule->setGeometryEntrypointName("main");
 
-			//modelPipeline->setInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, false);
+			nu::Vulkan::ShaderModule::Ptr billboardsFragmentShaderModule = mLogicalDevice->initShaderModule();
+			if (billboardsFragmentShaderModule == nullptr || !billboardsFragmentShaderModule->loadFromFile("../Examples/7 - Drawing Billboards Using Geometry Shaders/shader.frag.spv"))
+			{
+				return false;
+			}
+			billboardsFragmentShaderModule->setFragmentEntrypointName("main");
 
-			modelPipeline->setViewport(0.0f, 0.0f, 500.0f, 500.0f, 0.0f, 1.0f);
-			modelPipeline->setScissor(0, 0, 500, 500);
+			if (!billboardsVertexShaderModule->create() || !billboardsGeometryShaderModule->create() || !billboardsFragmentShaderModule->create())
+			{
+				return false;
+			}
 
-			//modelPipeline->setRasterizationState(false, false, VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, false, 0.0f, 0.0f, 0.0f, 1.0f);
+			billboardsPipeline->addShaderModule(billboardsVertexShaderModule.get());
+			billboardsPipeline->addShaderModule(billboardsGeometryShaderModule.get());
+			billboardsPipeline->addShaderModule(billboardsFragmentShaderModule.get());
 
-			//modelPipeline->setMultisampleState(VK_SAMPLE_COUNT_1_BIT, false, 0.0f, nullptr, false, false);
+			billboardsPipeline->addVertexBinding(0, 3 * sizeof(float), VK_VERTEX_INPUT_RATE_VERTEX);
+			billboardsPipeline->addVertexAttribute(0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0);
 
-			//modelPipeline->setDepthStencilState(true, true, VK_COMPARE_OP_LESS_OR_EQUAL, false, false, {}, {}, 0.0f, 1.0f);
+			billboardsPipeline->addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
+			billboardsPipeline->addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
 
-			//modelPipeline->addBlend(false);
-			//modelPipeline->setBlendState(false, VK_LOGIC_OP_COPY, 1.0f, 1.0f, 1.0f, 1.0f);
-
-			modelPipeline->addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
-			modelPipeline->addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
-
-			if (!modelPipeline->create())
+			if (!billboardsPipeline->create())
 			{
 				return false;
 			}
@@ -347,18 +330,13 @@ class FragmentSpecularLightning : public SampleBase
 				};
 				commandBuffer->setScissorStateDynamically(0, { scissor });
 
-				commandBuffer->bindVertexBuffers(0, { { mVertexBuffer.get(), 0 } } );
-
 				commandBuffer->bindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout->getHandle(), 0, { mDescriptorSets[0].get() }, {});
 
-				commandBuffer->bindPipeline(mPipelines[PipelineNames::MeshPipeline].get());
-
-				std::array<float, 4> lightPosition = { 5.0f, 5.0f, 0.0f, 0.0f };
-				commandBuffer->provideDataToShadersThroughPushConstants(mPipelineLayout->getHandle(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float) * 4, &lightPosition[0]);
-
-				for (size_t i = 0; i < mMesh.parts.size(); i++) 
+				commandBuffer->bindPipeline(mPipelines[PipelineNames::BillboardsPipeline].get());
+				commandBuffer->bindVertexBuffers(0, { { mBillboardsVertexBuffer.get(), 0 } });
+				for (size_t i = 0; i < mBillboards.parts.size(); i++) 
 				{
-					commandBuffer->drawGeometry(mMesh.parts[i].vertexCount, 1, mMesh.parts[i].vertexOffset, 0);
+					commandBuffer->drawGeometry(mBillboards.parts[i].vertexCount, 1, mBillboards.parts[i].vertexOffset, 0);
 				}
 
 				commandBuffer->endRenderPass();
@@ -500,4 +478,4 @@ class FragmentSpecularLightning : public SampleBase
 		}
 };
 
-#endif // FRAGMENT_SPECULAR_LIGHTNING_HPP
+#endif // DRAWING_BILLBOARDS_USING_GEOMETRY_SHADERS_HPP

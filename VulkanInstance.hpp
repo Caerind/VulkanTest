@@ -15,12 +15,12 @@ namespace nu
 namespace Vulkan
 {
 
-class Instance
-{
+	class Instance
+	{
 	public:
 		typedef std::unique_ptr<Instance> Ptr;
 
-		static Instance::Ptr createInstance();
+		static Instance::Ptr createInstance(const std::vector<const char*>& desiredExtensions = {}, const std::vector<const char*> desiredLayers = {});
 
 		~Instance();
 
@@ -34,11 +34,14 @@ class Instance
 		bool isInitialized() const;
 		const VkInstance& getHandle() const;
 
-	private:
-		Instance();
+		const std::vector<const char*>& getExtensions() const;
+		const std::vector<const char*>& getLayers() const;
 
-		bool init();
-		bool release();
+		static bool isInstanceExtensionSupported(const char* extensionName);
+		static bool isInstanceLayerSupported(const char* layerName);
+
+	private:
+		Instance(const std::vector<const char*>& desiredExtensions, const std::vector<const char*>& desiredLayers);
 
 		bool queryAvailablePhysicalDevices() const;
 
@@ -46,11 +49,20 @@ class Instance
 		// With each callback may be enabled or not depending on users needs
 		static VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData);
 
+		static bool queryAvailableInstanceExtensions();
+		static bool queryAvailableInstanceLayers();
+
 	private:
 		VkInstance mInstance;
 		VkDebugReportCallbackEXT mDebugReportCallback;
 
+		std::vector<const char*> mExtensions;
+		std::vector<const char*> mLayers;
+
 		mutable std::vector<PhysicalDevice> mPhysicalDevices;
+
+		static std::vector<VkExtensionProperties> sAvailableInstanceExtensions;
+		static std::vector<VkLayerProperties> sAvailableInstanceLayers;
 };
 
 } // namespace Vulkan

@@ -5,24 +5,26 @@ namespace nu
 namespace Vulkan
 {
 
-Instance::Ptr Instance::createInstance()
+Instance::Ptr Instance::createInstance(const std::vector<const char*>& desiredExtensions, const std::vector<const char*> desiredLayers)
 {
-	Instance::Ptr instance(new Instance());
-	if (instance != nullptr)
-	{
-		if (!instance->init())
-		{
-			instance.reset();
-		}
-	}
-	return instance;
+	return Instance::Ptr(new Instance(desiredExtensions, desiredLayers));
 }
 
 Instance::~Instance()
 {
 	ObjectTracker::unregisterObject(ObjectType_Instance);
 
-	release();
+	if (mDebugReportCallback != VK_NULL_HANDLE)
+	{
+		vkDestroyDebugReportCallbackEXT(mInstance, mDebugReportCallback, nullptr);
+		mDebugReportCallback = VK_NULL_HANDLE;
+	}
+
+	if (mInstance != VK_NULL_HANDLE)
+	{
+		vkDestroyInstance(mInstance, nullptr);
+		mInstance = VK_NULL_HANDLE;
+	}
 }
 
 PhysicalDevice& Instance::getPhysicalDevice(uint32_t index)
@@ -70,74 +72,120 @@ const VkInstance& Instance::getHandle() const
 	return mInstance;
 }
 
-Instance::Instance()
+const std::vector<const char*>& Instance::getExtensions() const
+{
+	return mExtensions;
+}
+
+const std::vector<const char*>& Instance::getLayers() const
+{
+	return mLayers;
+}
+
+bool Instance::isInstanceExtensionSupported(const char* extensionName)
+{
+	if (sAvailableInstanceExtensions.size() == 0)
+	{
+		queryAvailableInstanceExtensions();
+	}
+
+	for (const VkExtensionProperties& extension : sAvailableInstanceExtensions)
+	{
+		if (strcmp(extension.extensionName, extensionName) == 0)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Instance::isInstanceLayerSupported(const char* layerName)
+{
+	if (sAvailableInstanceLayers.size() == 0)
+	{
+		queryAvailableInstanceLayers();
+	}
+
+	for (const VkLayerProperties& layer : sAvailableInstanceLayers)
+	{
+		if (strcmp(layer.layerName, layerName) == 0)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+Instance::Instance(const std::vector<const char*>& desiredExtensions, const std::vector<const char*>& desiredLayers)
 	: mInstance(VK_NULL_HANDLE)
 	, mDebugReportCallback(VK_NULL_HANDLE)
+	, mExtensions(desiredExtensions)
+	, mLayers(desiredLayers)
 	, mPhysicalDevices()
 {
 	ObjectTracker::registerObject(ObjectType_Instance);
-}
 
-bool Instance::init()
-{
-	if (!Loader::areDynamicExportedGlobalLoaded())
+	if (!Loader::ensureDynamicLibraryLoaded())
 	{
-		if (!Loader::loadDynamicExportedGlobal())
-		{
-			return false;
-		}
+		return;
+	}
+	if (!Loader::ensureExportedFunctionLoaded())
+	{
+		return;
+	}
+	if (!Loader::ensureGlobalLevelFunctionsLoaded())
+	{
+		return;
 	}
 
-	std::vector<const char*> desiredExtensions;
 	// TODO : Only if wanted
 	if (true)
 	{
-		desiredExtensions.emplace_back(VK_KHR_SURFACE_EXTENSION_NAME);
+		mExtensions.emplace_back(VK_KHR_SURFACE_EXTENSION_NAME);
 		#ifdef VK_USE_PLATFORM_WIN32_KHR
-			desiredExtensions.emplace_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+			mExtensions.emplace_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 		#elif defined VK_USE_PLATFORM_XCB_KHR
-			desiredExtensions.emplace_back(VK_KHR_XCB_SURFACE_EXTENSION_NAME);
+			mExtensions.emplace_back(VK_KHR_XCB_SURFACE_EXTENSION_NAME);
 		#elif defined VK_USE_PLATFORM_XLIB_KHR
-			desiredExtensions.emplace_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
+			mExtensions.emplace_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
 		#endif
 	}
 	// TODO : Only on Debug
 	if (true)
 	{
-		desiredExtensions.emplace_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+		mExtensions.emplace_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 	}
 
 	// TODO : Only on Debug
 	if (true)
 	{
-		for (auto& desiredExtension : desiredExtensions)
+		for (auto& desiredExtension : mExtensions)
 		{
-			if (!Loader::isInstanceExtensionSupported(desiredExtension))
+			if (!isInstanceExtensionSupported(desiredExtension))
 			{
 				// TODO : Numea Log System
 				printf("Could not find a desired instance extension : %s\n", desiredExtension);
-				return false;
+				return;
 			}
 		}
 	}
 
-	std::vector<const char*> desiredLayers;
 	// TODO : Only on Debug
 	if (true)
 	{
-		desiredLayers.emplace_back("VK_LAYER_LUNARG_standard_validation");
+		mLayers.emplace_back("VK_LAYER_LUNARG_standard_validation");
 	}
 
 	// TODO : Only on Debug
 	if (true)
 	{
-		for (auto& desiredLayer : desiredLayers)
+		for (auto& desiredLayer : mLayers)
 		{
-			if (!Loader::isInstanceLayerSupported(desiredLayer))
+			if (!isInstanceLayerSupported(desiredLayer))
 			{
 				// TODO : Numea Log System
 				printf("Could not find a desired instance layer : %s\n", desiredLayer);
-				return false;
+				return;
 			}
 		}
 	}
@@ -159,26 +207,23 @@ bool Instance::init()
 		nullptr,                                            // const void              * pNext
 		0,                                                  // VkInstanceCreateFlags     flags
 		&applicationInfo,                                   // const VkApplicationInfo * pApplicationInfo
-		static_cast<uint32_t>(desiredLayers.size()),        // uint32_t                  enabledLayerCount
-		desiredLayers.data(),                               // const char * const      * ppEnabledLayerNames
-		static_cast<uint32_t>(desiredExtensions.size()),    // uint32_t                  enabledExtensionCount
-		desiredExtensions.data()                            // const char * const      * ppEnabledExtensionNames
+		static_cast<uint32_t>(mLayers.size()),              // uint32_t                  enabledLayerCount
+		mLayers.data(),                                     // const char * const      * ppEnabledLayerNames
+		static_cast<uint32_t>(mExtensions.size()),          // uint32_t                  enabledExtensionCount
+		mExtensions.data()                                  // const char * const      * ppEnabledExtensionNames
 	};
 
 	VkResult result = vkCreateInstance(&instanceCreateInfo, nullptr, &mInstance);
-	if ((result != VK_SUCCESS) || (mInstance == VK_NULL_HANDLE))
+	if (result != VK_SUCCESS || mInstance == VK_NULL_HANDLE)
 	{
 		// TODO : Use Numea System Log
 		printf("Could not create Vulkan instance\n");
-		return false;
+		return;
 	}
 
-	if (!Loader::areInstanceLevelFunctionsLoaded())
+	if (!Loader::ensureInstanceLevelFunctionsLoaded(*this))
 	{
-		if (!Loader::loadInstanceLevelFunctions(mInstance, desiredExtensions))
-		{
-			return false;
-		}
+		return;
 	}
 
 	// TODO : Only on Debug
@@ -194,33 +239,13 @@ bool Instance::init()
 		};
 
 		result = vkCreateDebugReportCallbackEXT(mInstance, &callback, nullptr, &mDebugReportCallback);
-		if (result != VK_SUCCESS)
+		if (result != VK_SUCCESS || mDebugReportCallback == VK_NULL_HANDLE)
 		{
 			// TODO : Use Numea System Log
 			printf("Could not create DebugReportCallback\n");
-			return false;
+			return;
 		}
 	}
-
-	return true;
-}
-
-bool Instance::release()
-{
-	if (mDebugReportCallback != VK_NULL_HANDLE)
-	{
-		vkDestroyDebugReportCallbackEXT(mInstance, mDebugReportCallback, nullptr);
-		mDebugReportCallback = VK_NULL_HANDLE;
-	}
-
-	if (mInstance != VK_NULL_HANDLE)
-	{
-		vkDestroyInstance(mInstance, nullptr);
-		mInstance = VK_NULL_HANDLE;
-		return true;
-	}
-
-	return false;
 }
 
 bool Instance::queryAvailablePhysicalDevices() const
@@ -264,6 +289,63 @@ VKAPI_ATTR VkBool32 VKAPI_CALL Instance::debugReportCallback(VkDebugReportFlagsE
 	printf("%s\n", pMessage);
 	return VK_TRUE;
 }
+
+bool Instance::queryAvailableInstanceExtensions()
+{
+	sAvailableInstanceExtensions.clear();
+
+	uint32_t extensionCount = 0;
+	VkResult result = VK_SUCCESS;
+
+	result = vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+	if (result != VK_SUCCESS || extensionCount == 0)
+	{
+		// TODO : Use Numea System Log
+		printf("Could not get the number of instance extensions\n");
+		return false;
+	}
+
+	sAvailableInstanceExtensions.resize(extensionCount);
+	result = vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, sAvailableInstanceExtensions.data());
+	if (result != VK_SUCCESS || extensionCount == 0)
+	{
+		// TODO : Use Numea System Log
+		printf("Could not enumerate instance extensions\n");
+		return false;
+	}
+
+	return true;
+}
+
+bool Instance::queryAvailableInstanceLayers()
+{
+	sAvailableInstanceLayers.clear();
+
+	uint32_t layerCount = 0;
+	VkResult result = VK_SUCCESS;
+
+	result = vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+	if (result != VK_SUCCESS || layerCount == 0)
+	{
+		// TODO : Use Numea System Log
+		printf("Could not get the number of instance layers\n");
+		return false;
+	}
+
+	sAvailableInstanceLayers.resize(layerCount);
+	result = vkEnumerateInstanceLayerProperties(&layerCount, sAvailableInstanceLayers.data());
+	if (result != VK_SUCCESS || layerCount == 0)
+	{
+		// TODO : Use Numea System Log
+		printf("Could not enumerate instance layers\n");
+		return false;
+	}
+
+	return true;
+}
+
+std::vector<VkExtensionProperties> Instance::sAvailableInstanceExtensions;
+std::vector<VkLayerProperties> Instance::sAvailableInstanceLayers;
 
 } // namespace Vulkan
 } // namespace nu

@@ -1,40 +1,74 @@
 #include "VulkanLoader.hpp"
 
+#include "VulkanInstance.hpp"
+#include "VulkanDevice.hpp"
+
 namespace nu
 {
 namespace Vulkan
 {
 
-bool Loader::loadDynamicExportedGlobal()
+bool Loader::ensureDynamicLibraryLoaded()
 {
-	if (!isDynamicLibraryLoaded())
-	{
-		if (!loadDynamicLibrary())
+	#if defined(VK_NO_PROTOTYPES)
+		if (!sDynamicLibrary.isLibraryLoaded())
 		{
-			return false;
+			return loadDynamicLibrary();
 		}
-	}
-	if (!isExportedFunctionLoaded())
-	{
-		if (!loadExportedFunction())
-		{
-			return false;
-		}
-	}
-	if (!areGlobalLevelFunctionsLoaded())
-	{
-		if (!loadGlobalLevelFunctions())
-		{
-			return false;
-		}
-	}
+	#endif
 
 	return true;
 }
 
-bool Loader::areDynamicExportedGlobalLoaded()
+bool Loader::ensureExportedFunctionLoaded()
 {
-	return isDynamicLibraryLoaded() && isExportedFunctionLoaded() && areGlobalLevelFunctionsLoaded();
+	#if defined(VK_NO_PROTOTYPES)
+		if (!sExportedFunctionLoaded)
+		{
+			return loadExportedFunction();
+		}
+	#endif
+
+	return true;
+}
+
+bool Loader::ensureGlobalLevelFunctionsLoaded()
+{
+	#if defined(VK_NO_PROTOTYPES)
+		if (!sGlobalLevelFunctionsLoaded)
+		{
+			return loadGlobalLevelFunctions();
+		}
+	#endif
+
+	return true;
+}
+
+bool Loader::ensureInstanceLevelFunctionsLoaded(const Instance& instance)
+{
+	#if defined(VK_NO_PROTOTYPES)
+		return loadInstanceLevelFunctions(instance);
+	#endif
+
+	return true;
+}
+
+bool Loader::ensureDeviceLevelFunctionsLoaded(const VkDevice& device, const std::vector<const char*>& enabledExtensions)
+{
+	#if defined(VK_NO_PROTOTYPES)
+		return loadDeviceLevelFunctions(device, enabledExtensions);
+	#endif
+
+	return true;
+}
+
+bool Loader::usingDynamicLinking()
+{
+	#if defined(VK_NO_PROTOTYPES)
+		return true;
+	#else
+		return false;
+	#endif
 }
 
 bool Loader::loadDynamicLibrary()
@@ -53,11 +87,6 @@ bool Loader::loadDynamicLibrary()
 	}
 
 	return true;
-}
-
-bool Loader::isDynamicLibraryLoaded()
-{
-	return sDynamicLibrary.isLibraryLoaded();
 }
 
 bool Loader::loadExportedFunction()
@@ -79,11 +108,6 @@ bool Loader::loadExportedFunction()
 	return true;
 }
 
-bool Loader::isExportedFunctionLoaded()
-{
-	return sExportedFunctionLoaded;
-}
-
 bool Loader::loadGlobalLevelFunctions()
 {
 	#define NU_GLOBAL_LEVEL_VULKAN_FUNCTION(name) \
@@ -103,16 +127,13 @@ bool Loader::loadGlobalLevelFunctions()
 	return true;
 }
 
-bool Loader::areGlobalLevelFunctionsLoaded()
+bool Loader::loadInstanceLevelFunctions(const Instance& instance)
 {
-	return sGlobalLevelFunctionsLoaded;
-}
+	const VkInstance& instanceHandle = instance.getHandle();
 
-bool Loader::loadInstanceLevelFunctions(const VkInstance& instance, const std::vector<const char*>& enabledExtensions)
-{
 	// TODO : Use Numea System Log
 	#define NU_INSTANCE_LEVEL_VULKAN_FUNCTION(name) \
-		name = (PFN_##name)vkGetInstanceProcAddr(instance, #name); \
+		name = (PFN_##name)vkGetInstanceProcAddr(instanceHandle, #name); \
 		if (name == nullptr) \
 		{ \
 			printf("Could not load instance-level Vulkan function named: %s\n", #name); \
@@ -121,11 +142,11 @@ bool Loader::loadInstanceLevelFunctions(const VkInstance& instance, const std::v
 
 	// TODO : Use Numea System Log
 	#define NU_INSTANCE_LEVEL_VULKAN_FUNCTION_FROM_EXTENSION(name, extension) \
-		for (auto& enabledExtension : enabledExtensions) \
+		for (auto& enabledExtension : instance.getExtensions()) \
 		{ \
 			if (std::string(enabledExtension) == std::string(extension)) \
 			{ \
-				name = (PFN_##name)vkGetInstanceProcAddr(instance, #name); \
+				name = (PFN_##name)vkGetInstanceProcAddr(instanceHandle, #name); \
 				if (name == nullptr) \
 				{ \
 					printf("Could not load instance-level Vulkan function named: %s (Extension: %s)\n", #name, #extension); \
@@ -139,11 +160,6 @@ bool Loader::loadInstanceLevelFunctions(const VkInstance& instance, const std::v
 	sInstanceLevelFunctionsLoaded = true;
 
 	return true;
-}
-
-bool Loader::areInstanceLevelFunctionsLoaded()
-{
-	return sInstanceLevelFunctionsLoaded;
 }
 
 bool Loader::loadDeviceLevelFunctions(const VkDevice& device, const std::vector<const char*>& enabledExtensions)
@@ -181,126 +197,11 @@ bool Loader::loadDeviceLevelFunctions(const VkDevice& device, const std::vector<
 	return true;
 }
 
-bool Loader::areDeviceLevelFunctionsLoaded()
-{
-	return sDeviceLevelFunctionsLoaded;
-}
-
-const std::vector<VkExtensionProperties>& Loader::getAvailableInstanceExtensions()
-{
-	if (sAvailableInstanceExtensions.size() == 0)
-	{
-		queryAvailableInstanceExtensions();
-	}
-
-	return sAvailableInstanceExtensions;
-}
-
-const std::vector<VkLayerProperties>& Loader::getAvailableInstanceLayers()
-{
-	if (sAvailableInstanceLayers.size() == 0)
-	{
-		queryAvailableInstanceLayers();
-	}
-
-	return sAvailableInstanceLayers;
-}
-
-bool Loader::isInstanceExtensionSupported(const char* extensionName)
-{
-	if (sAvailableInstanceExtensions.size() == 0)
-	{
-		queryAvailableInstanceExtensions();
-	}
-
-	for (const VkExtensionProperties& extension : sAvailableInstanceExtensions)
-	{
-		if (strcmp(extension.extensionName, extensionName) == 0)
-		{
-			return true;
-		}
-	}
-	return false;
-}
-
-bool Loader::isInstanceLayerSupported(const char* layerName)
-{
-	if (sAvailableInstanceLayers.size() == 0)
-	{
-		queryAvailableInstanceLayers();
-	}
-
-	for (const VkLayerProperties& layer : sAvailableInstanceLayers)
-	{
-		if (strcmp(layer.layerName, layerName) == 0)
-		{
-			return true;
-		}
-	}
-	return false;
-}
-
-bool Loader::queryAvailableInstanceExtensions()
-{
-	sAvailableInstanceExtensions.clear();
-
-	uint32_t extensionCount = 0;
-	VkResult result = VK_SUCCESS;
-
-	result = vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-	if (result != VK_SUCCESS || extensionCount == 0)
-	{
-		// TODO : Use Numea System Log
-		printf("Could not get the number of instance extensions\n");
-		return false;
-	}
-
-	sAvailableInstanceExtensions.resize(extensionCount);
-	result = vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, sAvailableInstanceExtensions.data());
-	if (result != VK_SUCCESS || extensionCount == 0)
-	{
-		// TODO : Use Numea System Log
-		printf("Could not enumerate instance extensions\n");
-		return false;
-	}
-
-	return true;
-}
-
-bool Loader::queryAvailableInstanceLayers()
-{
-	sAvailableInstanceLayers.clear();
-
-	uint32_t layerCount = 0;
-	VkResult result = VK_SUCCESS;
-
-	result = vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-	if (result != VK_SUCCESS || layerCount == 0)
-	{
-		// TODO : Use Numea System Log
-		printf("Could not get the number of instance layers\n");
-		return false;
-	}
-
-	sAvailableInstanceLayers.resize(layerCount);
-	result = vkEnumerateInstanceLayerProperties(&layerCount, sAvailableInstanceLayers.data());
-	if (result != VK_SUCCESS || layerCount == 0)
-	{
-		// TODO : Use Numea System Log
-		printf("Could not enumerate instance layers\n");
-		return false;
-	}
-
-	return true;
-}
-
 DynamicLibrary Loader::sDynamicLibrary;
 bool Loader::sExportedFunctionLoaded = false;
 bool Loader::sGlobalLevelFunctionsLoaded = false;
 bool Loader::sInstanceLevelFunctionsLoaded = false;
 bool Loader::sDeviceLevelFunctionsLoaded = false;
-std::vector<VkExtensionProperties> Loader::sAvailableInstanceExtensions;
-std::vector<VkLayerProperties> Loader::sAvailableInstanceLayers;
 
 } // namespace Vulkan
 } // namespace nu

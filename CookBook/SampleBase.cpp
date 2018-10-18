@@ -126,7 +126,7 @@ void SampleBase::onMouseEvent()
 {
 }
 
-bool SampleBase::initializeVulkan(nu::Vulkan::WindowParameters windowParameters, VkPhysicalDeviceFeatures * desiredDeviceFeatures)
+bool SampleBase::initializeVulkan(nu::Vulkan::WindowParameters windowParameters, VkPhysicalDeviceFeatures* desiredDeviceFeatures)
 {
 	mInstance = nu::Vulkan::Instance::createInstance();
 	if (mInstance == nullptr || !mInstance->isInitialized())

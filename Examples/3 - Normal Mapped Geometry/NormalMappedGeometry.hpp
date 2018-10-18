@@ -202,75 +202,45 @@ class NormalMappedGeometry : public SampleBase
 			mLogicalDevice->updateDescriptorSets({ imageDescriptorUpdate }, { bufferDescriptorUpdate }, {}, {});
 
 			// Render pass
-			std::vector<VkAttachmentDescription> attachmentDescriptions = {
-				{
-					0,                                                // VkAttachmentDescriptionFlags     flags
-					mSwapchain->getFormat(),                          // VkFormat                         format
-					VK_SAMPLE_COUNT_1_BIT,                            // VkSampleCountFlagBits            samples
-					VK_ATTACHMENT_LOAD_OP_CLEAR,                      // VkAttachmentLoadOp               loadOp
-					VK_ATTACHMENT_STORE_OP_STORE,                     // VkAttachmentStoreOp              storeOp
-					VK_ATTACHMENT_LOAD_OP_DONT_CARE,                  // VkAttachmentLoadOp               stencilLoadOp
-					VK_ATTACHMENT_STORE_OP_DONT_CARE,                 // VkAttachmentStoreOp              stencilStoreOp
-					VK_IMAGE_LAYOUT_UNDEFINED,                        // VkImageLayout                    initialLayout
-					VK_IMAGE_LAYOUT_PRESENT_SRC_KHR                   // VkImageLayout                    finalLayout
-				},
-				{
-					0,                                                // VkAttachmentDescriptionFlags     flags
-					mSwapchain->getDepthFormat(),                     // VkFormat                         format
-					VK_SAMPLE_COUNT_1_BIT,                            // VkSampleCountFlagBits            samples
-					VK_ATTACHMENT_LOAD_OP_CLEAR,                      // VkAttachmentLoadOp               loadOp
-					VK_ATTACHMENT_STORE_OP_DONT_CARE,                 // VkAttachmentStoreOp              storeOp
-					VK_ATTACHMENT_LOAD_OP_DONT_CARE,                  // VkAttachmentLoadOp               stencilLoadOp
-					VK_ATTACHMENT_STORE_OP_DONT_CARE,                 // VkAttachmentStoreOp              stencilStoreOp
-					VK_IMAGE_LAYOUT_UNDEFINED,                        // VkImageLayout                    initialLayout
-					VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL  // VkImageLayout                    finalLayout
-				}
-			};
+			mRenderPass = mLogicalDevice->initRenderPass();
 
-			VkAttachmentReference depthAttachment = {
-				1,                                                // uint32_t                             attachment
-				VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL  // VkImageLayout                        layout
-			};
+			// Color attachment
+			mRenderPass->addAttachment(mSwapchain->getFormat());
+			mRenderPass->setAttachmentLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR);
+			mRenderPass->setAttachmentStoreOp(VK_ATTACHMENT_STORE_OP_STORE);
+			mRenderPass->setAttachmentFinalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
-			std::vector<nu::Vulkan::SubpassParameters> subpassParameters = {
-				{
-					VK_PIPELINE_BIND_POINT_GRAPHICS,              // VkPipelineBindPoint                  PipelineType
-					{},                                           // std::vector<VkAttachmentReference>   InputAttachments
-					{                                             // std::vector<VkAttachmentReference>   ColorAttachments
-						{
-							0,                                          // uint32_t                             attachment
-							VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,   // VkImageLayout                        layout
-						}
-					},
-					{},                                           // std::vector<VkAttachmentReference>   ResolveAttachments
-					&depthAttachment,                             // VkAttachmentReference const        * DepthStencilAttachment
-					{}                                            // std::vector<uint32_t>                PreserveAttachments
-				}
-			};
+			// Depth attachment
+			mRenderPass->addAttachment(mSwapchain->getDepthFormat());
+			mRenderPass->setAttachmentLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR);
+			mRenderPass->setAttachmentFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-			std::vector<VkSubpassDependency> subpassDependencies = {
-				{
-					VK_SUBPASS_EXTERNAL,                            // uint32_t                   srcSubpass
-					0,                                              // uint32_t                   dstSubpass
-					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,              // VkPipelineStageFlags       srcStageMask
-					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,  // VkPipelineStageFlags       dstStageMask
-					VK_ACCESS_MEMORY_READ_BIT,                      // VkAccessFlags              srcAccessMask
-					VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,           // VkAccessFlags              dstAccessMask
-					VK_DEPENDENCY_BY_REGION_BIT                     // VkDependencyFlags          dependencyFlags
-				},
-				{
-					0,                                              // uint32_t                   srcSubpass
-					VK_SUBPASS_EXTERNAL,                            // uint32_t                   dstSubpass
-					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,  // VkPipelineStageFlags       srcStageMask
-					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,              // VkPipelineStageFlags       dstStageMask
-					VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,           // VkAccessFlags              srcAccessMask
-					VK_ACCESS_MEMORY_READ_BIT,                      // VkAccessFlags              dstAccessMask
-					VK_DEPENDENCY_BY_REGION_BIT                     // VkDependencyFlags          dependencyFlags
-				}
-			};
+			// Subpass
+			mRenderPass->addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS);
+			mRenderPass->addColorAttachmentToSubpass(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+			mRenderPass->addDepthStencilAttachmentToSubpass(1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-			mRenderPass = mLogicalDevice->createRenderPass(attachmentDescriptions, subpassParameters, subpassDependencies);
-			if (mRenderPass == nullptr || !mRenderPass->isInitialized())
+			// Subpass Dependencies
+			mRenderPass->addDependency(
+				VK_SUBPASS_EXTERNAL,                            // uint32_t                   srcSubpass
+				0,                                              // uint32_t                   dstSubpass
+				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,              // VkPipelineStageFlags       srcStageMask
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,  // VkPipelineStageFlags       dstStageMask
+				VK_ACCESS_MEMORY_READ_BIT,                      // VkAccessFlags              srcAccessMask
+				VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,           // VkAccessFlags              dstAccessMask
+				VK_DEPENDENCY_BY_REGION_BIT                     // VkDependencyFlags          dependencyFlags
+			);
+			mRenderPass->addDependency(
+				0,                                              // uint32_t                   srcSubpass
+				VK_SUBPASS_EXTERNAL,                            // uint32_t                   dstSubpass
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,  // VkPipelineStageFlags       srcStageMask
+				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,              // VkPipelineStageFlags       dstStageMask
+				VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,           // VkAccessFlags              srcAccessMask
+				VK_ACCESS_MEMORY_READ_BIT,                      // VkAccessFlags              dstAccessMask
+				VK_DEPENDENCY_BY_REGION_BIT                     // VkDependencyFlags          dependencyFlags
+			);
+
+			if (!mRenderPass->create())
 			{
 				return false;
 			}

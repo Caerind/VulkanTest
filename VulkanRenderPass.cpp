@@ -7,83 +7,222 @@ namespace nu
 namespace Vulkan
 {
 
-RenderPass::Ptr RenderPass::createRenderPass(Device& device, const std::vector<VkAttachmentDescription>& attachmentsDescriptions, const std::vector<SubpassParameters>& subpassParameters, const std::vector<VkSubpassDependency>& subpassDependencies)
-{
-	RenderPass::Ptr renderPass(new RenderPass(device, attachmentsDescriptions, subpassParameters, subpassDependencies));
-	if (renderPass != nullptr)
-	{
-		if (!renderPass->init())
-		{
-			renderPass.reset();
-		}
-	}
-	return renderPass;
-}
-
 RenderPass::~RenderPass()
 {
 	ObjectTracker::unregisterObject(ObjectType_RenderPass);
 
-	release();
+	destroy();
 }
 
-Framebuffer::Ptr RenderPass::createFramebuffer(const std::vector<VkImageView>& attachments, uint32_t width, uint32_t height, uint32_t layers)
+void RenderPass::addAttachment(VkFormat format)
 {
-	return Framebuffer::createFramebuffer(mDevice, *this, attachments, width, height, layers);
+	VkAttachmentDescription attachmentDescription = {
+		0,                                                // VkAttachmentDescriptionFlags     flags
+		format,                                           // VkFormat                         format
+		VK_SAMPLE_COUNT_1_BIT,                            // VkSampleCountFlagBits            samples
+		VK_ATTACHMENT_LOAD_OP_DONT_CARE,                  // VkAttachmentLoadOp               loadOp
+		VK_ATTACHMENT_STORE_OP_DONT_CARE,                 // VkAttachmentStoreOp              storeOp
+		VK_ATTACHMENT_LOAD_OP_DONT_CARE,                  // VkAttachmentLoadOp               stencilLoadOp
+		VK_ATTACHMENT_STORE_OP_DONT_CARE,                 // VkAttachmentStoreOp              stencilStoreOp
+		VK_IMAGE_LAYOUT_UNDEFINED,                        // VkImageLayout                    initialLayout
+		VK_IMAGE_LAYOUT_UNDEFINED                         // VkImageLayout                    finalLayout
+	};
+
+	mAttachmentDescriptions.push_back(attachmentDescription);
 }
 
-bool RenderPass::isInitialized() const
+void RenderPass::addAttachment(VkAttachmentDescriptionFlags flags, VkFormat format, VkSampleCountFlagBits samples, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp, VkAttachmentLoadOp stencilLoadOp, VkAttachmentStoreOp stencilStoreOp, VkImageLayout initialLayout, VkImageLayout finalLayout)
 {
-	return mRenderPass != VK_NULL_HANDLE;
+	VkAttachmentDescription attachmentDescription = {
+		flags,                                            // VkAttachmentDescriptionFlags     flags
+		format,                                           // VkFormat                         format
+		samples,                                          // VkSampleCountFlagBits            samples
+		loadOp,                                           // VkAttachmentLoadOp               loadOp
+		storeOp,                                          // VkAttachmentStoreOp              storeOp
+		stencilLoadOp,                                    // VkAttachmentLoadOp               stencilLoadOp
+		stencilStoreOp,                                   // VkAttachmentStoreOp              stencilStoreOp
+		initialLayout,                                    // VkImageLayout                    initialLayout
+		finalLayout                                       // VkImageLayout                    finalLayout
+	};
+
+	mAttachmentDescriptions.push_back(attachmentDescription);
 }
 
-const VkRenderPass& RenderPass::getHandle() const
+void RenderPass::addAttachment(const VkAttachmentDescription& attachmentDescription)
 {
-	return mRenderPass;
+	mAttachmentDescriptions.push_back(attachmentDescription);
 }
 
-const Device& RenderPass::getDeviceHandle() const
+void RenderPass::setAttachmentFlags(VkAttachmentDescriptionFlags flags)
 {
-	return mDevice;
+	mAttachmentDescriptions.back().flags = flags;
 }
 
-RenderPass::RenderPass(Device& device, const std::vector<VkAttachmentDescription>& attachmentsDescriptions, const std::vector<SubpassParameters>& subpassParameters, const std::vector<VkSubpassDependency>& subpassDependencies)
-	: mDevice(device)
-	, mRenderPass(VK_NULL_HANDLE)
-	, mAttachmentsDescriptions(attachmentsDescriptions)
-	, mSubpassParameters(subpassParameters)
-	, mSubpassDependencies(subpassDependencies)
+void RenderPass::setAttachmentFormat(VkFormat format)
 {
-	ObjectTracker::registerObject(ObjectType_RenderPass);
+	mAttachmentDescriptions.back().format = format;
 }
 
-bool RenderPass::init()
+void RenderPass::setAttachmentSamples(VkSampleCountFlagBits samples)
 {
-	std::vector<VkSubpassDescription> subpassDescriptions;
-	for (auto& subpassDescription : mSubpassParameters)
+	mAttachmentDescriptions.back().samples = samples;
+}
+
+void RenderPass::setAttachmentLoadOp(VkAttachmentLoadOp loadOp)
+{
+	mAttachmentDescriptions.back().loadOp = loadOp;
+}
+
+void RenderPass::setAttachmentStoreOp(VkAttachmentStoreOp storeOp)
+{
+	mAttachmentDescriptions.back().storeOp = storeOp;
+}
+
+void RenderPass::setAttachmentStencilLoadOp(VkAttachmentLoadOp stencilLoadOp)
+{
+	mAttachmentDescriptions.back().stencilLoadOp = stencilLoadOp;
+}
+
+void RenderPass::setAttachmentStencilStoreOp(VkAttachmentStoreOp stencilStoreOp)
+{
+	mAttachmentDescriptions.back().stencilStoreOp = stencilStoreOp;
+}
+
+void RenderPass::setAttachmentInitialLayout(VkImageLayout initialLayout)
+{
+	mAttachmentDescriptions.back().initialLayout = initialLayout;
+}
+
+void RenderPass::setAttachmentFinalLayout(VkImageLayout finalLayout)
+{
+	mAttachmentDescriptions.back().finalLayout = finalLayout;
+}
+
+void RenderPass::addSubpass(VkPipelineBindPoint bindPoint)
+{
+	VkSubpassDescription subpassDescription = {
+		0,                         // VkSubpassDescriptionFlags        flags
+		bindPoint,                 // VkPipelineBindPoint              pipelineBindPoint
+		0,                         // uint32_t                         inputAttachmentCount
+		nullptr,                   // const VkAttachmentReference    * pInputAttachments
+		0,                         // uint32_t                         colorAttachmentCount
+		nullptr,                   // const VkAttachmentReference    * pColorAttachments
+		nullptr,                   // const VkAttachmentReference    * pResolveAttachments
+		nullptr,                   // const VkAttachmentReference    * pDepthStencilAttachment
+		0,                         // uint32_t                         preserveAttachmentCount
+		nullptr                    // const uint32_t                 * pPreserveAttachments
+	};
+
+	mSubpassDescriptions.push_back(subpassDescription);
+}
+
+void RenderPass::addColorAttachmentToSubpass(uint32_t attachment, VkImageLayout imageLayout)
+{
+	VkAttachmentReference attachmentReference = {
+		attachment,      // uint32_t                             attachment
+		imageLayout      // VkImageLayout                        layout
+	};
+	mColorAttachmentReferences.push_back(attachmentReference);
+
+	VkSubpassDescription& subpassDescription = mSubpassDescriptions.back();
+	if (subpassDescription.colorAttachmentCount == 0)
 	{
-		subpassDescriptions.push_back({
-			0,                                                                      // VkSubpassDescriptionFlags        flags
-			subpassDescription.pipelineType,                                        // VkPipelineBindPoint              pipelineBindPoint
-			static_cast<uint32_t>(subpassDescription.inputAttachments.size()),      // uint32_t                         inputAttachmentCount
-			subpassDescription.inputAttachments.data(),                             // const VkAttachmentReference    * pInputAttachments
-			static_cast<uint32_t>(subpassDescription.colorAttachments.size()),      // uint32_t                         colorAttachmentCount
-			subpassDescription.colorAttachments.data(),                             // const VkAttachmentReference    * pColorAttachments
-			subpassDescription.resolveAttachments.data(),                           // const VkAttachmentReference    * pResolveAttachments
-			subpassDescription.depthStencilAttachment,                              // const VkAttachmentReference    * pDepthStencilAttachment
-			static_cast<uint32_t>(subpassDescription.preserveAttachments.size()),   // uint32_t                         preserveAttachmentCount
-			subpassDescription.preserveAttachments.data()                           // const uint32_t                 * pPreserveAttachments
-		});
+		subpassDescription.pColorAttachments = mColorAttachmentReferences.data();
 	}
+	subpassDescription.colorAttachmentCount++;
+}
 
+void RenderPass::addDepthStencilAttachmentToSubpass(uint32_t attachment, VkImageLayout imageLayout)
+{
+	VkAttachmentReference attachmentReference = {
+		attachment,      // uint32_t                             attachment
+		imageLayout      // VkImageLayout                        layout
+	};
+	mDepthStencilAttachmentReference = std::unique_ptr<VkAttachmentReference>(new VkAttachmentReference(attachmentReference));
+
+	mSubpassDescriptions.back().pDepthStencilAttachment = mDepthStencilAttachmentReference.get();
+}
+
+void RenderPass::addDependency(uint32_t srcSubpass, uint32_t dstSubpass)
+{
+	VkSubpassDependency subpassDependency = {
+		srcSubpass,                                     // uint32_t                   srcSubpass
+		dstSubpass,                                     // uint32_t                   dstSubpass
+		0,                                              // VkPipelineStageFlags       srcStageMask
+		0,                                              // VkPipelineStageFlags       dstStageMask
+		0,                                              // VkAccessFlags              srcAccessMask
+		0,                                              // VkAccessFlags              dstAccessMask
+		VK_DEPENDENCY_BY_REGION_BIT                     // VkDependencyFlags          dependencyFlags
+	};
+
+	mSubpassDependencies.push_back(subpassDependency);
+}
+
+void RenderPass::addDependency(uint32_t srcSubpass, uint32_t dstSubpass, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, VkDependencyFlags flags)
+{
+	VkSubpassDependency subpassDependency = {
+		srcSubpass,                                     // uint32_t                   srcSubpass
+		dstSubpass,                                     // uint32_t                   dstSubpass
+		srcStageMask,                                   // VkPipelineStageFlags       srcStageMask
+		dstStageMask,                                   // VkPipelineStageFlags       dstStageMask
+		srcAccessMask,                                  // VkAccessFlags              srcAccessMask
+		dstAccessMask,                                  // VkAccessFlags              dstAccessMask
+		VK_DEPENDENCY_BY_REGION_BIT                     // VkDependencyFlags          dependencyFlags
+	};
+
+	mSubpassDependencies.push_back(subpassDependency);
+}
+
+void RenderPass::addDependency(const VkSubpassDependency& subpassDependency)
+{
+	mSubpassDependencies.push_back(subpassDependency);
+}
+
+void RenderPass::setDependencySrcSubpass(uint32_t srcSubpass)
+{
+	mSubpassDependencies.back().srcSubpass = srcSubpass;
+}
+
+void RenderPass::setDependencyDstSubpass(uint32_t dstSubpass)
+{
+	mSubpassDependencies.back().dstSubpass = dstSubpass;
+}
+
+void RenderPass::setDependencySrcStageMask(VkPipelineStageFlags srcStageMask)
+{
+	mSubpassDependencies.back().srcStageMask = srcStageMask;
+}
+
+void RenderPass::setDependencyDstStageMask(VkPipelineStageFlags dstStageMask)
+{
+	mSubpassDependencies.back().dstStageMask = dstStageMask;
+}
+
+void RenderPass::setDependencySrcAccessMask(VkAccessFlags srcAccessMask)
+{
+	mSubpassDependencies.back().srcAccessMask = srcAccessMask;
+}
+
+void RenderPass::setDependencyDstAccessMask(VkAccessFlags dstAccessMask)
+{
+	mSubpassDependencies.back().dstAccessMask = dstAccessMask;
+}
+
+void RenderPass::setDependencyFlags(VkDependencyFlags dependencyFlags)
+{
+	mSubpassDependencies.back().dependencyFlags = dependencyFlags;
+}
+
+bool RenderPass::create()
+{
 	VkRenderPassCreateInfo renderPassCreateInfo = {
 		VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,                // VkStructureType                    sType
 		nullptr,                                                  // const void                       * pNext
 		0,                                                        // VkRenderPassCreateFlags            flags
-		static_cast<uint32_t>(mAttachmentsDescriptions.size()),   // uint32_t                           attachmentCount
-		mAttachmentsDescriptions.data(),                          // const VkAttachmentDescription    * pAttachments
-		static_cast<uint32_t>(subpassDescriptions.size()),        // uint32_t                           subpassCount
-		subpassDescriptions.data(),                               // const VkSubpassDescription       * pSubpasses
+		static_cast<uint32_t>(mAttachmentDescriptions.size()),    // uint32_t                           attachmentCount
+		mAttachmentDescriptions.data(),                           // const VkAttachmentDescription    * pAttachments
+		static_cast<uint32_t>(mSubpassDescriptions.size()),       // uint32_t                           subpassCount
+		mSubpassDescriptions.data(),                              // const VkSubpassDescription       * pSubpasses
 		static_cast<uint32_t>(mSubpassDependencies.size()),       // uint32_t                           dependencyCount
 		mSubpassDependencies.data()                               // const VkSubpassDependency        * pDependencies
 	};
@@ -98,7 +237,7 @@ bool RenderPass::init()
 	return true;
 }
 
-bool RenderPass::release()
+bool RenderPass::destroy()
 {
 	if (mRenderPass != VK_NULL_HANDLE)
 	{
@@ -107,6 +246,33 @@ bool RenderPass::release()
 		return true;
 	}
 	return false;
+}
+
+bool RenderPass::isCreated() const
+{
+	return mRenderPass != VK_NULL_HANDLE;
+}
+
+const VkRenderPass& RenderPass::getHandle() const
+{
+	return mRenderPass;
+}
+
+Framebuffer::Ptr RenderPass::createFramebuffer(const std::vector<VkImageView>& attachments, uint32_t width, uint32_t height, uint32_t layers)
+{
+	return Framebuffer::createFramebuffer(mDevice, *this, attachments, width, height, layers);
+}
+
+RenderPass::RenderPass(Device& device)
+	: mDevice(device)
+	, mRenderPass(VK_NULL_HANDLE)
+	, mAttachmentDescriptions()
+	, mSubpassDescriptions()
+	, mSubpassDependencies()
+	, mColorAttachmentReferences()
+	, mDepthStencilAttachmentReference(nullptr)
+{
+	ObjectTracker::registerObject(ObjectType_RenderPass);
 }
 
 } // namespace Vulkan

@@ -201,12 +201,12 @@ ComputePipeline::Ptr Device::createComputePipeline(const VkPipelineShaderStageCr
 
 GraphicsPipeline::Ptr Device::initGraphicsPipeline(PipelineLayout& layout, RenderPass& renderPass, PipelineCache* cache)
 {
-	return GraphicsPipeline::initGraphicsPipeline(*this, layout, renderPass, cache);
+	return GraphicsPipeline::Ptr(new GraphicsPipeline(*this, layout, renderPass, cache));
 }
 
-RenderPass::Ptr Device::createRenderPass(const std::vector<VkAttachmentDescription>& attachmentsDescriptions, const std::vector<SubpassParameters>& subpassParameters, const std::vector<VkSubpassDependency>& subpassDependencies)
+RenderPass::Ptr Device::initRenderPass()
 {
-	return RenderPass::createRenderPass(*this, attachmentsDescriptions, subpassParameters, subpassDependencies);
+	return RenderPass::Ptr(new RenderPass(*this));
 }
 
 Sampler::Ptr Device::createSampler(VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, float lodBias, float minLod, float maxLod, bool anisotropyEnable, float maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, VkBorderColor borderColor, bool unnormalizedCoords)
@@ -221,7 +221,7 @@ Semaphore::Ptr Device::createSemaphore()
 
 ShaderModule::Ptr Device::initShaderModule()
 {
-	return ShaderModule::initShaderModule(*this);
+	return ShaderModule::Ptr(new ShaderModule(*this));
 }
 
 Swapchain::Ptr Device::createSwapchain(Surface* surface, std::vector<FrameResources>& framesResources)
@@ -334,12 +334,9 @@ bool Device::init(const std::vector<uint32_t>& queueFamilyIndexes, VkPhysicalDev
 		return false;
 	}
 
-	if (!Loader::areDeviceLevelFunctionsLoaded())
+	if (!Loader::ensureDeviceLevelFunctionsLoaded(mDevice, desiredExtensions))
 	{
-		if (!Loader::loadDeviceLevelFunctions(mDevice, desiredExtensions))
-		{
-			return false;
-		}
+		return false;
 	}
 
 	return true;

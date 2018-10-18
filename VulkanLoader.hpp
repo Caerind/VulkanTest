@@ -12,39 +12,28 @@ namespace nu
 namespace Vulkan
 {
 
+class Instance;
+class Device;
 class Loader
 {
 	public:
 		Loader() = delete;
 		~Loader() = delete;
 
-		static bool loadDynamicExportedGlobal();
-		static bool areDynamicExportedGlobalLoaded();
+		static bool ensureDynamicLibraryLoaded();
+		static bool ensureExportedFunctionLoaded();
+		static bool ensureGlobalLevelFunctionsLoaded();
+		static bool ensureInstanceLevelFunctionsLoaded(const Instance& instance);
+		static bool ensureDeviceLevelFunctionsLoaded(const VkDevice& device, const std::vector<const char*>& enabledExtensions); // TODO : enabledExtensions in Device class and pass a Device
 
-		static bool loadDynamicLibrary();
-		static bool isDynamicLibraryLoaded();
-
-		static bool loadExportedFunction();
-		static bool isExportedFunctionLoaded();
-
-		static bool loadGlobalLevelFunctions();
-		static bool areGlobalLevelFunctionsLoaded();
-
-		static bool loadInstanceLevelFunctions(const VkInstance& instance, const std::vector<const char*>& enabledExtensions);
-		static bool areInstanceLevelFunctionsLoaded();
-
-		static bool loadDeviceLevelFunctions(const VkDevice& device, const std::vector<const char*>& enabledExtensions);
-		static bool areDeviceLevelFunctionsLoaded();
-
-		static const std::vector<VkExtensionProperties>& getAvailableInstanceExtensions();
-		static const std::vector<VkLayerProperties>& getAvailableInstanceLayers();
-
-		static bool isInstanceExtensionSupported(const char* extensionName);
-		static bool isInstanceLayerSupported(const char* layerName);
+		static bool usingDynamicLinking();
 
 	private:
-		static bool queryAvailableInstanceExtensions();
-		static bool queryAvailableInstanceLayers();
+		static bool loadDynamicLibrary();
+		static bool loadExportedFunction();
+		static bool loadGlobalLevelFunctions();
+		static bool loadInstanceLevelFunctions(const Instance& instance);
+		static bool loadDeviceLevelFunctions(const VkDevice& device, const std::vector<const char*>& enabledExtensions); // TODO : enabledExtensions in Device class and pass a Device
 
 	private:
 		static DynamicLibrary sDynamicLibrary;
@@ -52,8 +41,6 @@ class Loader
 		static bool sGlobalLevelFunctionsLoaded;
 		static bool sInstanceLevelFunctionsLoaded;
 		static bool sDeviceLevelFunctionsLoaded;
-		static std::vector<VkExtensionProperties> sAvailableInstanceExtensions;
-		static std::vector<VkLayerProperties> sAvailableInstanceLayers;
 };
 
 } // namespace Vulkan

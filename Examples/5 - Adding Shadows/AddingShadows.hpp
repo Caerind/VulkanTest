@@ -8,7 +8,11 @@
 #include "../../Mesh.hpp"
 #include "../../Window.hpp"
 
-/*
+/* 
+
+TODO : FIND WHY THIS ISNT WORKING ....
+
+*/
 
 class AddingShadows : public SampleBase
 {
@@ -16,15 +20,9 @@ class AddingShadows : public SampleBase
 		std::array<nu::Mesh, 2> mScene;
 		nu::Vulkan::Buffer::Ptr mVertexBuffer;
 		nu::Vulkan::MemoryBlock::Ptr mVertexBufferMemory;
-		
-		struct ShadowMapParameters
-		{
-			nu::Vulkan::Image::Ptr image;
-			nu::Vulkan::MemoryBlock::Ptr memory;
-			nu::Vulkan::ImageView::Ptr view;
-			nu::Vulkan::Framebuffer::Ptr framebuffer;
-		} mShadowMap;
-		nu::Vulkan::Sampler::Ptr mShadowMapSampler;
+
+		nu::Vulkan::ImageHelper::Ptr mShadowMap;
+		nu::Vulkan::Framebuffer::Ptr mShadowMapFramebuffer;
 
 		nu::Vulkan::DescriptorSetLayout::Ptr mDescriptorSetLayout;
 		nu::Vulkan::DescriptorPool::Ptr mDescriptorPool;
@@ -90,7 +88,7 @@ class AddingShadows : public SampleBase
 			}
 
 			// Staging buffer
-			mStagingBuffer = mLogicalDevice->createBuffer(2 * 16 * sizeof(float), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+			mStagingBuffer = mLogicalDevice->createBuffer(3 * 16 * sizeof(float), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 			if (mStagingBuffer == nullptr || !mStagingBuffer->isInitialized())
 			{
 				return false;
@@ -102,7 +100,7 @@ class AddingShadows : public SampleBase
 			}
 
 			// Uniform buffer
-			mUniformBuffer = mLogicalDevice->createBuffer(2 * 16 * sizeof(float), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+			mUniformBuffer = mLogicalDevice->createBuffer(3 * 16 * sizeof(float), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 			if (mUniformBuffer == nullptr || !mUniformBuffer->isInitialized())
 			{
 				return false;
@@ -118,7 +116,16 @@ class AddingShadows : public SampleBase
 				return false;
 			}
 
-
+			// Image in which shadow map will be stored
+			mShadowMap = nu::Vulkan::ImageHelper::createCombinedImageSampler(*mLogicalDevice, VK_IMAGE_TYPE_2D, mSwapchain->getDepthFormat(), { 512, 512, 1 }, 1, 1,
+				VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_DEPTH_BIT, VK_FILTER_LINEAR,
+				VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+				VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, 0.0f, 0.0f, 1.0f, false, 1.0f, false, VK_COMPARE_OP_ALWAYS, VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
+				false);
+			if (mShadowMap == nullptr || !mShadowMap->hasSampler() || mShadowMap->getImage() == nullptr || mShadowMap->getMemoryBlock() == nullptr || mShadowMap->getImageView() == nullptr)
+			{
+				return false;
+			}
 
 			// Descriptor set with uniform buffer
 			std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBindings = {
@@ -188,8 +195,8 @@ class AddingShadows : public SampleBase
 				VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,        // VkDescriptorType                     TargetDescriptorType
 				{                                                 // std::vector<VkDescriptorImageInfo>   ImageInfos
 					{
-						mShadowMapSampler->getHandle(),                 // VkSampler                            sampler
-						mShadowMap.view->getHandle(),                   // VkImageView                          imageView
+						mShadowMap->getSampler()->getHandle(),          // VkSampler                            sampler
+						mShadowMap->getImageView()->getHandle(),        // VkImageView                          imageView
 						VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL // VkImageLayout                        imageLayout
 					}
 				}
@@ -199,205 +206,203 @@ class AddingShadows : public SampleBase
 
 			// Shadow map render pass - for rendering into depth attachment
 
-			std::vector<VkAttachmentDescription> shadow_map_attachment_descriptions = {
-				{
-					0,                                                // VkAttachmentDescriptionFlags     flags
-					DepthFormat,                                      // VkFormat                         format
-					VK_SAMPLE_COUNT_1_BIT,                            // VkSampleCountFlagBits            samples
-					VK_ATTACHMENT_LOAD_OP_CLEAR,                      // VkAttachmentLoadOp               loadOp
-					VK_ATTACHMENT_STORE_OP_STORE,                     // VkAttachmentStoreOp              storeOp
-					VK_ATTACHMENT_LOAD_OP_DONT_CARE,                  // VkAttachmentLoadOp               stencilLoadOp
-					VK_ATTACHMENT_STORE_OP_DONT_CARE,                 // VkAttachmentStoreOp              stencilStoreOp
-					VK_IMAGE_LAYOUT_UNDEFINED,                        // VkImageLayout                    initialLayout
-					VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL   // VkImageLayout                    finalLayout
-				}
-			};
+			mShadowRenderPass = mLogicalDevice->initRenderPass();
 
-			VkAttachmentReference shadow_map_depth_attachment = {
-				0,                                                // uint32_t                             attachment
-				VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL  // VkImageLayout                        layout
-			};
+			mShadowRenderPass->addAttachment({
+				0,                                                // VkAttachmentDescriptionFlags     flags
+				mSwapchain->getDepthFormat(),                     // VkFormat                         format
+				VK_SAMPLE_COUNT_1_BIT,                            // VkSampleCountFlagBits            samples
+				VK_ATTACHMENT_LOAD_OP_CLEAR,                      // VkAttachmentLoadOp               loadOp
+				VK_ATTACHMENT_STORE_OP_STORE,                     // VkAttachmentStoreOp              storeOp
+				VK_ATTACHMENT_LOAD_OP_DONT_CARE,                  // VkAttachmentLoadOp               stencilLoadOp
+				VK_ATTACHMENT_STORE_OP_DONT_CARE,                 // VkAttachmentStoreOp              stencilStoreOp
+				VK_IMAGE_LAYOUT_UNDEFINED,                        // VkImageLayout                    initialLayout
+				VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL   // VkImageLayout                    finalLayout
+			});
 
-			std::vector<SubpassParameters> shadow_map_subpass_parameters = {
-				{
-					VK_PIPELINE_BIND_POINT_GRAPHICS,              // VkPipelineBindPoint                  PipelineType
-					{},                                           // std::vector<VkAttachmentReference>   InputAttachments
-					{},                                           // std::vector<VkAttachmentReference>   ColorAttachments
-					{},                                           // std::vector<VkAttachmentReference>   ResolveAttachments
-					&shadow_map_depth_attachment,                 // VkAttachmentReference const        * DepthStencilAttachment
-					{}                                            // std::vector<uint32_t>                PreserveAttachments
-				}
-			};
+			mShadowRenderPass->addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS);
+			mShadowRenderPass->addDepthStencilAttachmentToSubpass(0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-			std::vector<VkSubpassDependency> shadow_map_subpass_dependencies = {
-				{
-					VK_SUBPASS_EXTERNAL,                            // uint32_t                   srcSubpass
-					0,                                              // uint32_t                   dstSubpass
-					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,          // VkPipelineStageFlags       srcStageMask
-					VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,     // VkPipelineStageFlags       dstStageMask
-					VK_ACCESS_SHADER_READ_BIT,                      // VkAccessFlags              srcAccessMask
-					VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,   // VkAccessFlags              dstAccessMask
-					VK_DEPENDENCY_BY_REGION_BIT                     // VkDependencyFlags          dependencyFlags
-				},
-				{
-					0,                                              // uint32_t                   srcSubpass
-					VK_SUBPASS_EXTERNAL,                            // uint32_t                   dstSubpass
-					VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,      // VkPipelineStageFlags       srcStageMask
-					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,          // VkPipelineStageFlags       dstStageMask
-					VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,   // VkAccessFlags              srcAccessMask
-					VK_ACCESS_SHADER_READ_BIT,                      // VkAccessFlags              dstAccessMask
-					VK_DEPENDENCY_BY_REGION_BIT                     // VkDependencyFlags          dependencyFlags
-				}
-			};
+			mShadowRenderPass->addDependency({
+				VK_SUBPASS_EXTERNAL,                            // uint32_t                   srcSubpass
+				0,                                              // uint32_t                   dstSubpass
+				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,          // VkPipelineStageFlags       srcStageMask
+				VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,     // VkPipelineStageFlags       dstStageMask
+				VK_ACCESS_SHADER_READ_BIT,                      // VkAccessFlags              srcAccessMask
+				VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,   // VkAccessFlags              dstAccessMask
+				VK_DEPENDENCY_BY_REGION_BIT                     // VkDependencyFlags          dependencyFlags
+			});
+			mShadowRenderPass->addDependency({
+				0,                                              // uint32_t                   srcSubpass
+				VK_SUBPASS_EXTERNAL,                            // uint32_t                   dstSubpass
+				VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,      // VkPipelineStageFlags       srcStageMask
+				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,          // VkPipelineStageFlags       dstStageMask
+				VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,   // VkAccessFlags              srcAccessMask
+				VK_ACCESS_SHADER_READ_BIT,                      // VkAccessFlags              dstAccessMask
+				VK_DEPENDENCY_BY_REGION_BIT                     // VkDependencyFlags          dependencyFlags
+				});
 
-			InitVkDestroyer(LogicalDevice, ShadowMapRenderPass);
-			if (!CreateRenderPass(*LogicalDevice, shadow_map_attachment_descriptions, shadow_map_subpass_parameters, shadow_map_subpass_dependencies,
-				*ShadowMapRenderPass)) {
+			if (!mShadowRenderPass->create())
+			{
 				return false;
 			}
 
-			InitVkDestroyer(LogicalDevice, ShadowMap.Framebuffer);
-			if (!CreateFramebuffer(*LogicalDevice, *ShadowMapRenderPass, { *ShadowMap.View }, 512, 512, 1, *ShadowMap.Framebuffer)) {
+			mShadowMapFramebuffer = mShadowRenderPass->createFramebuffer({ mShadowMap->getImageView()->getHandle() }, 512, 512, 1);
+			if (mShadowMapFramebuffer == nullptr || !mShadowMapFramebuffer->isInitialized())
+			{
 				return false;
 			}
 
 			// Render pass
-			std::vector<VkAttachmentDescription> attachmentDescriptions = {
-				{
-					0,                                                // VkAttachmentDescriptionFlags     flags
-					mSwapchain->getFormat(),                          // VkFormat                         format
-					VK_SAMPLE_COUNT_1_BIT,                            // VkSampleCountFlagBits            samples
-					VK_ATTACHMENT_LOAD_OP_CLEAR,                      // VkAttachmentLoadOp               loadOp
-					VK_ATTACHMENT_STORE_OP_STORE,                     // VkAttachmentStoreOp              storeOp
-					VK_ATTACHMENT_LOAD_OP_DONT_CARE,                  // VkAttachmentLoadOp               stencilLoadOp
-					VK_ATTACHMENT_STORE_OP_DONT_CARE,                 // VkAttachmentStoreOp              stencilStoreOp
-					VK_IMAGE_LAYOUT_UNDEFINED,                        // VkImageLayout                    initialLayout
-					VK_IMAGE_LAYOUT_PRESENT_SRC_KHR                   // VkImageLayout                    finalLayout
-				},
-				{
-					0,                                                // VkAttachmentDescriptionFlags     flags
-					mSwapchain->getDepthFormat(),                     // VkFormat                         format
-					VK_SAMPLE_COUNT_1_BIT,                            // VkSampleCountFlagBits            samples
-					VK_ATTACHMENT_LOAD_OP_CLEAR,                      // VkAttachmentLoadOp               loadOp
-					VK_ATTACHMENT_STORE_OP_DONT_CARE,                 // VkAttachmentStoreOp              storeOp
-					VK_ATTACHMENT_LOAD_OP_DONT_CARE,                  // VkAttachmentLoadOp               stencilLoadOp
-					VK_ATTACHMENT_STORE_OP_DONT_CARE,                 // VkAttachmentStoreOp              stencilStoreOp
-					VK_IMAGE_LAYOUT_UNDEFINED,                        // VkImageLayout                    initialLayout
-					VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL  // VkImageLayout                    finalLayout
-				}
-			};
-
-			VkAttachmentReference depthAttachment = {
-				1,                                                // uint32_t                             attachment
-				VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL  // VkImageLayout                        layout
-			};
-
-			std::vector<nu::Vulkan::SubpassParameters> subpassParameters = {
-				{
-					VK_PIPELINE_BIND_POINT_GRAPHICS,              // VkPipelineBindPoint                  PipelineType
-			{},                                           // std::vector<VkAttachmentReference>   InputAttachments
-						{                                             // std::vector<VkAttachmentReference>   ColorAttachments
-							{
-								0,                                          // uint32_t                             attachment
-								VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,   // VkImageLayout                        layout
-							}
-						},
-			{},                                           // std::vector<VkAttachmentReference>   ResolveAttachments
-				&depthAttachment,                             // VkAttachmentReference const        * DepthStencilAttachment
-			{}                                            // std::vector<uint32_t>                PreserveAttachments
-				}
-			};
-
-			std::vector<VkSubpassDependency> subpassDependencies = {
-				{
-					VK_SUBPASS_EXTERNAL,                            // uint32_t                   srcSubpass
-					0,                                              // uint32_t                   dstSubpass
-					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,              // VkPipelineStageFlags       srcStageMask
-					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,  // VkPipelineStageFlags       dstStageMask
-					VK_ACCESS_MEMORY_READ_BIT,                      // VkAccessFlags              srcAccessMask
-					VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,           // VkAccessFlags              dstAccessMask
-					VK_DEPENDENCY_BY_REGION_BIT                     // VkDependencyFlags          dependencyFlags
-				},
-					{
-						0,                                              // uint32_t                   srcSubpass
-						VK_SUBPASS_EXTERNAL,                            // uint32_t                   dstSubpass
-						VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,  // VkPipelineStageFlags       srcStageMask
-						VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,              // VkPipelineStageFlags       dstStageMask
-						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,           // VkAccessFlags              srcAccessMask
-						VK_ACCESS_MEMORY_READ_BIT,                      // VkAccessFlags              dstAccessMask
-						VK_DEPENDENCY_BY_REGION_BIT                     // VkDependencyFlags          dependencyFlags
-					}
-			};
-
-			mRenderPass = mLogicalDevice->createRenderPass(attachmentDescriptions, subpassParameters, subpassDependencies);
-			if (mRenderPass == nullptr || !mRenderPass->isInitialized())
+			mSceneRenderPass = mLogicalDevice->initRenderPass();
+			mSceneRenderPass->addAttachment({
+				0,                                                // VkAttachmentDescriptionFlags     flags
+				mSwapchain->getFormat(),                          // VkFormat                         format
+				VK_SAMPLE_COUNT_1_BIT,                            // VkSampleCountFlagBits            samples
+				VK_ATTACHMENT_LOAD_OP_CLEAR,                      // VkAttachmentLoadOp               loadOp
+				VK_ATTACHMENT_STORE_OP_STORE,                     // VkAttachmentStoreOp              storeOp
+				VK_ATTACHMENT_LOAD_OP_DONT_CARE,                  // VkAttachmentLoadOp               stencilLoadOp
+				VK_ATTACHMENT_STORE_OP_DONT_CARE,                 // VkAttachmentStoreOp              stencilStoreOp
+				VK_IMAGE_LAYOUT_UNDEFINED,                        // VkImageLayout                    initialLayout
+				VK_IMAGE_LAYOUT_PRESENT_SRC_KHR                   // VkImageLayout                    finalLayout
+				});
+			mSceneRenderPass->addAttachment({
+				0,                                                // VkAttachmentDescriptionFlags     flags
+				mSwapchain->getDepthFormat(),                     // VkFormat                         format
+				VK_SAMPLE_COUNT_1_BIT,                            // VkSampleCountFlagBits            samples
+				VK_ATTACHMENT_LOAD_OP_CLEAR,                      // VkAttachmentLoadOp               loadOp
+				VK_ATTACHMENT_STORE_OP_DONT_CARE,                 // VkAttachmentStoreOp              storeOp
+				VK_ATTACHMENT_LOAD_OP_DONT_CARE,                  // VkAttachmentLoadOp               stencilLoadOp
+				VK_ATTACHMENT_STORE_OP_DONT_CARE,                 // VkAttachmentStoreOp              stencilStoreOp
+				VK_IMAGE_LAYOUT_UNDEFINED,                        // VkImageLayout                    initialLayout
+				VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL  // VkImageLayout                    finalLayout
+				});
+			mSceneRenderPass->addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS);
+			mSceneRenderPass->addColorAttachmentToSubpass(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+			mSceneRenderPass->addDepthStencilAttachmentToSubpass(1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+			mSceneRenderPass->addDependency({
+				VK_SUBPASS_EXTERNAL,                            // uint32_t                   srcSubpass
+				0,                                              // uint32_t                   dstSubpass
+				VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,      // VkPipelineStageFlags       srcStageMask
+				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,          // VkPipelineStageFlags       dstStageMask
+				VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,   // VkAccessFlags              srcAccessMask
+				VK_ACCESS_SHADER_READ_BIT,                      // VkAccessFlags              dstAccessMask
+				VK_DEPENDENCY_BY_REGION_BIT                     // VkDependencyFlags          dependencyFlags
+			});
+			mSceneRenderPass->addDependency({
+				0,                                              // uint32_t                   srcSubpass
+				VK_SUBPASS_EXTERNAL,                            // uint32_t                   dstSubpass
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,  // VkPipelineStageFlags       srcStageMask
+				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,              // VkPipelineStageFlags       dstStageMask
+				VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,           // VkAccessFlags              srcAccessMask
+				VK_ACCESS_MEMORY_READ_BIT,                      // VkAccessFlags              dstAccessMask
+				VK_DEPENDENCY_BY_REGION_BIT                     // VkDependencyFlags          dependencyFlags
+			});
+			if (!mSceneRenderPass->create())
 			{
 				return false;
 			}
 
 			// Graphics pipeline
-
-			mPipelineLayout = mLogicalDevice->createPipelineLayout({ mDescriptorSetLayout->getHandle() }, {});
+			mPipelineLayout = mLogicalDevice->createPipelineLayout({ mDescriptorSetLayout->getHandle() }, { { VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 4 } });
 			if (mPipelineLayout == nullptr || !mPipelineLayout->isInitialized())
 			{
 				return false;
 			}
 
-			std::vector<unsigned char> vertexShaderSpirv;
-			if (!getBinaryFileContents("../Examples/1 - Vertex Diffuse Lightning/shader.vert.spv", vertexShaderSpirv))
-			{
-				return false;
-			}
-			nu::Vulkan::ShaderModule::Ptr vertexShaderModule = mLogicalDevice->createShaderModule(nu::Vulkan::ShaderModule::Vertex, vertexShaderSpirv);
-			if (vertexShaderModule == nullptr || !vertexShaderModule->isInitialized())
-			{
-				return false;
-			}
-
-			std::vector<unsigned char> fragmentShaderSpirv;
-			if (!getBinaryFileContents("../Examples/1 - Vertex Diffuse Lightning/shader.frag.spv", fragmentShaderSpirv))
-			{
-				return false;
-			}
-			nu::Vulkan::ShaderModule::Ptr fragmentShaderModule = mLogicalDevice->createShaderModule(nu::Vulkan::ShaderModule::Fragment, fragmentShaderSpirv);
-			if (fragmentShaderModule == nullptr || !fragmentShaderModule->isInitialized())
-			{
-				return false;
-			}
-
-
 			mPipelines.resize(PipelineNames::Count);
-			mPipelines[PipelineNames::MeshPipeline] = mLogicalDevice->initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
+			mPipelines[PipelineNames::ScenePipeline] = mLogicalDevice->initGraphicsPipeline(*mPipelineLayout, *mSceneRenderPass, nullptr);
+			mPipelines[PipelineNames::ShadowPipeline] = mLogicalDevice->initGraphicsPipeline(*mPipelineLayout, *mShadowRenderPass, nullptr);
 
-			nu::Vulkan::GraphicsPipeline* modelPipeline = mPipelines[PipelineNames::MeshPipeline].get();
+			nu::Vulkan::GraphicsPipeline* scenePipeline = mPipelines[PipelineNames::ScenePipeline].get();
 
-			modelPipeline->setSubpass(0);
+			scenePipeline->setSubpass(0);
 
-			modelPipeline->addShaderModule(vertexShaderModule.get());
-			modelPipeline->addShaderModule(fragmentShaderModule.get());
+			nu::Vulkan::ShaderModule::Ptr vertexShaderModule = mLogicalDevice->initShaderModule();
+			if (vertexShaderModule == nullptr || !vertexShaderModule->loadFromFile("../Examples/5 - Adding Shadows/scene.vert.spv"))
+			{
+				return false;
+			}
+			vertexShaderModule->setVertexEntrypointName("main");
 
-			modelPipeline->addVertexBinding(0, 6 * sizeof(float), VK_VERTEX_INPUT_RATE_VERTEX);
-			modelPipeline->addVertexAttribute(0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0);
-			modelPipeline->addVertexAttribute(1, 0, VK_FORMAT_R32G32B32_SFLOAT, 3 * sizeof(float));
+			nu::Vulkan::ShaderModule::Ptr fragmentShaderModule = mLogicalDevice->initShaderModule();
+			if (fragmentShaderModule == nullptr || !fragmentShaderModule->loadFromFile("../Examples/5 - Adding Shadows/scene.frag.spv"))
+			{
+				return false;
+			}
+			fragmentShaderModule->setFragmentEntrypointName("main");
 
-			//modelPipeline->setInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, false);
+			if (!vertexShaderModule->create() || !fragmentShaderModule->create())
+			{
+				return false;
+			}
 
-			modelPipeline->setViewport(0.0f, 0.0f, 500.0f, 500.0f, 0.0f, 1.0f);
-			modelPipeline->setScissor(0, 0, 500, 500);
+			scenePipeline->addShaderModule(vertexShaderModule.get());
+			scenePipeline->addShaderModule(fragmentShaderModule.get());
 
-			//modelPipeline->setRasterizationState(false, false, VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, false, 0.0f, 0.0f, 0.0f, 1.0f);
+			scenePipeline->addVertexBinding(0, 6 * sizeof(float), VK_VERTEX_INPUT_RATE_VERTEX);
+			scenePipeline->addVertexAttribute(0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0);
+			scenePipeline->addVertexAttribute(1, 0, VK_FORMAT_R32G32B32_SFLOAT, 3 * sizeof(float));
 
-			//modelPipeline->setMultisampleState(VK_SAMPLE_COUNT_1_BIT, false, 0.0f, nullptr, false, false);
+			//scenePipeline->setInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, false);
 
-			//modelPipeline->setDepthStencilState(true, true, VK_COMPARE_OP_LESS_OR_EQUAL, false, false, {}, {}, 0.0f, 1.0f);
+			scenePipeline->setViewport(0.0f, 0.0f, 512.0f, 512.0f, 0.0f, 1.0f);
+			scenePipeline->setScissor(0, 0, 512, 512);
 
-			//modelPipeline->addBlend(false);
-			//modelPipeline->setBlendState(false, VK_LOGIC_OP_COPY, 1.0f, 1.0f, 1.0f, 1.0f);
+			//scenePipeline->setRasterizationState(false, false, VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, false, 0.0f, 0.0f, 0.0f, 1.0f);
 
-			modelPipeline->addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
-			modelPipeline->addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
+			//scenePipeline->setMultisampleState(VK_SAMPLE_COUNT_1_BIT, false, 0.0f, nullptr, false, false);
 
-			if (!modelPipeline->create())
+			//scenePipeline->setDepthStencilState(true, true, VK_COMPARE_OP_LESS_OR_EQUAL, false, false, {}, {}, 0.0f, 1.0f);
+
+			//scenePipeline->addBlend(false);
+			//scenePipeline->setBlendState(false, VK_LOGIC_OP_COPY, 1.0f, 1.0f, 1.0f, 1.0f);
+
+			scenePipeline->addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
+			scenePipeline->addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
+
+			if (!scenePipeline->create())
+			{
+				return false;
+			}
+
+
+
+			nu::Vulkan::GraphicsPipeline* shadowPipeline = mPipelines[PipelineNames::ShadowPipeline].get();
+
+			shadowPipeline->setSubpass(0);
+
+			nu::Vulkan::ShaderModule::Ptr shadowVertexShaderModule = mLogicalDevice->initShaderModule();
+			if (vertexShaderModule == nullptr || !shadowVertexShaderModule->loadFromFile("../Examples/5 - Adding Shadows/shadow.vert.spv"))
+			{
+				return false;
+			}
+			shadowVertexShaderModule->setVertexEntrypointName("main");
+			if (!shadowVertexShaderModule->create())
+			{
+				return false;
+			}
+
+			shadowPipeline->addShaderModule(shadowVertexShaderModule.get());
+
+			shadowPipeline->addVertexBinding(0, 6 * sizeof(float), VK_VERTEX_INPUT_RATE_VERTEX);
+			shadowPipeline->addVertexAttribute(0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0);
+
+			//shadowPipeline->setInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, false);
+
+			shadowPipeline->setViewport(0.0f, 0.0f, 512.0f, 512.0f, 0.0f, 1.0f);
+			shadowPipeline->setScissor(0, 0, 512, 512);
+
+			//shadowPipeline->setRasterizationState(false, false, VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, false, 0.0f, 0.0f, 0.0f, 1.0f);
+
+			//shadowPipeline->setMultisampleState(VK_SAMPLE_COUNT_1_BIT, false, 0.0f, nullptr, false, false);
+
+			//shadowePipeline->setDepthStencilState(true, true, VK_COMPARE_OP_LESS_OR_EQUAL, false, false, {}, {}, 0.0f, 1.0f);
+
+			//shadowPipeline->addBlend(false);
+			//shadowPipeline->setBlendState(false, VK_LOGIC_OP_COPY, 1.0f, 1.0f, 1.0f, 1.0f);
+
+			if (!shadowPipeline->create())
 			{
 				return false;
 			}
@@ -431,7 +436,7 @@ class AddingShadows : public SampleBase
 						{
 							0,                        // VkDeviceSize     srcOffset
 							0,                        // VkDeviceSize     dstOffset
-							2 * 16 * sizeof(float)    // VkDeviceSize     size
+							3 * 16 * sizeof(float)    // VkDeviceSize     size
 						}
 					};
 					commandBuffer->copyDataBetweenBuffers(mStagingBuffer.get(), mUniformBuffer.get(), regions);
@@ -446,6 +451,15 @@ class AddingShadows : public SampleBase
 					commandBuffer->setBufferMemoryBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, { postTransferTransition });
 				}
 
+				// Shadow map generation
+				commandBuffer->beginRenderPass(mShadowRenderPass->getHandle(), mShadowMapFramebuffer->getHandle(), { { 0, 0, },{ 512, 512 } }, { { 1.0f, 0 } }, VK_SUBPASS_CONTENTS_INLINE);
+				commandBuffer->bindVertexBuffers(0, { { mVertexBuffer.get(), 0 } });
+				commandBuffer->bindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout->getHandle(), 0, { mDescriptorSets[0].get() }, {});
+				commandBuffer->bindPipeline(mPipelines[PipelineNames::ShadowPipeline].get());
+				commandBuffer->drawGeometry(mScene[0].parts[0].vertexCount + mScene[1].parts[0].vertexCount, 1, 0, 0);
+				commandBuffer->endRenderPass();
+
+				// Image transition before drawing
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex())
 				{
 					nu::Vulkan::ImageTransition imageTransitionBeforeDrawing = {
@@ -462,7 +476,8 @@ class AddingShadows : public SampleBase
 				}
 
 				// Drawing
-				commandBuffer->beginRenderPass(mRenderPass->getHandle(), framebuffer->getHandle(), { { 0, 0 }, mSwapchain->getSize() }, { { 0.1f, 0.2f, 0.3f, 1.0f },{ 1.0f, 0 } }, VK_SUBPASS_CONTENTS_INLINE);
+				commandBuffer->beginRenderPass(mSceneRenderPass->getHandle(), framebuffer->getHandle(), { { 0, 0 }, mSwapchain->getSize() }, { { 0.1f, 0.2f, 0.3f, 1.0f },{ 1.0f, 0 } }, VK_SUBPASS_CONTENTS_INLINE);
+				commandBuffer->bindPipeline(mPipelines[PipelineNames::ScenePipeline].get());
 
 				uint32_t width = mSwapchain->getSize().width;
 				uint32_t height = mSwapchain->getSize().height;
@@ -482,23 +497,18 @@ class AddingShadows : public SampleBase
 						0,                                            // int32_t        x
 						0                                             // int32_t        y
 					},
-						{                                           // VkExtent2D     extent
-							width,                                      // uint32_t       width
-							height                                      // uint32_t       height
-						}
+					{                                           // VkExtent2D     extent
+						width,                                      // uint32_t       width
+						height                                      // uint32_t       height
+					}
 				};
 				commandBuffer->setScissorStateDynamically(0, { scissor });
 
-				commandBuffer->bindVertexBuffers(0, { { mVertexBuffer.get(), 0 } });
+				static float lightPosition[4] = { 3.0f, 3.0f, 3.0f, 1.0f };
 
-				commandBuffer->bindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout->getHandle(), 0, { mDescriptorSets[0].get() }, {});
+				commandBuffer->provideDataToShadersThroughPushConstants(mPipelineLayout->getHandle(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 4, &lightPosition[0]);
 
-				commandBuffer->bindPipeline(mPipelines[PipelineNames::MeshPipeline].get());
-
-				for (size_t i = 0; i < mMesh.parts.size(); i++)
-				{
-					commandBuffer->drawGeometry(mMesh.parts[i].vertexCount, 1, mMesh.parts[i].vertexOffset, 0);
-				}
+				commandBuffer->drawGeometry(mScene[0].parts[0].vertexCount + mScene[1].parts[0].vertexCount, 1, 0, 0);
 
 				commandBuffer->endRenderPass();
 
@@ -546,7 +556,7 @@ class AddingShadows : public SampleBase
 			}
 
 			// TODO : Only create once
-			currentFrame.mFramebuffer = mRenderPass->createFramebuffer(attachments, mSwapchain->getSize().width, mSwapchain->getSize().height, 1);
+			currentFrame.mFramebuffer = mSceneRenderPass->createFramebuffer(attachments, mSwapchain->getSize().width, mSwapchain->getSize().height, 1);
 			if (currentFrame.mFramebuffer == nullptr || !currentFrame.mFramebuffer->isInitialized())
 			{
 				return false;
@@ -561,7 +571,7 @@ class AddingShadows : public SampleBase
 			waitSemaphoreInfos.push_back({
 				currentFrame.mImageAcquiredSemaphore->getHandle(),  // VkSemaphore            Semaphore
 				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT       // VkPipelineStageFlags   WaitingStage
-				});
+			});
 			if (!mGraphicsQueue->submitCommandBuffers({ currentFrame.mCommandBuffer.get() }, waitSemaphoreInfos, { currentFrame.mReadyToPresentSemaphore->getHandle() }, currentFrame.mDrawingFinishedFence.get()))
 			{
 				return false;
@@ -638,7 +648,5 @@ class AddingShadows : public SampleBase
 			return true;
 		}
 };
-
-*/
 
 #endif // ADDING_SHADOWS_HPP

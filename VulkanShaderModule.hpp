@@ -34,12 +34,7 @@ class ShaderModule
 
 		typedef std::unique_ptr<ShaderModule> Ptr;
 
-		static ShaderModule::Ptr initShaderModule(Device& device);
-
-		ShaderModule(Device& device);
 		~ShaderModule();
-
-		void addShaderStages(std::vector<VkPipelineShaderStageCreateInfo>& shaders);
 
 		bool loadFromFile(const std::string& filename);
 
@@ -67,6 +62,12 @@ class ShaderModule
 		const ShaderStageFlags& getStages() const;
 
 	private:
+		friend class Device;
+		ShaderModule(Device& device);
+
+		friend class GraphicsPipeline;
+		void addShaderStages(std::vector<VkPipelineShaderStageCreateInfo>& shaders);
+
 		void generateShaderStages() const;
 
 	private:

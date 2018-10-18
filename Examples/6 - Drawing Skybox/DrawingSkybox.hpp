@@ -1,5 +1,5 @@
-#ifndef FRAGMENT_SPECULAR_LIGHTNING_HPP
-#define FRAGMENT_SPECULAR_LIGHTNING_HPP
+#ifndef DRAWING_SKYBOX_HPP
+#define DRAWING_SKYBOX_HPP
 
 #include "../../CookBook/SampleBase.hpp"
 
@@ -8,31 +8,33 @@
 #include "../../Mesh.hpp"
 #include "../../Window.hpp"
 
-class FragmentSpecularLightning : public SampleBase
+class DrawingSkybox : public SampleBase
 {
 	public:
-		nu::Mesh mMesh;
-		nu::Vulkan::Buffer::Ptr mVertexBuffer;
-		nu::Vulkan::MemoryBlock::Ptr mVertexBufferMemory;
+		nu::Mesh mSkybox;
+		nu::Vulkan::Buffer::Ptr mSkyboxVertexBuffer;
+		nu::Vulkan::MemoryBlock::Ptr mSkyboxVertexBufferMemory;
+		nu::Vulkan::ImageHelper::Ptr mSkyboxCubemap;
+
+		bool mUpdateUniformBuffer;
+		nu::Vulkan::Buffer::Ptr mUniformBuffer;
+		nu::Vulkan::MemoryBlock::Ptr mUniformBufferMemory;
 
 		nu::Vulkan::DescriptorSetLayout::Ptr mDescriptorSetLayout;
 		nu::Vulkan::DescriptorPool::Ptr mDescriptorPool;
 		std::vector<nu::Vulkan::DescriptorSet::Ptr> mDescriptorSets;
 
 		nu::Vulkan::RenderPass::Ptr mRenderPass;
-		nu::Vulkan::PipelineLayout::Ptr mPipelineLayout;
+		nu::Vulkan::PipelineLayout::Ptr mPipelineLayout; 
 		std::vector<nu::Vulkan::GraphicsPipeline::Ptr> mPipelines;
 		enum PipelineNames
 		{
-			MeshPipeline = 0,
+			SkyboxPipeline = 0,
 			Count
 		};
 
 		nu::Vulkan::Buffer::Ptr mStagingBuffer;
 		nu::Vulkan::MemoryBlock::Ptr mStagingBufferMemory;
-		bool mUpdateUniformBuffer;
-		nu::Vulkan::Buffer::Ptr mUniformBuffer;
-		nu::Vulkan::MemoryBlock::Ptr mUniformBufferMemory;
 
 		uint32_t mFrameIndex = 0;
 
@@ -44,29 +46,28 @@ class FragmentSpecularLightning : public SampleBase
 			}
 
 			// Vertex data
-			if (!mMesh.loadFromFile("../Data/Models/knot.obj", true, false, false, true))
+			if (!mSkybox.loadFromFile("../Data/Models/cube.obj", false, false, false, false))
 			{
 				return false;
 			}
-			mVertexBuffer = mLogicalDevice->createBuffer(mMesh.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-			if (mVertexBuffer == nullptr || !mVertexBuffer->isInitialized())
+			mSkyboxVertexBuffer = mLogicalDevice->createBuffer(mSkybox.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+			if (mSkyboxVertexBuffer == nullptr || !mSkyboxVertexBuffer->isInitialized())
 			{
 				return false;
 			}
-			mVertexBufferMemory = mVertexBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-			if (mVertexBufferMemory == nullptr || !mVertexBufferMemory->isInitialized())
+			mSkyboxVertexBufferMemory = mSkyboxVertexBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			if (mSkyboxVertexBufferMemory == nullptr || !mSkyboxVertexBufferMemory->isInitialized())
 			{
 				return false;
 			}
-
-			if (!mGraphicsQueue->useStagingBufferToUpdateBufferAndWait(mMesh.size(), &mMesh.data[0], mVertexBuffer.get(),
+			if (!mGraphicsQueue->useStagingBufferToUpdateBufferAndWait(mSkybox.size(), &mSkybox.data[0], mSkyboxVertexBuffer.get(),
 				0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-				mFramesResources.front().mCommandBuffer.get(), {}, 50000000)) 
+				mFramesResources.front().mCommandBuffer.get(), {}, 50000000))
 			{
 				return false;
 			}
 
-			// Staging buffer
+			// Staging buffer & Uniform buffer
 			mStagingBuffer = mLogicalDevice->createBuffer(2 * 16 * sizeof(float), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 			if (mStagingBuffer == nullptr || !mStagingBuffer->isInitialized())
 			{
@@ -77,8 +78,6 @@ class FragmentSpecularLightning : public SampleBase
 			{
 				return false;
 			}
-
-			// Uniform buffer
 			mUniformBuffer = mLogicalDevice->createBuffer(2 * 16 * sizeof(float), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 			if (mUniformBuffer == nullptr || !mUniformBuffer->isInitialized())
 			{
@@ -89,31 +88,79 @@ class FragmentSpecularLightning : public SampleBase
 			{
 				return false;
 			}
-
 			if (!updateStagingBuffer(true)) 
 			{
 				return false;
 			}
 
-			// Descriptor set with uniform buffer
-			VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = {
-				0,                                          // uint32_t             binding
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          // VkDescriptorType     descriptorType
-				1,                                          // uint32_t             descriptorCount
-				VK_SHADER_STAGE_VERTEX_BIT,                 // VkShaderStageFlags   stageFlags
-				nullptr                                     // const VkSampler    * pImmutableSamplers
+			// Cubemap
+			mSkyboxCubemap = nu::Vulkan::ImageHelper::createCombinedImageSampler(*mLogicalDevice, VK_IMAGE_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, { 1024, 1024, 1 }, 1, 6,
+				VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, true, VK_IMAGE_VIEW_TYPE_CUBE, VK_IMAGE_ASPECT_COLOR_BIT, VK_FILTER_LINEAR,
+				VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+				VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, 0.0f, 0.0f, 1.0f, false, 1.0f, false, VK_COMPARE_OP_ALWAYS, VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK, false);
+			std::vector<std::string> cubemapImages = {
+				"../Data/Textures/Skansen/posx.jpg",
+				"../Data/Textures/Skansen/negx.jpg",
+				"../Data/Textures/Skansen/posy.jpg",
+				"../Data/Textures/Skansen/negy.jpg",
+				"../Data/Textures/Skansen/posz.jpg",
+				"../Data/Textures/Skansen/negz.jpg"
 			};
-			mDescriptorSetLayout = mLogicalDevice->createDescriptorSetLayout({ descriptorSetLayoutBinding });
+
+			for (size_t i = 0; i < cubemapImages.size(); i++) 
+			{
+				std::vector<unsigned char> cubemapImageData;
+				int imageDataSize;
+				if (!loadTextureDataFromFile(cubemapImages[i].c_str(), 4, cubemapImageData, nullptr, nullptr, nullptr, &imageDataSize)) 
+				{
+					return false;
+				}
+				VkImageSubresourceLayers imageSubresource = {
+					VK_IMAGE_ASPECT_COLOR_BIT,    // VkImageAspectFlags     aspectMask
+					0,                            // uint32_t               mipLevel
+					static_cast<uint32_t>(i),     // uint32_t               baseArrayLayer
+					1                             // uint32_t               layerCount
+				};
+				mGraphicsQueue->useStagingBufferToUpdateImageAndWait(imageDataSize, &cubemapImageData[0],
+					mSkyboxCubemap->getImage(), imageSubresource, { 0, 0, 0 }, { 1024, 1024, 1 }, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+					0, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_ASPECT_COLOR_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+					mFramesResources.front().mCommandBuffer.get(), {}, 50000000);
+			}
+
+			// Descriptor sets with uniform buffer
+			std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBindings = {
+				{
+					0,                                          // uint32_t             binding
+					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          // VkDescriptorType     descriptorType
+					1,                                          // uint32_t             descriptorCount
+					VK_SHADER_STAGE_VERTEX_BIT,                 // VkShaderStageFlags   stageFlags
+					nullptr                                     // const VkSampler    * pImmutableSamplers
+				},
+				{
+					1,                                          // uint32_t             binding
+					VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  // VkDescriptorType     descriptorType
+					1,                                          // uint32_t             descriptorCount
+					VK_SHADER_STAGE_FRAGMENT_BIT,               // VkShaderStageFlags   stageFlags
+					nullptr                                     // const VkSampler    * pImmutableSamplers
+				}
+			};
+			mDescriptorSetLayout = mLogicalDevice->createDescriptorSetLayout(descriptorSetLayoutBindings);
 			if (mDescriptorSetLayout == nullptr || !mDescriptorSetLayout->isInitialized())
 			{
 				return false;
 			}
 
-			VkDescriptorPoolSize descriptorPoolSize = {
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          // VkDescriptorType     type
-				1                                           // uint32_t             descriptorCount
+			std::vector<VkDescriptorPoolSize> descriptorPoolSizes = {
+				{
+					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          // VkDescriptorType     type
+					1                                           // uint32_t             descriptorCount
+				},
+				{
+					VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  // VkDescriptorType     type
+					1                                           // uint32_t             descriptorCount
+				}
 			};
-			mDescriptorPool = mLogicalDevice->createDescriptorPool(false, 1, { descriptorPoolSize });
+			mDescriptorPool = mLogicalDevice->createDescriptorPool(false, 1, descriptorPoolSizes);
 			if (mDescriptorPool == nullptr || !mDescriptorPool->isInitialized())
 			{
 				return false;
@@ -140,29 +187,38 @@ class FragmentSpecularLightning : public SampleBase
 					}
 				}
 			};
+			nu::Vulkan::ImageDescriptorInfo imageDescriptorUpdate = {
+				mDescriptorSets[0]->getHandle(),            // VkDescriptorSet                      TargetDescriptorSet
+				1,                                          // uint32_t                             TargetDescriptorBinding
+				0,                                          // uint32_t                             TargetArrayElement
+				VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  // VkDescriptorType                     TargetDescriptorType
+				{                                           // std::vector<VkDescriptorImageInfo>   ImageInfos
+					{
+						mSkyboxCubemap->getSampler()->getHandle(),      // VkSampler                            sampler
+						mSkyboxCubemap->getImageView()->getHandle(),    // VkImageView                          imageView
+						VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL  // VkImageLayout                        imageLayout
+					}
+				}
+			};
 
-			mLogicalDevice->updateDescriptorSets({}, { bufferDescriptorUpdate }, {}, {});
+			mLogicalDevice->updateDescriptorSets({ imageDescriptorUpdate }, { bufferDescriptorUpdate }, {}, {});
 
 			// Render pass
 			mRenderPass = mLogicalDevice->initRenderPass();
 
-			// Color attachment
 			mRenderPass->addAttachment(mSwapchain->getFormat());
 			mRenderPass->setAttachmentLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR);
 			mRenderPass->setAttachmentStoreOp(VK_ATTACHMENT_STORE_OP_STORE);
 			mRenderPass->setAttachmentFinalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
-			// Depth attachment
 			mRenderPass->addAttachment(mSwapchain->getDepthFormat());
 			mRenderPass->setAttachmentLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR);
 			mRenderPass->setAttachmentFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-			// Subpass
 			mRenderPass->addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS);
 			mRenderPass->addColorAttachmentToSubpass(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 			mRenderPass->addDepthStencilAttachmentToSubpass(1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-			// Subpass Dependencies
 			mRenderPass->addDependency(
 				VK_SUBPASS_EXTERNAL,                            // uint32_t                   srcSubpass
 				0,                                              // uint32_t                   dstSubpass
@@ -189,73 +245,50 @@ class FragmentSpecularLightning : public SampleBase
 
 			// Graphics pipeline
 
-			std::vector<VkPushConstantRange> pushConstantRanges = {
-				{
-					VK_SHADER_STAGE_FRAGMENT_BIT,     // VkShaderStageFlags   stageFlags
-					0,								  // uint32_t			  offset
-					sizeof(float) * 4				  // uint32_t             size
-				}
-			};
-
-			mPipelineLayout = mLogicalDevice->createPipelineLayout({ mDescriptorSetLayout->getHandle() }, pushConstantRanges);
+			mPipelineLayout = mLogicalDevice->createPipelineLayout({ mDescriptorSetLayout->getHandle() }, {});
 			if (mPipelineLayout == nullptr || !mPipelineLayout->isInitialized())
 			{
 				return false;
 			}
 
-
-			nu::Vulkan::ShaderModule::Ptr vertexShaderModule = mLogicalDevice->initShaderModule();
-			if (vertexShaderModule == nullptr || !vertexShaderModule->loadFromFile("../Examples/2 - Fragment Specular Lightning/shader.vert.spv"))
-			{
-				return false;
-			}
-			vertexShaderModule->setVertexEntrypointName("main");
-
-			nu::Vulkan::ShaderModule::Ptr fragmentShaderModule = mLogicalDevice->initShaderModule();
-			if (fragmentShaderModule == nullptr || !fragmentShaderModule->loadFromFile("../Examples/2 - Fragment Specular Lightning/shader.frag.spv"))
-			{
-				return false;
-			}
-			fragmentShaderModule->setFragmentEntrypointName("main");
-
-			if (!vertexShaderModule->create() || !fragmentShaderModule->create())
-			{
-				return false;
-			}
-
-
 			mPipelines.resize(PipelineNames::Count);
-			mPipelines[PipelineNames::MeshPipeline] = mLogicalDevice->initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
+			mPipelines[PipelineNames::SkyboxPipeline] = mLogicalDevice->initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
 
-			nu::Vulkan::GraphicsPipeline* modelPipeline = mPipelines[PipelineNames::MeshPipeline].get();
+			nu::Vulkan::GraphicsPipeline* skyboxPipeline = mPipelines[PipelineNames::SkyboxPipeline].get();
 
-			modelPipeline->setSubpass(0);
+			skyboxPipeline->setSubpass(0);
 
-			modelPipeline->addShaderModule(vertexShaderModule.get());
-			modelPipeline->addShaderModule(fragmentShaderModule.get());
+			nu::Vulkan::ShaderModule::Ptr skyboxVertexShaderModule = mLogicalDevice->initShaderModule();
+			if (skyboxVertexShaderModule == nullptr || !skyboxVertexShaderModule->loadFromFile("../Examples/6 - Drawing Skybox/shader.vert.spv"))
+			{
+				return false;
+			}
+			skyboxVertexShaderModule->setVertexEntrypointName("main");
 
-			modelPipeline->addVertexBinding(0, 6 * sizeof(float), VK_VERTEX_INPUT_RATE_VERTEX);
-			modelPipeline->addVertexAttribute(0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0);
-			modelPipeline->addVertexAttribute(1, 0, VK_FORMAT_R32G32B32_SFLOAT, 3 * sizeof(float));
+			nu::Vulkan::ShaderModule::Ptr skyboxFragmentShaderModule = mLogicalDevice->initShaderModule();
+			if (skyboxFragmentShaderModule == nullptr || !skyboxFragmentShaderModule->loadFromFile("../Examples/6 - Drawing Skybox/shader.frag.spv"))
+			{
+				return false;
+			}
+			skyboxFragmentShaderModule->setFragmentEntrypointName("main");
 
-			//modelPipeline->setInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, false);
+			if (!skyboxVertexShaderModule->create() || !skyboxFragmentShaderModule->create())
+			{
+				return false;
+			}
 
-			modelPipeline->setViewport(0.0f, 0.0f, 500.0f, 500.0f, 0.0f, 1.0f);
-			modelPipeline->setScissor(0, 0, 500, 500);
+			skyboxPipeline->addShaderModule(skyboxVertexShaderModule.get());
+			skyboxPipeline->addShaderModule(skyboxFragmentShaderModule.get());
 
-			//modelPipeline->setRasterizationState(false, false, VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, false, 0.0f, 0.0f, 0.0f, 1.0f);
+			skyboxPipeline->addVertexBinding(0, 3 * sizeof(float), VK_VERTEX_INPUT_RATE_VERTEX);
+			skyboxPipeline->addVertexAttribute(0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0);
 
-			//modelPipeline->setMultisampleState(VK_SAMPLE_COUNT_1_BIT, false, 0.0f, nullptr, false, false);
+			skyboxPipeline->setRasterizationState(false, false, VK_POLYGON_MODE_FILL, VK_CULL_MODE_FRONT_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, false, 0.0f, 0.0f, 0.0f, 1.0f);
 
-			//modelPipeline->setDepthStencilState(true, true, VK_COMPARE_OP_LESS_OR_EQUAL, false, false, {}, {}, 0.0f, 1.0f);
+			skyboxPipeline->addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
+			skyboxPipeline->addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
 
-			//modelPipeline->addBlend(false);
-			//modelPipeline->setBlendState(false, VK_LOGIC_OP_COPY, 1.0f, 1.0f, 1.0f, 1.0f);
-
-			modelPipeline->addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
-			modelPipeline->addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
-
-			if (!modelPipeline->create())
+			if (!skyboxPipeline->create())
 			{
 				return false;
 			}
@@ -347,18 +380,13 @@ class FragmentSpecularLightning : public SampleBase
 				};
 				commandBuffer->setScissorStateDynamically(0, { scissor });
 
-				commandBuffer->bindVertexBuffers(0, { { mVertexBuffer.get(), 0 } } );
-
 				commandBuffer->bindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout->getHandle(), 0, { mDescriptorSets[0].get() }, {});
 
-				commandBuffer->bindPipeline(mPipelines[PipelineNames::MeshPipeline].get());
-
-				std::array<float, 4> lightPosition = { 5.0f, 5.0f, 0.0f, 0.0f };
-				commandBuffer->provideDataToShadersThroughPushConstants(mPipelineLayout->getHandle(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float) * 4, &lightPosition[0]);
-
-				for (size_t i = 0; i < mMesh.parts.size(); i++) 
+				commandBuffer->bindPipeline(mPipelines[PipelineNames::SkyboxPipeline].get());
+				commandBuffer->bindVertexBuffers(0, { { mSkyboxVertexBuffer.get(), 0 } });
+				for (size_t i = 0; i < mSkybox.parts.size(); i++) 
 				{
-					commandBuffer->drawGeometry(mMesh.parts[i].vertexCount, 1, mMesh.parts[i].vertexOffset, 0);
+					commandBuffer->drawGeometry(mSkybox.parts[i].vertexCount, 1, mSkybox.parts[i].vertexOffset, 0);
 				}
 
 				commandBuffer->endRenderPass();
@@ -500,4 +528,4 @@ class FragmentSpecularLightning : public SampleBase
 		}
 };
 
-#endif // FRAGMENT_SPECULAR_LIGHTNING_HPP
+#endif // DRAWING_SKYBOX_HPP

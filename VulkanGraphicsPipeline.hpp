@@ -22,9 +22,6 @@ class GraphicsPipeline
 	public:
 		typedef std::unique_ptr<GraphicsPipeline> Ptr;
 
-		static GraphicsPipeline::Ptr initGraphicsPipeline(Device& device, PipelineLayout& layout, RenderPass& renderPass, PipelineCache* cache = nullptr);
-
-		GraphicsPipeline(Device& device, PipelineLayout& layout, RenderPass& renderPass, PipelineCache* cache = nullptr);
 		~GraphicsPipeline();
 
 		void setSubpass(uint32_t subpass);
@@ -111,6 +108,10 @@ class GraphicsPipeline
 
 		bool isCreated() const;
 		const VkPipeline& getHandle() const;
+
+	private:
+		friend class Device;
+		GraphicsPipeline(Device& device, PipelineLayout& layout, RenderPass& renderPass, PipelineCache* cache = nullptr);
 
 	private:
 		Device& mDevice;
