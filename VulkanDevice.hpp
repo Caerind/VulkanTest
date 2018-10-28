@@ -102,7 +102,7 @@ class Device
 
 		PipelineLayout::Ptr createPipelineLayout(const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, const std::vector<VkPushConstantRange> pushConstantRanges);
 
-		ComputePipeline::Ptr createComputePipeline(const VkPipelineShaderStageCreateInfo& computeShaders, PipelineLayout* layout, PipelineCache* cache, VkPipelineCreateFlags additionalOptions);
+		ComputePipeline::Ptr createComputePipeline(ShaderModule* computeShader, PipelineLayout* layout, PipelineCache* cache, VkPipelineCreateFlags additionalOptions);
 
 		GraphicsPipeline::Ptr initGraphicsPipeline(PipelineLayout& layout, RenderPass& renderPass, PipelineCache* cache = nullptr);
 

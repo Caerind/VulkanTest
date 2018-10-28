@@ -9,7 +9,7 @@
 #include <memory>
 #include <vector>
 
-#include "CookBook/Common.h" // TODO : WaitSemaphore & PresentInfo
+#include "CookBook/Common.hpp" // TODO : WaitSemaphore & PresentInfo
 
 namespace nu
 {

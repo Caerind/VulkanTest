@@ -4,7 +4,7 @@
 #include <chrono>
 #include <vector>
 
-#include "Common.h" // TODO : Remove include
+#include "Common.hpp" // TODO : Remove include
 
 #include "../VulkanInstance.hpp"
 #include "../VulkanDevice.hpp"

@@ -194,9 +194,9 @@ PipelineLayout::Ptr Device::createPipelineLayout(const std::vector<VkDescriptorS
 	return PipelineLayout::createPipelineLayout(*this, descriptorSetLayouts, pushConstantRanges);
 }
 
-ComputePipeline::Ptr Device::createComputePipeline(const VkPipelineShaderStageCreateInfo& computeShaders, PipelineLayout* layout, PipelineCache* cache, VkPipelineCreateFlags additionalOptions)
+ComputePipeline::Ptr Device::createComputePipeline(ShaderModule* computeShader, PipelineLayout* layout, PipelineCache* cache, VkPipelineCreateFlags additionalOptions)
 {
-	return ComputePipeline::createComputePipeline(*this, computeShaders, layout, cache, additionalOptions);
+	return ComputePipeline::createComputePipeline(*this, computeShader, layout, cache, additionalOptions);
 }
 
 GraphicsPipeline::Ptr Device::initGraphicsPipeline(PipelineLayout& layout, RenderPass& renderPass, PipelineCache* cache)

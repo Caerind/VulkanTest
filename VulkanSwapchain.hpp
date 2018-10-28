@@ -1,7 +1,7 @@
 #ifndef NU_VULKAN_SWAPCHAIN_HPP
 #define NU_VULKAN_SWAPCHAIN_HPP
 
-#include "CookBook/Common.h"
+#include "CookBook/Common.hpp"
 
 #include <memory>
 

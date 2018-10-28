@@ -201,6 +201,20 @@ void ShaderModule::addShaderStages(std::vector<VkPipelineShaderStageCreateInfo>&
 	}
 }
 
+const VkPipelineShaderStageCreateInfo& ShaderModule::getShaderStage()
+{
+	assert(isCreated());
+
+	if (mShaderStageCreateInfos.empty())
+	{
+		generateShaderStages();
+	}
+
+	assert(mShaderStageCreateInfos.size() == 1);
+
+	return mShaderStageCreateInfos[0];
+}
+
 void ShaderModule::generateShaderStages() const
 {
 	VkPipelineShaderStageCreateInfo ci;

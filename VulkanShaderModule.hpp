@@ -68,6 +68,9 @@ class ShaderModule
 		friend class GraphicsPipeline;
 		void addShaderStages(std::vector<VkPipelineShaderStageCreateInfo>& shaders);
 
+		friend class ComputePipeline;
+		const VkPipelineShaderStageCreateInfo& getShaderStage();
+
 		void generateShaderStages() const;
 
 	private:

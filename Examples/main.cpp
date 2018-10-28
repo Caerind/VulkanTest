@@ -5,6 +5,7 @@
 #include "5 - Adding Shadows\AddingShadows.hpp"
 #include "6 - Drawing Skybox\DrawingSkybox.hpp"
 #include "7 - Drawing Billboards Using Geometry Shaders\DrawingBillboardsUsingGeometryShaders.hpp"
+#include "8 - Drawing Particles Using Compute And Graphics Pipelines\DrawingParticlesUsingComputeAndGraphicsPipelines.hpp"
 
 int main() 
 {
@@ -301,6 +302,54 @@ int main()
 		nu::Window window("7 - Drawing Billboards Using Geometry Shaders", 0, 0, 1280, 920);
 
 		DrawingBillboardsUsingGeometryShaders sample;
+		sample.initialize(window.getParameters());
+
+		while (window.isOpen())
+		{
+			nu::Event event;
+			while (window.pollEvent(event))
+			{
+				if (event.type == nu::EventType::Close)
+				{
+					window.close();
+				}
+				if (event.type == nu::EventType::MouseMove)
+				{
+					if (sample.isReady())
+					{
+						sample.mouseMove(static_cast<int>(event.param1), static_cast<int>(event.param2));
+						sample.onMouseEvent();
+					}
+				}
+				if (event.type == nu::EventType::MouseClick)
+				{
+					if (sample.isReady())
+					{
+						sample.mouseClick(static_cast<size_t>(event.param1), event.param2 > 0);
+						sample.onMouseEvent();
+					}
+				}
+			}
+
+			if (sample.isReady())
+			{
+				sample.updateTime();
+				sample.draw();
+				sample.mouseReset();
+			}
+		}
+
+		sample.wait();
+	}
+	printf("\n\n");
+
+	nu::Vulkan::ObjectTracker::checkForLeaks();
+
+	printf("8 - Drawing Particles Using Compute And Graphics Pipelines\n");
+	{
+		nu::Window window("8 - Drawing Particles Using Compute And Graphics Pipelines", 0, 0, 1280, 920);
+
+		DrawingParticlesUsingComputeAndGraphicsPipelines sample;
 		sample.initialize(window.getParameters());
 
 		while (window.isOpen())

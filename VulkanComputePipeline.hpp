@@ -14,12 +14,13 @@ namespace Vulkan
 {
 
 class Device;
+class ShaderModule;
 class ComputePipeline
 {
 	public:
 		typedef std::unique_ptr<ComputePipeline> Ptr;
 
-		static ComputePipeline::Ptr createComputePipeline(Device& device, const VkPipelineShaderStageCreateInfo& computeShaders, PipelineLayout* layout, PipelineCache* cache, VkPipelineCreateFlags additionalOptions);
+		static ComputePipeline::Ptr createComputePipeline(Device& device, ShaderModule* computeShader, PipelineLayout* layout, PipelineCache* cache, VkPipelineCreateFlags additionalOptions);
 
 		~ComputePipeline();
 
@@ -28,7 +29,7 @@ class ComputePipeline
 		const Device& getDeviceHandle() const;
 
 	private:
-		ComputePipeline(Device& device, const VkPipelineShaderStageCreateInfo& computeShaders, PipelineLayout* layout, PipelineCache* cache, VkPipelineCreateFlags additionalOptions);
+		ComputePipeline(Device& device, ShaderModule* computeShader, PipelineLayout* layout, PipelineCache* cache, VkPipelineCreateFlags additionalOptions);
 
 		bool init();
 		bool release();
@@ -36,7 +37,7 @@ class ComputePipeline
 		Device& mDevice;
 		VkPipeline mComputePipeline;
 
-		VkPipelineShaderStageCreateInfo mComputeShaders;
+		VkPipelineShaderStageCreateInfo mComputeShader;
 		PipelineLayout* mLayout;
 		PipelineCache* mCache;
 		VkPipelineCreateFlags mAdditionalOptions;

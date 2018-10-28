@@ -1,15 +1,16 @@
 #include "VulkanComputePipeline.hpp"
 
 #include "VulkanDevice.hpp"
+#include "VulkanShaderModule.hpp"
 
 namespace nu
 {
 namespace Vulkan
 {
 
-ComputePipeline::Ptr ComputePipeline::createComputePipeline(Device& device, const VkPipelineShaderStageCreateInfo& computeShaders, PipelineLayout* layout, PipelineCache* cache, VkPipelineCreateFlags additionalOptions)
+ComputePipeline::Ptr ComputePipeline::createComputePipeline(Device& device, ShaderModule* computeShader, PipelineLayout* layout, PipelineCache* cache, VkPipelineCreateFlags additionalOptions)
 {
-	ComputePipeline::Ptr computePipeline(new ComputePipeline(device, computeShaders, layout, cache, additionalOptions));
+	ComputePipeline::Ptr computePipeline(new ComputePipeline(device, computeShader, layout, cache, additionalOptions));
 	if (computePipeline != nullptr)
 	{
 		if (!computePipeline->init())
@@ -42,10 +43,10 @@ const Device& ComputePipeline::getDeviceHandle() const
 	return mDevice;
 }
 
-ComputePipeline::ComputePipeline(Device& device, const VkPipelineShaderStageCreateInfo& computeShaders, PipelineLayout* layout, PipelineCache* cache, VkPipelineCreateFlags additionalOptions)
+ComputePipeline::ComputePipeline(Device& device, ShaderModule* computeShader, PipelineLayout* layout, PipelineCache* cache, VkPipelineCreateFlags additionalOptions)
 	: mDevice(device)
 	, mComputePipeline(VK_NULL_HANDLE)
-	, mComputeShaders(computeShaders)
+	, mComputeShader(computeShader->getShaderStage())
 	, mLayout(layout)
 	, mCache(cache)
 	, mAdditionalOptions(additionalOptions)
@@ -59,7 +60,7 @@ bool ComputePipeline::init()
 		VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,   // VkStructureType                    sType
 		nullptr,                                          // const void                       * pNext
 		mAdditionalOptions,                               // VkPipelineCreateFlags              flags
-		mComputeShaders,                                  // VkPipelineShaderStageCreateInfo    stage
+		mComputeShader,                                   // VkPipelineShaderStageCreateInfo    stage
 		mLayout->getHandle(),                             // VkPipelineLayout                   layout
 		VK_NULL_HANDLE,                                   // VkPipeline                         basePipelineHandle
 		-1                                                // int32_t                            basePipelineIndex
