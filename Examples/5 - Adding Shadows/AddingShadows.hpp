@@ -127,6 +127,8 @@ class AddingShadows : public SampleBase
 				return false;
 			}
 
+			// TODO : Is the shadow map sent to queue ? (Should it be ?)
+
 			// Descriptor set with uniform buffer
 			std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBindings = {
 				{
