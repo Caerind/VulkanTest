@@ -11,10 +11,14 @@
 
 #include "VulkanShaderModule.hpp"
 
+// TODO : Move the current pipeline creation process to another class.
+//		  The current approach is very repetitive and not optimized for creating similar pipelines
+
 namespace nu
 {
 namespace Vulkan
 {
+
 
 class Device;
 class GraphicsPipeline
