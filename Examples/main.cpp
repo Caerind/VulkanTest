@@ -11,6 +11,7 @@
 
 int main() 
 {
+	/*
 	printf("1 - Vertex Diffuse Lightning\n");
 	{
 		nu::Window window("1 - Vertex Diffuse Lightning", 0, 0, 1280, 920);
@@ -442,6 +443,7 @@ int main()
 	printf("\n\n");
 
 	nu::Vulkan::ObjectTracker::checkForLeaks();
+	*/
 
 	printf("10 - Postprocessing\n");
 	{

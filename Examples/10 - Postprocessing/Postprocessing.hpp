@@ -197,6 +197,13 @@ class Postprocessing : public SampleBase
 					mFramesResources.front().mCommandBuffer.get(), {}, 50000000);
 			}
 
+			// Scene image (color attachment in 1st subpass, input attachment in 2nd subpass
+			mSceneImage = nu::Vulkan::ImageHelper::createInputAttachment(*mLogicalDevice, VK_IMAGE_TYPE_2D, mSwapchain->getFormat(), { mSwapchain->getSize().width, mSwapchain->getSize().height, 1 }, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT);
+			if (mSceneImage == nullptr)
+			{
+				return false;
+			}
+
 			// Descriptor sets with uniform buffer
 			std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBindings = {
 				{
@@ -244,36 +251,6 @@ class Postprocessing : public SampleBase
 				return false;
 			}
 
-			nu::Vulkan::BufferDescriptorInfo bufferDescriptorUpdate = {
-				mDescriptorSets[0]->getHandle(),            // VkDescriptorSet                      TargetDescriptorSet
-				0,                                          // uint32_t                             TargetDescriptorBinding
-				0,                                          // uint32_t                             TargetArrayElement
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          // VkDescriptorType                     TargetDescriptorType
-				{                                           // std::vector<VkDescriptorBufferInfo>  BufferInfos
-					{
-						mUniformBuffer->getHandle(),              // VkBuffer                             buffer
-						0,                                        // VkDeviceSize                         offset
-						VK_WHOLE_SIZE                             // VkDeviceSize                         range
-					}
-				}
-			};
-			nu::Vulkan::ImageDescriptorInfo imageDescriptorUpdate = {
-				mDescriptorSets[0]->getHandle(),            // VkDescriptorSet                      TargetDescriptorSet
-				1,                                          // uint32_t                             TargetDescriptorBinding
-				0,                                          // uint32_t                             TargetArrayElement
-				VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  // VkDescriptorType                     TargetDescriptorType
-				{                                           // std::vector<VkDescriptorImageInfo>   ImageInfos
-					{
-						mSkyboxCubemap->getSampler()->getHandle(),      // VkSampler                            sampler
-						mSkyboxCubemap->getImageView()->getHandle(),    // VkImageView                          imageView
-						VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL  // VkImageLayout                        imageLayout
-					}
-				}
-			};
-
-			mLogicalDevice->updateDescriptorSets({ imageDescriptorUpdate }, { bufferDescriptorUpdate }, {}, {});
-
-
 			// Postprocess Descriptor sets with input attachment
 			std::vector<VkDescriptorSetLayoutBinding> postprocessDescriptorSetLayoutBindings = {
 				{
@@ -311,6 +288,50 @@ class Postprocessing : public SampleBase
 			}
 
 
+
+			nu::Vulkan::BufferDescriptorInfo bufferDescriptorUpdate = {
+				mDescriptorSets[0]->getHandle(),            // VkDescriptorSet                      TargetDescriptorSet
+				0,                                          // uint32_t                             TargetDescriptorBinding
+				0,                                          // uint32_t                             TargetArrayElement
+				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          // VkDescriptorType                     TargetDescriptorType
+			{                                           // std::vector<VkDescriptorBufferInfo>  BufferInfos
+				{
+					mUniformBuffer->getHandle(),              // VkBuffer                             buffer
+					0,                                        // VkDeviceSize                         offset
+					VK_WHOLE_SIZE                             // VkDeviceSize                         range
+				}
+			}
+			};
+			nu::Vulkan::ImageDescriptorInfo imageDescriptorUpdate = {
+				mDescriptorSets[0]->getHandle(),            // VkDescriptorSet                      TargetDescriptorSet
+				1,                                          // uint32_t                             TargetDescriptorBinding
+				0,                                          // uint32_t                             TargetArrayElement
+				VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  // VkDescriptorType                     TargetDescriptorType
+			{                                           // std::vector<VkDescriptorImageInfo>   ImageInfos
+				{
+					mSkyboxCubemap->getSampler()->getHandle(),      // VkSampler                            sampler
+					mSkyboxCubemap->getImageView()->getHandle(),    // VkImageView                          imageView
+					VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL  // VkImageLayout                        imageLayout
+				}
+			}
+			};
+			nu::Vulkan::ImageDescriptorInfo sceneImageDescriptorUpdate = {
+				mPostprocessDescriptorSets[0]->getHandle(), // VkDescriptorSet                      TargetDescriptorSet
+				0,                                          // uint32_t                             TargetDescriptorBinding
+				0,                                          // uint32_t                             TargetArrayElement
+				VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,        // VkDescriptorType                     TargetDescriptorType
+			{                                           // std::vector<VkDescriptorImageInfo>   ImageInfos
+				{
+					VK_NULL_HANDLE,                           // VkSampler                            sampler
+					mSceneImage->getImageView()->getHandle(), // VkImageView                          imageView
+					VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL  // VkImageLayout                        imageLayout
+				}
+			}
+			};
+
+			mLogicalDevice->updateDescriptorSets({ imageDescriptorUpdate, sceneImageDescriptorUpdate }, { bufferDescriptorUpdate }, {}, {});
+
+
 			// Render pass
 			mRenderPass = mLogicalDevice->initRenderPass();
 
@@ -331,7 +352,7 @@ class Postprocessing : public SampleBase
 			mRenderPass->addDepthStencilAttachmentToSubpass(1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
 			mRenderPass->addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS);
-			mRenderPass->addColorAttachmentToSubpass(0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			mRenderPass->addInputAttachmentToSubpass(0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			mRenderPass->addColorAttachmentToSubpass(2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 			mRenderPass->addDependency(
@@ -441,7 +462,7 @@ class Postprocessing : public SampleBase
 			}
 			postprocessVertexShaderModule->setVertexEntrypointName("main");
 			nu::Vulkan::ShaderModule::Ptr postprocessFragmentShaderModule = mLogicalDevice->initShaderModule();
-			if (postprocessFragmentShaderModule == nullptr || !modelFragmentShaderModule->loadFromFile("../Examples/10 - Postprocessing/postprocess.frag.spv"))
+			if (postprocessFragmentShaderModule == nullptr || !postprocessFragmentShaderModule->loadFromFile("../Examples/10 - Postprocessing/postprocess.frag.spv"))
 			{
 				return false;
 			}
@@ -727,38 +748,30 @@ class Postprocessing : public SampleBase
 
 			if (isReady()) 
 			{
-				
-				// TODO : Resize
-				/*
 				// Scene image (color attachment in 1st subpass, input attachment in 2nd subpass
-
-				InitVkDestroyer(LogicalDevice, SceneImage);
-				InitVkDestroyer(LogicalDevice, SceneImageMemory);
-				InitVkDestroyer(LogicalDevice, SceneImageView);
-				if (!CreateInputAttachment(PhysicalDevice, *LogicalDevice, VK_IMAGE_TYPE_2D, Swapchain.Format, { Swapchain.Size.width,
-					Swapchain.Size.height, 1 }, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, VK_IMAGE_VIEW_TYPE_2D,
-					VK_IMAGE_ASPECT_COLOR_BIT, *SceneImage, *SceneImageMemory, *SceneImageView)) {
+				mSceneImage = nu::Vulkan::ImageHelper::createInputAttachment(*mLogicalDevice, VK_IMAGE_TYPE_2D, mSwapchain->getFormat(), { mSwapchain->getSize().width, mSwapchain->getSize().height, 1 }, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT);
+				if (mSceneImage == nullptr)
+				{
 					return false;
 				}
 
 				// Postprocess descriptor set - with input attachment
 
-				ImageDescriptorInfo scene_image_descriptor_update = {
-					PostprocessDescriptorSets[0],               // VkDescriptorSet                      TargetDescriptorSet
+				nu::Vulkan::ImageDescriptorInfo sceneImageDescriptorUpdate = {
+					mPostprocessDescriptorSets[0]->getHandle(), // VkDescriptorSet                      TargetDescriptorSet
 					0,                                          // uint32_t                             TargetDescriptorBinding
 					0,                                          // uint32_t                             TargetArrayElement
 					VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,        // VkDescriptorType                     TargetDescriptorType
 					{                                           // std::vector<VkDescriptorImageInfo>   ImageInfos
 						{
 							VK_NULL_HANDLE,                           // VkSampler                            sampler
-							*SceneImageView,                          // VkImageView                          imageView
+							mSceneImage->getImageView()->getHandle(), // VkImageView                          imageView
 							VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL  // VkImageLayout                        imageLayout
 						}
 					}
 				};
 
-				UpdateDescriptorSets(*LogicalDevice, { scene_image_descriptor_update }, {}, {}, {});
-				*/
+				mLogicalDevice->updateDescriptorSets({ sceneImageDescriptorUpdate }, {}, {}, {});
 
 
 				if (!updateStagingBuffer(true)) 

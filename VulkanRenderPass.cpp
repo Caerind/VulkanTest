@@ -118,18 +118,40 @@ void RenderPass::addSubpass(VkPipelineBindPoint bindPoint)
 
 void RenderPass::addColorAttachmentToSubpass(uint32_t attachment, VkImageLayout imageLayout)
 {
-	VkAttachmentReference attachmentReference = {
+	assert(mNumColorAttachmentReferences < MaxColorAttachmentReferences);
+
+	mColorAttachmentReferences[mNumColorAttachmentReferences] = VkAttachmentReference {
 		attachment,      // uint32_t                             attachment
 		imageLayout      // VkImageLayout                        layout
 	};
-	mColorAttachmentReferences.push_back(attachmentReference);
 
 	VkSubpassDescription& subpassDescription = mSubpassDescriptions.back();
 	if (subpassDescription.colorAttachmentCount == 0)
 	{
-		subpassDescription.pColorAttachments = mColorAttachmentReferences.data();
+		subpassDescription.pColorAttachments = &mColorAttachmentReferences[mNumColorAttachmentReferences];
 	}
+
 	subpassDescription.colorAttachmentCount++;
+	mNumColorAttachmentReferences++;
+}
+
+void RenderPass::addInputAttachmentToSubpass(uint32_t attachment, VkImageLayout imageLayout)
+{
+	assert(mNumInputAttachmentReferences < MaxInputAttachmentReferences);
+
+	mInputAttachmentReferences[mNumInputAttachmentReferences] = VkAttachmentReference{
+		attachment,      // uint32_t                             attachment
+		imageLayout      // VkImageLayout                        layout
+	};
+
+	VkSubpassDescription& subpassDescription = mSubpassDescriptions.back();
+	if (subpassDescription.inputAttachmentCount == 0)
+	{
+		subpassDescription.pInputAttachments = &mInputAttachmentReferences[mNumInputAttachmentReferences];
+	}
+
+	subpassDescription.inputAttachmentCount++;
+	mNumInputAttachmentReferences++;
 }
 
 void RenderPass::addDepthStencilAttachmentToSubpass(uint32_t attachment, VkImageLayout imageLayout)
@@ -270,6 +292,9 @@ RenderPass::RenderPass(Device& device)
 	, mSubpassDescriptions()
 	, mSubpassDependencies()
 	, mColorAttachmentReferences()
+	, mNumColorAttachmentReferences(0)
+	, mInputAttachmentReferences()
+	, mNumInputAttachmentReferences(0)
 	, mDepthStencilAttachmentReference(nullptr)
 {
 	ObjectTracker::registerObject(ObjectType_RenderPass);

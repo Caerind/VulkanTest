@@ -3,6 +3,7 @@
 
 #include "VulkanFunctions.hpp"
 
+#include <array>
 #include <memory>
 #include <vector>
 
@@ -39,6 +40,7 @@ class RenderPass
 		// TODO : addSubpass with all parameters ?
 		void addSubpass(VkPipelineBindPoint bindPoint);
 		void addColorAttachmentToSubpass(uint32_t attachment, VkImageLayout imageLayout);
+		void addInputAttachmentToSubpass(uint32_t attachment, VkImageLayout imageLayout);
 		void addDepthStencilAttachmentToSubpass(uint32_t attachment, VkImageLayout imageLayout);
 
 		void addDependency(uint32_t srcSubpass, uint32_t dstSubpass);
@@ -66,10 +68,16 @@ class RenderPass
 		Device& mDevice;
 		VkRenderPass mRenderPass;
 
+		static const int MaxColorAttachmentReferences = 20;
+		static const int MaxInputAttachmentReferences = 20;
+
 		std::vector<VkAttachmentDescription> mAttachmentDescriptions;
 		std::vector<VkSubpassDescription> mSubpassDescriptions;
 	    std::vector<VkSubpassDependency> mSubpassDependencies;
-		std::vector<VkAttachmentReference> mColorAttachmentReferences;
+		std::array<VkAttachmentReference, MaxColorAttachmentReferences> mColorAttachmentReferences;
+		int mNumColorAttachmentReferences;
+		std::array<VkAttachmentReference, MaxInputAttachmentReferences> mInputAttachmentReferences;
+		int mNumInputAttachmentReferences;
 		std::unique_ptr<VkAttachmentReference> mDepthStencilAttachmentReference;
 };
 
