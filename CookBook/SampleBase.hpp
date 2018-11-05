@@ -6,11 +6,11 @@
 
 #include "Common.hpp" // TODO : Remove include
 
-#include "../VulkanInstance.hpp"
-#include "../VulkanDevice.hpp"
-#include "../VulkanSurface.hpp"
-#include "../VulkanSwapchain.hpp"
-#include "../VulkanCommandPool.hpp"
+#include "../VulkanWrapper/VulkanInstance.hpp"
+#include "../VulkanWrapper/VulkanDevice.hpp"
+#include "../VulkanWrapper/VulkanSurface.hpp"
+#include "../VulkanWrapper/VulkanSwapchain.hpp"
+#include "../VulkanWrapper/VulkanCommandPool.hpp"
 
 class MouseStateParameters 
 {

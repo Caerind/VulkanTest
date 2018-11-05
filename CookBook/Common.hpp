@@ -18,13 +18,13 @@
 #include <memory>
 #include <vector>
 
-#include "../VulkanFunctions.hpp"
+#include "../VulkanWrapper/VulkanFunctions.hpp"
 
-#include "../VulkanCommandBuffer.hpp"
-#include "../VulkanSemaphore.hpp"
-#include "../VulkanFence.hpp"
-#include "../VulkanImageView.hpp"
-#include "../VulkanFramebuffer.hpp"
+#include "../VulkanWrapper/VulkanCommandBuffer.hpp"
+#include "../VulkanWrapper/VulkanSemaphore.hpp"
+#include "../VulkanWrapper/VulkanFence.hpp"
+#include "../VulkanWrapper/VulkanImageView.hpp"
+#include "../VulkanWrapper/VulkanFramebuffer.hpp"
 
 struct FrameResources 
 {

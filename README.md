@@ -9,7 +9,8 @@ I made some steps to faster the learning of Vulkan :
 - Step 2 : Theory of Vulkan (by following the Vulkan Cookbook, chapters 1 to 9)
 - Step 3 : My Vulkan Wrapper
 - Step 4 : Practice of Vulkan (by following Vulkan Cookbook, chapters 11 & 12, and then Vulkan Examples by SaschaWillems)
-- Step 5 : Add Vulkan to Numea Engine
+- Step 5 : Improve the wrapper and made it a rendering engine
+- Step 6 : Add Vulkan to my NumeaEngine
   
   
   
@@ -19,9 +20,11 @@ Step 2 : DONE : https://github.com/Cmdu76/VulkanTest/tree/e024fc0a4ebe238263637f
   
 Step 3 : DONE : (But there will always be improvements to made) 
   
-Step 4 : WIP  
+Step 4 : DONE : (But I still need to fix the 4th example and improve all the others as possible using the new versions of the wrapper)
 
-Step 5 : WIP
+Step 5 : WIP  
+
+Step 6 : ...
 
 
 

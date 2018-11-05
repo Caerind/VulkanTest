@@ -5,7 +5,7 @@
 #include <Windows.h>
 #endif
 
-#include "VulkanSurface.hpp"
+#include "VulkanWrapper/VulkanSurface.hpp"
 
 namespace nu
 {

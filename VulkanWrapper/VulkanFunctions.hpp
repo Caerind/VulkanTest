@@ -4,7 +4,7 @@
 // TODO : Move this
 #define VK_USE_PLATFORM_WIN32_KHR
 #define VK_NO_PROTOTYPES
-#include "ThirdParty/vulkan.h"
+#include "../ThirdParty/vulkan.h"
 
 #include "VulkanObjectTracker.hpp"
 
