@@ -8,24 +8,11 @@ namespace nu
 namespace Vulkan
 {
 
-Swapchain::Ptr Swapchain::createSwapchain(Device& device, Surface* surface, std::vector<FrameResources>& framesResources)
-{
-	Swapchain::Ptr swapchain(new Swapchain(device, surface));
-	if (swapchain != nullptr)
-	{
-		if (!swapchain->init(framesResources))
-		{
-			swapchain.reset();
-		}
-	}
-	return swapchain;
-}
-
 Swapchain::~Swapchain()
 {
-	ObjectTracker::unregisterObject(ObjectType_Swapchain);
-
 	release();
+
+	ObjectTracker::unregisterObject(ObjectType_Swapchain);
 }
 
 bool Swapchain::recreate(std::vector<FrameResources>& framesResources)
@@ -87,11 +74,6 @@ VkImageView Swapchain::getImageView(uint32_t index) const
 	return VK_NULL_HANDLE;
 }
 
-bool Swapchain::isInitialized() const
-{
-	return mSwapchain != VK_NULL_HANDLE;
-}
-
 const VkSwapchainKHR& Swapchain::getHandle() const
 {
 	return mSwapchain;
@@ -102,10 +84,23 @@ const VkDevice& Swapchain::getDeviceHandle() const
 	return mDevice.getHandle();
 }
 
-Swapchain::Swapchain(Device& device, Surface* surface)
-	: mSwapchain(VK_NULL_HANDLE)
-	, mDevice(device)
+Swapchain::Ptr Swapchain::createSwapchain(Device& device, Surface& surface, std::vector<FrameResources>& framesResources)
+{
+	Swapchain::Ptr swapchain(new Swapchain(device, surface));
+	if (swapchain != nullptr)
+	{
+		if (!swapchain->init(framesResources))
+		{
+			swapchain.reset();
+		}
+	}
+	return swapchain;
+}
+
+Swapchain::Swapchain(Device& device, Surface& surface)
+	: mDevice(device)
 	, mSurface(surface)
+	, mSwapchain(VK_NULL_HANDLE)
 	, mReady(false)
 {
 	// TODO : Default values for each variables
@@ -175,15 +170,13 @@ bool Swapchain::init(std::vector<FrameResources>& framesResources)
 	return true;
 }
 
-bool Swapchain::release()
+void Swapchain::release()
 {
 	if (mSwapchain != VK_NULL_HANDLE)
 	{
 		vkDestroySwapchainKHR(mDevice.getHandle(), mSwapchain, nullptr);
 		mSwapchain = VK_NULL_HANDLE;
-		return true;
 	}
-	return false;
 }
 
 
@@ -271,7 +264,7 @@ bool Swapchain::createSwapchainInternal(VkImageUsageFlags desiredImageUsage, VkS
 		VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,  // VkStructureType                  sType
 		nullptr,                                      // const void                     * pNext
 		0,                                            // VkSwapchainCreateFlagsKHR        flags
-		mSurface->getHandle(),                        // VkSurfaceKHR                     surface
+		mSurface.getHandle(),                         // VkSurfaceKHR                     surface
 		imageCount,                                   // uint32_t                         minImageCount
 		mFormat,                                      // VkFormat                         imageFormat
 		mColorSpace,                                  // VkColorSpaceKHR                  imageColorSpace
@@ -315,7 +308,7 @@ bool Swapchain::selectDesiredPresentMode(VkPresentModeKHR desiredPresentMode, Vk
 	uint32_t presentModesCount = 0;
 	VkResult result;
 
-	result = vkGetPhysicalDeviceSurfacePresentModesKHR(mDevice.getPhysicalHandle(), mSurface->getHandle(), &presentModesCount, nullptr);
+	result = vkGetPhysicalDeviceSurfacePresentModesKHR(mDevice.getPhysicalHandle(), mSurface.getHandle(), &presentModesCount, nullptr);
 	if (result != VK_SUCCESS || presentModesCount == 0)
 	{
 		// TODO : Use Numea System Log
@@ -324,7 +317,7 @@ bool Swapchain::selectDesiredPresentMode(VkPresentModeKHR desiredPresentMode, Vk
 	}
 
 	std::vector<VkPresentModeKHR> presentModes(presentModesCount);
-	result = vkGetPhysicalDeviceSurfacePresentModesKHR(mDevice.getPhysicalHandle(), mSurface->getHandle(), &presentModesCount, presentModes.data());
+	result = vkGetPhysicalDeviceSurfacePresentModesKHR(mDevice.getPhysicalHandle(), mSurface.getHandle(), &presentModesCount, presentModes.data());
 	if (result != VK_SUCCESS || presentModesCount == 0)
 	{
 		// TODO : Use Numea System Log
@@ -360,7 +353,7 @@ bool Swapchain::selectDesiredPresentMode(VkPresentModeKHR desiredPresentMode, Vk
 
 bool Swapchain::queryCapabilities(VkSurfaceCapabilitiesKHR& surfaceCapabilities)
 {
-	VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mDevice.getPhysicalHandle(), mSurface->getHandle(), &surfaceCapabilities);
+	VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mDevice.getPhysicalHandle(), mSurface.getHandle(), &surfaceCapabilities);
 	if (result != VK_SUCCESS)
 	{
 		// TODO : Use Numea System Log
@@ -375,7 +368,7 @@ bool Swapchain::selectSurfaceFormat(VkSurfaceFormatKHR desiredSurfaceFormat)
 	uint32_t formatsCount = 0;
 	VkResult result;
 
-	result = vkGetPhysicalDeviceSurfaceFormatsKHR(mDevice.getPhysicalHandle(), mSurface->getHandle(), &formatsCount, nullptr);
+	result = vkGetPhysicalDeviceSurfaceFormatsKHR(mDevice.getPhysicalHandle(), mSurface.getHandle(), &formatsCount, nullptr);
 	if (result != VK_SUCCESS || formatsCount == 0)
 	{
 		// TODO : Use Numea System Log
@@ -384,7 +377,7 @@ bool Swapchain::selectSurfaceFormat(VkSurfaceFormatKHR desiredSurfaceFormat)
 	}
 
 	std::vector<VkSurfaceFormatKHR> surfaceFormats(formatsCount);
-	result = vkGetPhysicalDeviceSurfaceFormatsKHR(mDevice.getPhysicalHandle(), mSurface->getHandle(), &formatsCount, surfaceFormats.data());
+	result = vkGetPhysicalDeviceSurfaceFormatsKHR(mDevice.getPhysicalHandle(), mSurface.getHandle(), &formatsCount, surfaceFormats.data());
 	if (result != VK_SUCCESS || formatsCount == 0)
 	{
 		// TODO : Use Numea System Log

@@ -258,9 +258,9 @@ const VkQueue& Queue::getHandle() const
 	return mQueue;
 }
 
-const Device& Queue::getDeviceHandle() const
+const VkDevice& Queue::getDeviceHandle() const
 {
-	return mDevice;
+	return mDevice.getHandle();
 }
 
 Queue::Queue(Device& device, uint32_t queueFamilyIndex, uint32_t queueIndex)

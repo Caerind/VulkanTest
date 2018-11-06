@@ -22,7 +22,7 @@ class Sampler
 
 		bool isInitialized() const;
 		const VkSampler& getHandle() const;
-		const Device& getDeviceHandle() const;
+		const VkDevice& getDeviceHandle() const;
 
 	private:
 		Sampler(Device& device, VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, float lodBias, float minLod, float maxLod, bool anisotropyEnable, float maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, VkBorderColor borderColor, bool unnormalizedCoords);

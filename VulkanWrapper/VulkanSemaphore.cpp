@@ -7,6 +7,33 @@ namespace nu
 namespace Vulkan
 {
 
+Semaphore::~Semaphore()
+{
+	release();
+
+	ObjectTracker::unregisterObject(ObjectType_Semaphore);
+}
+
+Device& Semaphore::getDevice()
+{
+	return mDevice;
+}
+
+const Device& Semaphore::getDevice() const
+{
+	return mDevice;
+}
+
+const VkSemaphore& Semaphore::getHandle() const
+{
+	return mSemaphore;
+}
+
+const VkDevice& Semaphore::getDeviceHandle() const
+{
+	return mDevice.getHandle();
+}
+
 Semaphore::Ptr Semaphore::createSemaphore(Device& device)
 {
 	Semaphore::Ptr semaphore(new Semaphore(device));
@@ -18,28 +45,6 @@ Semaphore::Ptr Semaphore::createSemaphore(Device& device)
 		}
 	}
 	return semaphore;
-}
-
-Semaphore::~Semaphore()
-{
-	ObjectTracker::unregisterObject(ObjectType_Semaphore);
-
-	release();
-}
-
-bool Semaphore::isInitialized() const
-{
-	return mSemaphore != VK_NULL_HANDLE;
-}
-
-const VkSemaphore& Semaphore::getHandle() const
-{
-	return mSemaphore;
-}
-
-const Device& Semaphore::getDeviceHandle() const
-{
-	return mDevice;
 }
 
 Semaphore::Semaphore(Device& device)
@@ -68,15 +73,13 @@ bool Semaphore::init()
 	return true;
 }
 
-bool Semaphore::release()
+void Semaphore::release()
 {
 	if (mSemaphore!= VK_NULL_HANDLE)
 	{
 		vkDestroySemaphore(mDevice.getHandle(), mSemaphore, nullptr);
 		mSemaphore = VK_NULL_HANDLE;
-		return true;
 	}
-	return false;
 }
 
 } // namespace Vulkan

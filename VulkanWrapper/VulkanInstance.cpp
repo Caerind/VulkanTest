@@ -7,24 +7,22 @@ namespace Vulkan
 
 Instance::Ptr Instance::createInstance(const std::vector<const char*>& desiredExtensions, const std::vector<const char*> desiredLayers)
 {
-	return Instance::Ptr(new Instance(desiredExtensions, desiredLayers));
+	Instance::Ptr instance(new Instance(desiredExtensions, desiredLayers));
+	if (instance != nullptr)
+	{
+		if (!instance->init())
+		{
+			instance.reset();
+		}
+	}
+	return instance;
 }
 
 Instance::~Instance()
 {
+	release();
+
 	ObjectTracker::unregisterObject(ObjectType_Instance);
-
-	if (mDebugReportCallback != VK_NULL_HANDLE)
-	{
-		vkDestroyDebugReportCallbackEXT(mInstance, mDebugReportCallback, nullptr);
-		mDebugReportCallback = VK_NULL_HANDLE;
-	}
-
-	if (mInstance != VK_NULL_HANDLE)
-	{
-		vkDestroyInstance(mInstance, nullptr);
-		mInstance = VK_NULL_HANDLE;
-	}
 }
 
 PhysicalDevice& Instance::getPhysicalDevice(uint32_t index)
@@ -60,11 +58,6 @@ uint32_t Instance::getPhysicalDeviceCount() const
 Surface::Ptr Instance::createSurface(const WindowParameters& windowParameters)
 {
 	return Surface::createSurface(*this, windowParameters);
-}
-
-bool Instance::isInitialized() const
-{
-	return mInstance != VK_NULL_HANDLE;
 }
 
 const VkInstance& Instance::getHandle() const
@@ -124,18 +117,21 @@ Instance::Instance(const std::vector<const char*>& desiredExtensions, const std:
 	, mPhysicalDevices()
 {
 	ObjectTracker::registerObject(ObjectType_Instance);
+}
 
+bool Instance::init()
+{
 	if (!Loader::ensureDynamicLibraryLoaded())
 	{
-		return;
+		return false;
 	}
 	if (!Loader::ensureExportedFunctionLoaded())
 	{
-		return;
+		return false;
 	}
 	if (!Loader::ensureGlobalLevelFunctionsLoaded())
 	{
-		return;
+		return false;
 	}
 
 	// TODO : Only if wanted
@@ -165,7 +161,7 @@ Instance::Instance(const std::vector<const char*>& desiredExtensions, const std:
 			{
 				// TODO : Numea Log System
 				printf("Could not find a desired instance extension : %s\n", desiredExtension);
-				return;
+				return false;
 			}
 		}
 	}
@@ -185,7 +181,7 @@ Instance::Instance(const std::vector<const char*>& desiredExtensions, const std:
 			{
 				// TODO : Numea Log System
 				printf("Could not find a desired instance layer : %s\n", desiredLayer);
-				return;
+				return false;
 			}
 		}
 	}
@@ -218,12 +214,12 @@ Instance::Instance(const std::vector<const char*>& desiredExtensions, const std:
 	{
 		// TODO : Use Numea System Log
 		printf("Could not create Vulkan instance\n");
-		return;
+		return false;
 	}
 
 	if (!Loader::ensureInstanceLevelFunctionsLoaded(*this))
 	{
-		return;
+		return false;
 	}
 
 	// TODO : Only on Debug
@@ -243,8 +239,25 @@ Instance::Instance(const std::vector<const char*>& desiredExtensions, const std:
 		{
 			// TODO : Use Numea System Log
 			printf("Could not create DebugReportCallback\n");
-			return;
+			return false;
 		}
+	}
+
+	return true;
+}
+
+void Instance::release()
+{
+	if (mDebugReportCallback != VK_NULL_HANDLE)
+	{
+		vkDestroyDebugReportCallbackEXT(mInstance, mDebugReportCallback, nullptr);
+		mDebugReportCallback = VK_NULL_HANDLE;
+	}
+
+	if (mInstance != VK_NULL_HANDLE)
+	{
+		vkDestroyInstance(mInstance, nullptr);
+		mInstance = VK_NULL_HANDLE;
 	}
 }
 

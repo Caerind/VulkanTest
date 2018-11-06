@@ -23,6 +23,8 @@ class BufferView
 		VkDeviceSize getOffset() const;
 		VkDeviceSize getSize() const;
 
+		Buffer& getBuffer();
+		const Buffer& getBuffer() const;
 		Device& getDevice();
 		const Device& getDevice() const;
 		const VkBufferView& getHandle() const;
@@ -38,6 +40,7 @@ class BufferView
 		bool init();
 		void release();
 
+	private:
 		Device& mDevice;
 		Buffer& mBuffer;
 		VkBufferView mBufferView;

@@ -14,7 +14,7 @@ ShaderModule::~ShaderModule()
 	destroy();
 }
 
-bool ShaderModule::loadFromFile(const std::string& filename)
+bool ShaderModule::loadFromFile(const std::string& filename, ShaderStageFlags stage, const std::string& entrypoint)
 {
 	mStages = ShaderStageFlags::None;
 	mShaderStageCreateInfos.clear();
@@ -47,7 +47,19 @@ bool ShaderModule::loadFromFile(const std::string& filename)
 	file.read(reinterpret_cast<char*>(mSpirvBlob.data()), end - begin);
 	file.close();
 
-	return true;
+	switch (stage)
+	{
+		case ShaderStageFlags::None: return true;
+		case ShaderStageFlags::Vertex: setVertexEntrypointName(entrypoint); break;
+		case ShaderStageFlags::TessellationControl: setTessellationControlEntrypointName(entrypoint); break;
+		case ShaderStageFlags::TessellationEvaluation: setTessellationEvaluationEntrypointName(entrypoint); break;
+		case ShaderStageFlags::Geometry: setGeometryEntrypointName(entrypoint); break;
+		case ShaderStageFlags::Fragment: setFragmentEntrypointName(entrypoint); break;
+		case ShaderStageFlags::Compute: setComputeEntrypointName(entrypoint); break;
+		default: printf("Stages combination are not supported at loading"); return false; break;
+	}
+
+	return create();
 }
 
 void ShaderModule::setVertexEntrypointName(const std::string& entrypoint)
@@ -107,15 +119,13 @@ bool ShaderModule::create()
 	return true;
 }
 
-bool ShaderModule::destroy()
+void ShaderModule::destroy()
 {
 	if (mShaderModule != VK_NULL_HANDLE)
 	{
 		vkDestroyShaderModule(mDevice.getHandle(), mShaderModule, nullptr);
 		mShaderModule = VK_NULL_HANDLE;
-		return true;
 	}
-	return false;
 }
 
 bool ShaderModule::isCreated() const

@@ -30,6 +30,16 @@ VkDeviceSize BufferView::getSize() const
 	return mSize;
 }
 
+Buffer& BufferView::getBuffer()
+{
+	return mBuffer;
+}
+
+const Buffer& BufferView::getBuffer() const
+{
+	return mBuffer;
+}
+
 Device& BufferView::getDevice()
 {
 	return mDevice;

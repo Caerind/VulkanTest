@@ -159,24 +159,16 @@ class FragmentSpecularLightning : public SampleBase
 
 
 			nu::Vulkan::ShaderModule::Ptr vertexShaderModule = mLogicalDevice->initShaderModule();
-			if (vertexShaderModule == nullptr || !vertexShaderModule->loadFromFile("../Examples/2 - Fragment Specular Lightning/shader.vert.spv"))
+			if (vertexShaderModule == nullptr || !vertexShaderModule->loadFromFile("../Examples/2 - Fragment Specular Lightning/shader.vert.spv", nu::Vulkan::ShaderModule::Vertex))
 			{
 				return false;
 			}
-			vertexShaderModule->setVertexEntrypointName("main");
 
 			nu::Vulkan::ShaderModule::Ptr fragmentShaderModule = mLogicalDevice->initShaderModule();
-			if (fragmentShaderModule == nullptr || !fragmentShaderModule->loadFromFile("../Examples/2 - Fragment Specular Lightning/shader.frag.spv"))
+			if (fragmentShaderModule == nullptr || !fragmentShaderModule->loadFromFile("../Examples/2 - Fragment Specular Lightning/shader.frag.spv", nu::Vulkan::ShaderModule::Fragment))
 			{
 				return false;
 			}
-			fragmentShaderModule->setFragmentEntrypointName("main");
-
-			if (!vertexShaderModule->create() || !fragmentShaderModule->create())
-			{
-				return false;
-			}
-
 
 			mPipelines.resize(PipelineNames::Count);
 			mPipelines[PipelineNames::MeshPipeline] = mLogicalDevice->initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
@@ -393,14 +385,14 @@ class FragmentSpecularLightning : public SampleBase
 
 				nu::Matrix4f modelViewMatrix = viewMatrix * modelMatrix;
 
-				if (!mStagingBuffer->mapUpdateAndUnmapHostVisibleMemory(0, sizeof(float) * 16, &modelViewMatrix[0]))
+				if (!mStagingBuffer->mapWriteUnmap(0, sizeof(float) * 16, &modelViewMatrix[0]))
 				{
 					return false;
 				}
 
 				nu::Matrix4f perspectiveMatrix = nu::Matrix4f::perspective(50.0f, static_cast<float>(mSwapchain->getSize().width) / static_cast<float>(mSwapchain->getSize().height), 0.5f, 10.0f);
 
-				if (!mStagingBuffer->mapUpdateAndUnmapHostVisibleMemory(sizeof(float) * 16, sizeof(float) * 16, &perspectiveMatrix[0]))
+				if (!mStagingBuffer->mapWriteUnmap(sizeof(float) * 16, sizeof(float) * 16, &perspectiveMatrix[0]))
 				{
 					return false;
 				}

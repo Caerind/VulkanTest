@@ -129,13 +129,13 @@ void SampleBase::onMouseEvent()
 bool SampleBase::initializeVulkan(nu::Vulkan::WindowParameters windowParameters, VkPhysicalDeviceFeatures* desiredDeviceFeatures)
 {
 	mInstance = nu::Vulkan::Instance::createInstance();
-	if (mInstance == nullptr || !mInstance->isInitialized())
+	if (mInstance == nullptr)
 	{
 		return false;
 	}
 
 	mSurface = mInstance->createSurface(windowParameters);
-	if (mSurface == nullptr || !mSurface->isInitialized())
+	if (mSurface == nullptr)
 	{
 		return false;
 	}
@@ -222,19 +222,19 @@ bool SampleBase::initializeVulkan(nu::Vulkan::WindowParameters windowParameters,
 		}
 
 		nu::Vulkan::Semaphore::Ptr imageAcquiredSemaphore = mLogicalDevice->createSemaphore();
-		if (imageAcquiredSemaphore == nullptr || !imageAcquiredSemaphore->isInitialized())
+		if (imageAcquiredSemaphore == nullptr)
 		{
 			return false;
 		}
 
 		nu::Vulkan::Semaphore::Ptr readyToPresentSemaphore = mLogicalDevice->createSemaphore();
-		if (readyToPresentSemaphore == nullptr || !readyToPresentSemaphore->isInitialized())
+		if (readyToPresentSemaphore == nullptr)
 		{
 			return false;
 		}
 
 		nu::Vulkan::Fence::Ptr drawingFinishedFence = mLogicalDevice->createFence(true);
-		if (drawingFinishedFence == nullptr || !drawingFinishedFence->isInitialized())
+		if (drawingFinishedFence == nullptr)
 		{
 			return false;
 		}
@@ -249,8 +249,8 @@ bool SampleBase::initializeVulkan(nu::Vulkan::WindowParameters windowParameters,
 		);
 	}
 
-	mSwapchain = mLogicalDevice->createSwapchain(mSurface.get(), mFramesResources);
-	if (mSwapchain == nullptr || !mSwapchain->isInitialized())
+	mSwapchain = mLogicalDevice->createSwapchain(*(mSurface.get()), mFramesResources);
+	if (mSwapchain == nullptr)
 	{
 		return false;
 	}

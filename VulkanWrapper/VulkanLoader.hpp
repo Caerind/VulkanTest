@@ -1,11 +1,11 @@
 #ifndef NU_VULKAN_LOADER_HPP
 #define NU_VULKAN_LOADER_HPP
 
-#include "VulkanFunctions.hpp"
+#include <vector>
 
 #include "../System/DynamicLibrary.hpp"
 
-#include <vector>
+#include "VulkanFunctions.hpp"
 
 namespace nu
 {

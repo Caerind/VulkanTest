@@ -91,9 +91,9 @@ const VkPipelineCache& PipelineCache::getHandle() const
 	return mPipelineCache;
 }
 
-const Device& PipelineCache::getDeviceHandle() const
+const VkDevice& PipelineCache::getDeviceHandle() const
 {
-	return mDevice;
+	return mDevice.getHandle();
 }
 
 PipelineCache::PipelineCache(Device& device, const std::vector<unsigned char>& cacheData)

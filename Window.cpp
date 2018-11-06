@@ -19,7 +19,7 @@ enum UserMessage
 	USER_MESSAGE_MOUSE_WHEEL
 };
 
-}
+} // namespace 
 
 LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -63,7 +63,7 @@ LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 
 Window::Window()
 {
-	mParameters.hinstance = GetModuleHandle(nullptr);
+	mParameters.platformConnection = GetModuleHandle(nullptr);
 
 	WNDCLASSEX windowClass =
 	{
@@ -74,7 +74,7 @@ Window::Window()
 		WindowProcedure,                   // WNDPROC      lpfnWndProc
 		0,                                 // int          cbClsExtra
 		0,                                 // int          cbWndExtra
-		mParameters.hinstance,             // HINSTANCE    hInstance
+		mParameters.platformConnection,    // HINSTANCE    hInstance
 		nullptr,                           // HICON        hIcon
 		LoadCursor(nullptr, IDC_ARROW),    // HCURSOR      hCursor
 		(HBRUSH)(COLOR_WINDOW + 1),        // HBRUSH       hbrBackground
@@ -100,9 +100,9 @@ Window::Window(const std::string& windowTitle, int x, int y, int width, int heig
 Window::~Window()
 {
 	close();
-	if (mParameters.hinstance)
+	if (mParameters.platformConnection)
 	{
-		UnregisterClass(L"NumeaEngine", mParameters.hinstance);
+		UnregisterClass(L"NumeaEngine", mParameters.platformConnection);
 	}
 }
 
@@ -111,15 +111,15 @@ bool Window::create(const std::string& windowTitle, int x, int y, int width, int
 	std::wstring wideWindowTitle;
 	toWideString(windowTitle, wideWindowTitle);
 
-	mParameters.hwnd = CreateWindow(L"NumeaEngine", wideWindowTitle.c_str(), WS_OVERLAPPEDWINDOW, x, y, width, height, nullptr, nullptr, mParameters.hinstance, nullptr);
-	if (!mParameters.hwnd)
+	mParameters.platformWindow = CreateWindow(L"NumeaEngine", wideWindowTitle.c_str(), WS_OVERLAPPEDWINDOW, x, y, width, height, nullptr, nullptr, mParameters.platformConnection, nullptr);
+	if (!mParameters.platformWindow)
 	{
 		return false;
 	}
 
-	ShowWindow(mParameters.hwnd, SW_SHOWNORMAL);
+	ShowWindow(mParameters.platformWindow, SW_SHOWNORMAL);
 
-	UpdateWindow(mParameters.hwnd);
+	UpdateWindow(mParameters.platformWindow);
 
 	mOpen = true;
 
@@ -129,10 +129,10 @@ bool Window::create(const std::string& windowTitle, int x, int y, int width, int
 void Window::close()
 {
 	mOpen = false;
-	if (mParameters.hwnd)
+	if (mParameters.platformWindow)
 	{
-		DestroyWindow(mParameters.hwnd);
-		mParameters.hwnd = NULL;
+		DestroyWindow(mParameters.platformWindow);
+		mParameters.platformWindow = NULL;
 	}
 }
 

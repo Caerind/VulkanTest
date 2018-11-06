@@ -1,13 +1,13 @@
 #ifndef NU_VULKAN_SWAPCHAIN_HPP
 #define NU_VULKAN_SWAPCHAIN_HPP
 
-#include "../CookBook/Common.hpp"
-
 #include <memory>
 
 #include "VulkanImage.hpp"
 #include "VulkanImageView.hpp"
 #include "VulkanHelper.hpp"
+
+#include "../CookBook/Common.hpp" // TODO : Remove this (used for FrameResources)
 
 namespace nu
 {
@@ -20,8 +20,6 @@ class Swapchain
 {
 	public:
 		typedef std::unique_ptr<Swapchain> Ptr;
-
-		static Swapchain::Ptr createSwapchain(Device& device, Surface* surface, std::vector<FrameResources>& framesResources);
 
 		~Swapchain();
 
@@ -40,15 +38,17 @@ class Swapchain
 		VkImage getImage(uint32_t index) const;
 		VkImageView getImageView(uint32_t index) const;
 
-		bool isInitialized() const;
 		const VkSwapchainKHR& getHandle() const;
 		const VkDevice& getDeviceHandle() const;
 
 	private:
-		Swapchain(Device& device, Surface* surface);
+		friend class Device;
+		static Swapchain::Ptr createSwapchain(Device& device, Surface& surface, std::vector<FrameResources>& framesResources);
+
+		Swapchain(Device& device, Surface& surface);
 
 		bool init(std::vector<FrameResources>& framesResources);
-		bool release();
+		void release();
 
 		bool createSwapchainInternal(VkImageUsageFlags desiredImageUsage, VkSwapchainKHR& oldSwapchain); // TODO : Move old swapchain inside
 		bool selectDesiredPresentMode(VkPresentModeKHR desiredPresentMode, VkPresentModeKHR& presentMode);
@@ -57,9 +57,9 @@ class Swapchain
 		bool queryHandlesOfImages();
 
 	private:
-		VkSwapchainKHR mSwapchain;
 		Device& mDevice;
-		Surface* mSurface;
+		Surface& mSurface;
+		VkSwapchainKHR mSwapchain;
 		bool mReady;
 
 		VkFormat mFormat;

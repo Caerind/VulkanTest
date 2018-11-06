@@ -21,7 +21,12 @@ class StagingBuffer
 
 		~StagingBuffer();
 
-		bool mapUpdateAndUnmapHostVisibleMemory(uint32_t offset, uint32_t dataSize, void* data, bool unmap = true, void** pointer = nullptr);
+		bool map(uint32_t offset, uint32_t size);
+		bool read(void* data);
+		bool write(const void* data);
+		bool unmap();
+
+		bool mapWriteUnmap(uint32_t offset, uint32_t dataSize, void* data, bool unmap = true, void** pointer = nullptr);
 
 		void send(Vulkan::CommandBuffer* commandBuffer);
 

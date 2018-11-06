@@ -1,13 +1,12 @@
 #ifndef NU_VULKAN_INSTANCE_HPP
 #define NU_VULKAN_INSTANCE_HPP
 
-#include "VulkanLoader.hpp"
-#include "VulkanPhysicalDevice.hpp"
-
 #include <functional>
 #include <memory>
 #include <vector>
 
+#include "VulkanLoader.hpp"
+#include "VulkanPhysicalDevice.hpp"
 #include "VulkanSurface.hpp"
 
 namespace nu
@@ -15,8 +14,8 @@ namespace nu
 namespace Vulkan
 {
 
-	class Instance
-	{
+class Instance
+{
 	public:
 		typedef std::unique_ptr<Instance> Ptr;
 
@@ -31,7 +30,6 @@ namespace Vulkan
 
 		Surface::Ptr createSurface(const WindowParameters& windowParameters);
 
-		bool isInitialized() const;
 		const VkInstance& getHandle() const;
 
 		const std::vector<const char*>& getExtensions() const;
@@ -42,6 +40,9 @@ namespace Vulkan
 
 	private:
 		Instance(const std::vector<const char*>& desiredExtensions, const std::vector<const char*>& desiredLayers);
+
+		bool init();
+		void release();
 
 		bool queryAvailablePhysicalDevices() const;
 

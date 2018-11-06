@@ -552,14 +552,14 @@ class AddingShadows : public SampleBase
 
 				nu::Matrix4f modelViewMatrix = viewMatrix * modelMatrix;
 
-				if (!mStagingBuffer->mapUpdateAndUnmapHostVisibleMemory(0, sizeof(float) * 16, &modelViewMatrix[0]))
+				if (!mStagingBuffer->mapWriteUnmap(0, sizeof(float) * 16, &modelViewMatrix[0]))
 				{
 					return false;
 				}
 
 				nu::Matrix4f perspectiveMatrix = nu::Matrix4f::perspective(50.0f, static_cast<float>(mSwapchain->getSize().width) / static_cast<float>(mSwapchain->getSize().height), 0.5f, 10.0f);
 
-				if (!mStagingBuffer->mapUpdateAndUnmapHostVisibleMemory(sizeof(float) * 16, sizeof(float) * 16, &perspectiveMatrix[0]))
+				if (!mStagingBuffer->mapWriteUnmap(sizeof(float) * 16, sizeof(float) * 16, &perspectiveMatrix[0]))
 				{
 					return false;
 				}

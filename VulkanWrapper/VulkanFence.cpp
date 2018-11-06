@@ -7,29 +7,11 @@ namespace nu
 namespace Vulkan
 {
 
-Fence::Ptr Fence::createFence(Device& device, bool signaled)
-{
-	Fence::Ptr fence(new Fence(device, signaled));
-	if (fence != nullptr)
-	{
-		if (!fence->init())
-		{
-			fence.reset();
-		}
-	}
-	return fence;
-}
-
 Fence::~Fence()
 {
-	ObjectTracker::unregisterObject(ObjectType_Fence);
-
 	release();
-}
 
-bool Fence::isSignaled() const
-{
-	return mSignaled;
+	ObjectTracker::unregisterObject(ObjectType_Fence);
 }
 
 bool Fence::wait(uint64_t timeout)
@@ -62,9 +44,19 @@ bool Fence::reset()
 	return true;
 }
 
-bool Fence::isInitialized() const
+bool Fence::isSignaled() const
 {
-	return mFence != VK_NULL_HANDLE;
+	return mSignaled;
+}
+
+Device& Fence::getDevice()
+{
+	return mDevice;
+}
+
+const Device& Fence::getDevice() const
+{
+	return mDevice;
 }
 
 const VkFence& Fence::getHandle() const
@@ -72,9 +64,22 @@ const VkFence& Fence::getHandle() const
 	return mFence;
 }
 
-const Device& Fence::getDeviceHandle() const
+const VkDevice& Fence::getDeviceHandle() const
 {
-	return mDevice;
+	return mDevice.getHandle();
+}
+
+Fence::Ptr Fence::createFence(Device& device, bool signaled)
+{
+	Fence::Ptr fence(new Fence(device, signaled));
+	if (fence != nullptr)
+	{
+		if (!fence->init())
+		{
+			fence.reset();
+		}
+	}
+	return fence;
 }
 
 Fence::Fence(Device& device, bool signaled)
@@ -104,15 +109,13 @@ bool Fence::init()
 	return true;
 }
 
-bool Fence::release()
+void Fence::release()
 {
 	if (mFence != VK_NULL_HANDLE)
 	{
 		vkDestroyFence(mDevice.getHandle(), mFence, nullptr);
 		mFence = VK_NULL_HANDLE;
-		return true;
 	}
-	return false;
 }
 
 } // namespace Vulkan

@@ -37,9 +37,9 @@ const VkSampler& Sampler::getHandle() const
 	return mSampler;
 }
 
-const Device& Sampler::getDeviceHandle() const
+const VkDevice& Sampler::getDeviceHandle() const
 {
-	return mDevice;
+	return mDevice.getHandle();
 }
 
 Sampler::Sampler(Device& device, VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, float lodBias, float minLod, float maxLod, bool anisotropyEnable, float maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, VkBorderColor borderColor, bool unnormalizedCoords)

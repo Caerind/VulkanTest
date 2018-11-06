@@ -37,9 +37,9 @@ const VkDescriptorSetLayout& DescriptorSetLayout::getHandle() const
 	return mDescriptorSetLayout;
 }
 
-const Device& DescriptorSetLayout::getDeviceHandle() const
+const VkDevice& DescriptorSetLayout::getDeviceHandle() const
 {
-	return mDevice;
+	return mDevice.getHandle();
 }
 
 DescriptorSetLayout::DescriptorSetLayout(Device& device, const std::vector<VkDescriptorSetLayoutBinding>& bindings)

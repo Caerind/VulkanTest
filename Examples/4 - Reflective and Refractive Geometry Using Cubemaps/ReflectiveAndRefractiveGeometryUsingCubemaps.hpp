@@ -260,20 +260,13 @@ class ReflectiveAndRefractiveGeometryUsingCubemaps : public SampleBase
 			// Model
 
 			nu::Vulkan::ShaderModule::Ptr modelVertexShaderModule = mLogicalDevice->initShaderModule();
-			if (modelVertexShaderModule == nullptr || !modelVertexShaderModule->loadFromFile("../Examples/4 - Reflective and Refractive Geometry Using Cubemaps/modelShader.vert.spv"))
+			if (modelVertexShaderModule == nullptr || !modelVertexShaderModule->loadFromFile("../Examples/4 - Reflective and Refractive Geometry Using Cubemaps/modelShader.vert.spv", nu::Vulkan::ShaderModule::Vertex))
 			{
 				return false;
 			}
-			modelVertexShaderModule->setVertexEntrypointName("main");
 
 			nu::Vulkan::ShaderModule::Ptr modelFragmentShaderModule = mLogicalDevice->initShaderModule();
-			if (modelFragmentShaderModule == nullptr || !modelFragmentShaderModule->loadFromFile("../Examples/4 - Reflective and Refractive Geometry Using Cubemaps/modelShader.frag.spv"))
-			{
-				return false;
-			}
-			modelFragmentShaderModule->setFragmentEntrypointName("main");
-
-			if (!modelVertexShaderModule->create() || !modelFragmentShaderModule->create())
+			if (modelFragmentShaderModule == nullptr || !modelFragmentShaderModule->loadFromFile("../Examples/4 - Reflective and Refractive Geometry Using Cubemaps/modelShader.frag.spv", nu::Vulkan::ShaderModule::Fragment))
 			{
 				return false;
 			}
@@ -288,20 +281,13 @@ class ReflectiveAndRefractiveGeometryUsingCubemaps : public SampleBase
 			// Skybox
 
 			nu::Vulkan::ShaderModule::Ptr skyboxVertexShaderModule = mLogicalDevice->initShaderModule();
-			if (skyboxVertexShaderModule == nullptr || !skyboxVertexShaderModule->loadFromFile("../Examples/4 - Reflective and Refractive Geometry Using Cubemaps/skyboxShader.vert.spv"))
+			if (skyboxVertexShaderModule == nullptr || !skyboxVertexShaderModule->loadFromFile("../Examples/4 - Reflective and Refractive Geometry Using Cubemaps/skyboxShader.vert.spv", nu::Vulkan::ShaderModule::Vertex))
 			{
 				return false;
 			}
-			skyboxVertexShaderModule->setVertexEntrypointName("main");
 
 			nu::Vulkan::ShaderModule::Ptr skyboxFragmentShaderModule = mLogicalDevice->initShaderModule();
-			if (skyboxFragmentShaderModule == nullptr || !skyboxFragmentShaderModule->loadFromFile("../Examples/4 - Reflective and Refractive Geometry Using Cubemaps/skyboxShader.frag.spv"))
-			{
-				return false;
-			}
-			skyboxFragmentShaderModule->setFragmentEntrypointName("main");
-
-			if (!skyboxVertexShaderModule->create() || !skyboxFragmentShaderModule->create())
+			if (skyboxFragmentShaderModule == nullptr || !skyboxFragmentShaderModule->loadFromFile("../Examples/4 - Reflective and Refractive Geometry Using Cubemaps/skyboxShader.frag.spv", nu::Vulkan::ShaderModule::Fragment))
 			{
 				return false;
 			}
@@ -527,14 +513,14 @@ class ReflectiveAndRefractiveGeometryUsingCubemaps : public SampleBase
 
 				nu::Matrix4f modelViewMatrix = viewMatrix * modelMatrix;
 
-				if (!mStagingBuffer->mapUpdateAndUnmapHostVisibleMemory(0, sizeof(float) * 16, &modelViewMatrix[0]))
+				if (!mStagingBuffer->mapWriteUnmap(0, sizeof(float) * 16, &modelViewMatrix[0]))
 				{
 					return false;
 				}
 
 				nu::Matrix4f perspectiveMatrix = nu::Matrix4f::perspective(50.0f, static_cast<float>(mSwapchain->getSize().width) / static_cast<float>(mSwapchain->getSize().height), 0.5f, 10.0f);
 
-				if (!mStagingBuffer->mapUpdateAndUnmapHostVisibleMemory(sizeof(float) * 16, sizeof(float) * 16, &perspectiveMatrix[0]))
+				if (!mStagingBuffer->mapWriteUnmap(sizeof(float) * 16, sizeof(float) * 16, &perspectiveMatrix[0]))
 				{
 					return false;
 				}

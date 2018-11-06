@@ -43,13 +43,18 @@ class PhysicalDevice
 		VkPhysicalDevice mPhysicalDevice; 
 
 		mutable std::vector<VkExtensionProperties> mAvailableExtensions;
+
 		mutable bool mSupportedFeaturesQueried;
 		mutable VkPhysicalDeviceFeatures mSupportedFeatures;
+
 		mutable bool mPropertiesQueried;
 		mutable VkPhysicalDeviceProperties mProperties;
+
 		mutable std::vector<VkQueueFamilyProperties> mQueueFamiliesProperties;
+
 		mutable bool mMemoryPropertiesQueried;
 		mutable VkPhysicalDeviceMemoryProperties mMemoryProperties;
+
 		mutable std::map<VkFormat, VkFormatProperties> mFormatProperties;
 };
 

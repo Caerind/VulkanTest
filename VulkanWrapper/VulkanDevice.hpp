@@ -117,7 +117,7 @@ class Device
 		
 		ShaderModule::Ptr initShaderModule();
 
-		Swapchain::Ptr createSwapchain(Surface* surface, std::vector<FrameResources>& framesResources);
+		Swapchain::Ptr createSwapchain(Surface& surface, std::vector<FrameResources>& framesResources);
 
 		bool waitForAllSubmittedCommands();
 

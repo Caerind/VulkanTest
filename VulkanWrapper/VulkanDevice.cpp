@@ -229,7 +229,7 @@ ShaderModule::Ptr Device::initShaderModule()
 	return ShaderModule::Ptr(new ShaderModule(*this));
 }
 
-Swapchain::Ptr Device::createSwapchain(Surface* surface, std::vector<FrameResources>& framesResources)
+Swapchain::Ptr Device::createSwapchain(Surface& surface, std::vector<FrameResources>& framesResources)
 {
 	return Swapchain::createSwapchain(*this, surface, framesResources);
 }

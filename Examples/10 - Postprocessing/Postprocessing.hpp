@@ -59,7 +59,7 @@ class Postprocessing : public SampleBase
 			}
 
 			mSceneFence = mLogicalDevice->createFence(true);
-			if (mSceneFence == nullptr || !mSceneFence->isInitialized())
+			if (mSceneFence == nullptr)
 			{
 				return false;
 			}
@@ -641,14 +641,14 @@ class Postprocessing : public SampleBase
 
 				nu::Matrix4f modelViewMatrix = viewMatrix * modelMatrix;
 
-				if (!mStagingBuffer->mapUpdateAndUnmapHostVisibleMemory(0, sizeof(float) * 16, &modelViewMatrix[0], true, nullptr))
+				if (!mStagingBuffer->mapWriteUnmap(0, sizeof(float) * 16, &modelViewMatrix[0], true, nullptr))
 				{
 					return false;
 				}
 
 				nu::Matrix4f perspectiveMatrix = nu::Matrix4f::perspective(50.0f, static_cast<float>(mSwapchain->getSize().width) / static_cast<float>(mSwapchain->getSize().height), 0.5f, 10.0f);
 
-				if (!mStagingBuffer->mapUpdateAndUnmapHostVisibleMemory(sizeof(float) * 16, sizeof(float) * 16, &perspectiveMatrix[0], true, nullptr))
+				if (!mStagingBuffer->mapWriteUnmap(sizeof(float) * 16, sizeof(float) * 16, &perspectiveMatrix[0], true, nullptr))
 				{
 					return false;
 				}

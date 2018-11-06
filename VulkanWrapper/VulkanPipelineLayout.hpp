@@ -23,7 +23,7 @@ class PipelineLayout
 
 		bool isInitialized() const;
 		const VkPipelineLayout& getHandle() const;
-		const Device& getDeviceHandle() const;
+		const VkDevice& getDeviceHandle() const;
 
 	private:
 		PipelineLayout(Device& device, const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, const std::vector<VkPushConstantRange> pushConstantRanges);

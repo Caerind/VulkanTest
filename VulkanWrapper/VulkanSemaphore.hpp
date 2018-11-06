@@ -1,9 +1,11 @@
 #ifndef NU_VULKAN_SEMAPHORE_HPP
 #define NU_VULKAN_SEMAPHORE_HPP
 
+#include <memory>
+
 #include "VulkanFunctions.hpp"
 
-#include <memory>
+// TODO : Add getters
 
 namespace nu
 {
@@ -16,20 +18,23 @@ class Semaphore
 	public:
 		typedef std::unique_ptr<Semaphore> Ptr;
 
-		static Semaphore::Ptr createSemaphore(Device& device);
-
 		~Semaphore();
 
-		bool isInitialized() const;
+		Device& getDevice();
+		const Device& getDevice() const;
 		const VkSemaphore& getHandle() const;
-		const Device& getDeviceHandle() const;
+		const VkDevice& getDeviceHandle() const;
 
 	private:
+		friend class Device;
+		static Semaphore::Ptr createSemaphore(Device& device);
+
 		Semaphore(Device& device);
 
 		bool init();
-		bool release();
+		void release();
 
+	private:
 		Device& mDevice;
 		VkSemaphore mSemaphore;
 };

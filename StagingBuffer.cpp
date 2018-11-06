@@ -22,7 +22,31 @@ StagingBuffer::~StagingBuffer()
 {
 }
 
-bool StagingBuffer::mapUpdateAndUnmapHostVisibleMemory(uint32_t offset, uint32_t dataSize, void* data, bool unmap, void** pointer)
+bool StagingBuffer::map(uint32_t offset, uint32_t size)
+{
+	assert(mBuffer->isBoundToMemoryBlock());
+	return mBuffer->getMemoryBlock()->map(offset, size);
+}
+
+bool StagingBuffer::read(void* data)
+{
+	assert(mBuffer->isBoundToMemoryBlock());
+	return mBuffer->getMemoryBlock()->read(data);
+}
+
+bool StagingBuffer::write(const void* data)
+{
+	assert(mBuffer->isBoundToMemoryBlock());
+	return mBuffer->getMemoryBlock()->write(data);
+}
+
+bool StagingBuffer::unmap()
+{
+	assert(mBuffer->isBoundToMemoryBlock());
+	return mBuffer->getMemoryBlock()->unmap();
+}
+
+bool StagingBuffer::mapWriteUnmap(uint32_t offset, uint32_t dataSize, void* data, bool unmap, void** readPointer)
 {
 	assert(mBuffer->isBoundToMemoryBlock());
 
@@ -31,9 +55,9 @@ bool StagingBuffer::mapUpdateAndUnmapHostVisibleMemory(uint32_t offset, uint32_t
 	{
 		return false;
 	}
-	if (pointer != nullptr)
+	if (readPointer != nullptr)
 	{
-		if (!memoryBlock->read(&pointer))
+		if (!memoryBlock->read(&readPointer))
 		{
 			return false;
 		}

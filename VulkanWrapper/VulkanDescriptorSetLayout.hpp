@@ -23,7 +23,7 @@ class DescriptorSetLayout
 
 		bool isInitialized() const;
 		const VkDescriptorSetLayout& getHandle() const;
-		const Device& getDeviceHandle() const;
+		const VkDevice& getDeviceHandle() const;
 
 	private:
 		DescriptorSetLayout(Device& device, const std::vector<VkDescriptorSetLayoutBinding>& bindings);

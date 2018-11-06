@@ -37,9 +37,9 @@ const VkPipelineLayout& PipelineLayout::getHandle() const
 	return mPipelineLayout;
 }
 
-const Device& PipelineLayout::getDeviceHandle() const
+const VkDevice& PipelineLayout::getDeviceHandle() const
 {
-	return mDevice;
+	return mDevice.getHandle();
 }
 
 PipelineLayout::PipelineLayout(Device& device, const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, const std::vector<VkPushConstantRange> pushConstantRanges)

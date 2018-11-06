@@ -37,7 +37,7 @@ class Queue
 
 		bool isInitialized() const;
 		const VkQueue& getHandle() const;
-		const Device& getDeviceHandle() const;
+		const VkDevice& getDeviceHandle() const;
 
 	private:
 		friend class Device;

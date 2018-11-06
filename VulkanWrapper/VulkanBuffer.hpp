@@ -58,6 +58,7 @@ class Buffer
 		friend class MemoryBlock;
 		void bindToMemoryBlock(MemoryBlock* memoryBlock, VkDeviceSize offsetInMemoryBlock);
 
+	private:
 		Device& mDevice;
 		VkBuffer mBuffer;
 

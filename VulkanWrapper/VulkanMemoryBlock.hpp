@@ -60,6 +60,7 @@ class MemoryBlock
 		bool init();
 		void release();
 
+	private:
 		Device& mDevice;
 		VkDeviceMemory mMemoryBlock;
 		VkMemoryRequirements mMemoryRequirements;

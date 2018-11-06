@@ -37,9 +37,9 @@ const VkFramebuffer& Framebuffer::getHandle() const
 	return mFramebuffer;
 }
 
-const Device& Framebuffer::getDeviceHandle() const
+const VkDevice& Framebuffer::getDeviceHandle() const
 {
-	return mDevice;
+	return mDevice.getHandle();
 }
 
 Framebuffer::Framebuffer(Device& device, RenderPass& renderPass, const std::vector<VkImageView>& attachments, uint32_t width, uint32_t height, uint32_t layers)

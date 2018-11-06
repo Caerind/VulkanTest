@@ -3,6 +3,8 @@
 
 #include <map>
 
+// TODO : Track Handle and/or Names and/or Ptr
+
 namespace nu
 {
 namespace Vulkan
@@ -40,6 +42,9 @@ enum ObjectType
 class ObjectTracker
 {
 	public:
+		ObjectTracker() = delete;
+		~ObjectTracker() = delete;
+
 		static void printCurrentState();
 		static bool checkForLeaks();
 
@@ -47,8 +52,6 @@ class ObjectTracker
 		static void unregisterObject(ObjectType type);
 
 	private:
-		ObjectTracker();
-
 		static const char* objectTypeToCString(ObjectType type);
 
 		static std::map<ObjectType, int> sAllocations;

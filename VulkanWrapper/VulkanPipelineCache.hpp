@@ -53,7 +53,7 @@ class PipelineCache
 
 		bool isInitialized() const;
 		const VkPipelineCache& getHandle() const;
-		const Device& getDeviceHandle() const;
+		const VkDevice& getDeviceHandle() const;
 
 	private:
 		PipelineCache(Device& device, const std::vector<unsigned char>& cacheData = {});

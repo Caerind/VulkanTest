@@ -36,7 +36,7 @@ class ShaderModule
 
 		~ShaderModule();
 
-		bool loadFromFile(const std::string& filename);
+		bool loadFromFile(const std::string& filename, ShaderStageFlags stage = ShaderStageFlags::None, const std::string& entrypoint = "main");
 
 		void setVertexEntrypointName(const std::string& entrypoint);
 		void setTessellationControlEntrypointName(const std::string& entrypoint);
@@ -46,7 +46,7 @@ class ShaderModule
 		void setComputeEntrypointName(const std::string& entrypoint);
 
 		bool create();
-		bool destroy();
+		void destroy();
 		bool isCreated() const;
 		const VkShaderModule& getHandle() const;
 
