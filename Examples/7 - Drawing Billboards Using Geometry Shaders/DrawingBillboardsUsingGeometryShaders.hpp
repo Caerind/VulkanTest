@@ -8,16 +8,18 @@
 #include "../../Mesh.hpp"
 #include "../../Window.hpp"
 
+#include "../../VertexBuffer.hpp"
+#include "../../StagingBuffer.hpp"
+#include "../../UniformBuffer.hpp"
+
 class DrawingBillboardsUsingGeometryShaders : public SampleBase
 {
 	public:
 		nu::Mesh mBillboards;
-		nu::Vulkan::Buffer::Ptr mBillboardsVertexBuffer;
-		nu::Vulkan::MemoryBlock::Ptr mBillboardsVertexBufferMemory;
+		nu::VertexBuffer::Ptr mBillboardsVertexBuffer;
 
-		bool mUpdateUniformBuffer;
-		nu::Vulkan::Buffer::Ptr mUniformBuffer;
-		nu::Vulkan::MemoryBlock::Ptr mUniformBufferMemory;
+		nu::UniformBuffer::Ptr mUniformBuffer;
+		nu::StagingBuffer::Ptr mStagingBuffer;
 
 		nu::Vulkan::DescriptorSetLayout::Ptr mDescriptorSetLayout;
 		nu::Vulkan::DescriptorPool::Ptr mDescriptorPool;
@@ -31,9 +33,6 @@ class DrawingBillboardsUsingGeometryShaders : public SampleBase
 			BillboardsPipeline = 0,
 			Count
 		};
-
-		nu::Vulkan::Buffer::Ptr mStagingBuffer;
-		nu::Vulkan::MemoryBlock::Ptr mStagingBufferMemory;
 
 		uint32_t mFrameIndex = 0;
 
@@ -52,41 +51,20 @@ class DrawingBillboardsUsingGeometryShaders : public SampleBase
 			{
 				return false;
 			}
-			mBillboardsVertexBuffer = mLogicalDevice->createBuffer(mBillboards.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-			if (mBillboardsVertexBuffer == nullptr || !mBillboardsVertexBuffer->isInitialized())
-			{
-				return false;
-			}
-			mBillboardsVertexBufferMemory = mBillboardsVertexBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-			if (mBillboardsVertexBufferMemory == nullptr || !mBillboardsVertexBufferMemory->isInitialized())
-			{
-				return false;
-			}
-			if (!mGraphicsQueue->useStagingBufferToUpdateBufferAndWait(mBillboards.size(), &mBillboards.data[0], mBillboardsVertexBuffer.get(),
-				0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-				mFramesResources.front().mCommandBuffer.get(), {}, 50000000))
+			mBillboardsVertexBuffer = nu::VertexBuffer::createVertexBuffer(*mLogicalDevice, mBillboards.size());
+			if (!mBillboardsVertexBuffer || !mBillboardsVertexBuffer->updateAndWait(mBillboards.size(), &mBillboards.data[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue.get(), {}, 50000000))
 			{
 				return false;
 			}
 
 			// Staging buffer & Uniform buffer
-			mStagingBuffer = mLogicalDevice->createBuffer(2 * 16 * sizeof(float), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-			if (mStagingBuffer == nullptr || !mStagingBuffer->isInitialized())
+			mUniformBuffer = nu::UniformBuffer::createUniformBuffer(*mLogicalDevice, 2 * 16 * sizeof(float));
+			if (mUniformBuffer == nullptr)
 			{
 				return false;
 			}
-			mStagingBufferMemory = mStagingBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-			if (mStagingBufferMemory == nullptr || !mStagingBufferMemory->isInitialized())
-			{
-				return false;
-			}
-			mUniformBuffer = mLogicalDevice->createBuffer(2 * 16 * sizeof(float), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-			if (mUniformBuffer == nullptr || !mUniformBuffer->isInitialized())
-			{
-				return false;
-			}
-			mUniformBufferMemory = mUniformBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-			if (mUniformBufferMemory == nullptr || !mUniformBufferMemory->isInitialized())
+			mStagingBuffer = mUniformBuffer->createStagingBuffer();
+			if (mStagingBuffer == nullptr)
 			{
 				return false;
 			}
@@ -131,21 +109,9 @@ class DrawingBillboardsUsingGeometryShaders : public SampleBase
 				return false;
 			}
 
-			nu::Vulkan::BufferDescriptorInfo bufferDescriptorUpdate = {
-				mDescriptorSets[0]->getHandle(),            // VkDescriptorSet                      TargetDescriptorSet
-				0,                                          // uint32_t                             TargetDescriptorBinding
-				0,                                          // uint32_t                             TargetArrayElement
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          // VkDescriptorType                     TargetDescriptorType
-				{                                           // std::vector<VkDescriptorBufferInfo>  BufferInfos
-					{
-						mUniformBuffer->getHandle(),              // VkBuffer                             buffer
-						0,                                        // VkDeviceSize                         offset
-						VK_WHOLE_SIZE                             // VkDeviceSize                         range
-					}
-				}
-			};
-
-			mLogicalDevice->updateDescriptorSets({}, { bufferDescriptorUpdate }, {}, {});
+			// Update descriptor
+			// TODO : Update more than one at once
+			mUniformBuffer->updateDescriptor(mDescriptorSets[0].get(), 0, 0);
 
 			// Render pass
 			mRenderPass = mLogicalDevice->initRenderPass();
@@ -255,36 +221,9 @@ class DrawingBillboardsUsingGeometryShaders : public SampleBase
 					return false;
 				}
 
-				if (mUpdateUniformBuffer)
+				if (mStagingBuffer->needToSend())
 				{
-					mUpdateUniformBuffer = false;
-
-					nu::Vulkan::BufferTransition preTransferTransition = {
-						mUniformBuffer.get(),         // Buffer*          buffer
-						VK_ACCESS_UNIFORM_READ_BIT,   // VkAccessFlags    currentAccess
-						VK_ACCESS_TRANSFER_WRITE_BIT, // VkAccessFlags    newAccess
-						VK_QUEUE_FAMILY_IGNORED,      // uint32_t         currentQueueFamily
-						VK_QUEUE_FAMILY_IGNORED       // uint32_t         newQueueFamily
-					};
-					commandBuffer->setBufferMemoryBarrier(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, { preTransferTransition });
-			
-					std::vector<VkBufferCopy> regions = {
-						{
-							0,                        // VkDeviceSize     srcOffset
-							0,                        // VkDeviceSize     dstOffset
-							2 * 16 * sizeof(float)    // VkDeviceSize     size
-						}
-					};
-					commandBuffer->copyDataBetweenBuffers(mStagingBuffer.get(), mUniformBuffer.get(), regions);
-
-					nu::Vulkan::BufferTransition postTransferTransition = {
-						mUniformBuffer.get(),         // Buffer*          buffer
-						VK_ACCESS_TRANSFER_WRITE_BIT, // VkAccessFlags    currentAccess
-						VK_ACCESS_UNIFORM_READ_BIT,   // VkAccessFlags    newAccess
-						VK_QUEUE_FAMILY_IGNORED,      // uint32_t         currentQueueFamily
-						VK_QUEUE_FAMILY_IGNORED       // uint32_t         newQueueFamily
-					};
-					commandBuffer->setBufferMemoryBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, { postTransferTransition });
+					mStagingBuffer->send(commandBuffer);
 				}
 
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex()) 
@@ -333,7 +272,7 @@ class DrawingBillboardsUsingGeometryShaders : public SampleBase
 				commandBuffer->bindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout->getHandle(), 0, { mDescriptorSets[0].get() }, {});
 
 				commandBuffer->bindPipeline(mPipelines[PipelineNames::BillboardsPipeline].get());
-				commandBuffer->bindVertexBuffers(0, { { mBillboardsVertexBuffer.get(), 0 } });
+				mBillboardsVertexBuffer->bindTo(commandBuffer, 0, 0);
 				for (size_t i = 0; i < mBillboards.parts.size(); i++) 
 				{
 					commandBuffer->drawGeometry(mBillboards.parts[i].vertexCount, 1, mBillboards.parts[i].vertexOffset, 0);
@@ -426,7 +365,6 @@ class DrawingBillboardsUsingGeometryShaders : public SampleBase
 
 		bool updateStagingBuffer(bool force)
 		{
-			mUpdateUniformBuffer = true;
 			static float horizontalAngle = 0.0f;
 			static float verticalAngle = 0.0f;
 
@@ -445,14 +383,14 @@ class DrawingBillboardsUsingGeometryShaders : public SampleBase
 
 				nu::Matrix4f modelViewMatrix = viewMatrix * modelMatrix;
 
-				if (!mStagingBufferMemory->mapUpdateAndUnmapHostVisibleMemory(0, sizeof(float) * 16, &modelViewMatrix[0], true, nullptr))
+				if (!mStagingBuffer->mapUpdateAndUnmapHostVisibleMemory(0, sizeof(float) * 16, &modelViewMatrix[0], true, nullptr))
 				{
 					return false;
 				}
 
 				nu::Matrix4f perspectiveMatrix = nu::Matrix4f::perspective(50.0f, static_cast<float>(mSwapchain->getSize().width) / static_cast<float>(mSwapchain->getSize().height), 0.5f, 10.0f);
 
-				if (!mStagingBufferMemory->mapUpdateAndUnmapHostVisibleMemory(sizeof(float) * 16, sizeof(float) * 16, &perspectiveMatrix[0], true, nullptr))
+				if (!mStagingBuffer->mapUpdateAndUnmapHostVisibleMemory(sizeof(float) * 16, sizeof(float) * 16, &perspectiveMatrix[0], true, nullptr))
 				{
 					return false;
 				}

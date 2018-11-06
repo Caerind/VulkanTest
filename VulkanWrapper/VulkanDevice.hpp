@@ -15,6 +15,7 @@
 #include "VulkanFence.hpp"
 #include "VulkanGraphicsPipeline.hpp"
 #include "VulkanImage.hpp"
+#include "VulkanMemoryBlock.hpp"
 #include "VulkanPipelineCache.hpp"
 #include "VulkanPipelineLayout.hpp"
 #include "VulkanQueue.hpp"
@@ -98,6 +99,8 @@ class Device
 
 		Image::Ptr createImage(VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usageScenarios, bool cubemap);
 		
+		MemoryBlock::Ptr createMemoryBlock(VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags memoryProperties);
+
 		PipelineCache::Ptr createPipelineCache(const std::vector<unsigned char>& cacheData = {});
 
 		PipelineLayout::Ptr createPipelineLayout(const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, const std::vector<VkPushConstantRange> pushConstantRanges);

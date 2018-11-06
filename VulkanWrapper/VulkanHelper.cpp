@@ -13,14 +13,14 @@ ImageHelper::Ptr ImageHelper::createImage2DAndView(Device& device, VkFormat form
 	if (image != nullptr)
 	{
 		image->mImage = device.createImage(VK_IMAGE_TYPE_2D, format, { size.width, size.height, 1 }, numMipmaps, numLayers, samples, usage, false);
-		if (image->mImage == nullptr || !image->mImage->isInitialized())
+		if (image->mImage == nullptr)
 		{
 			image.reset();
 			return image;
 		}
 		
-		image->mMemoryBlock = image->mImage->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-		if (image->mMemoryBlock == nullptr || !image->mMemoryBlock->isInitialized())
+		image->mMemoryBlock = image->mImage->allocateMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		if (image->mMemoryBlock == nullptr)
 		{
 			image.reset();
 			return image;
@@ -42,14 +42,14 @@ ImageHelper::Ptr ImageHelper::createLayered2DImageWithCubemapView(Device& device
 	if (image != nullptr)
 	{
 		image->mImage = device.createImage(VK_IMAGE_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, { size, size, 1 }, numMipmaps, 6, VK_SAMPLE_COUNT_1_BIT, usage, true);
-		if (image->mImage == nullptr || !image->mImage->isInitialized())
+		if (image->mImage == nullptr)
 		{
 			image.reset();
 			return image;
 		}
 
-		image->mMemoryBlock = image->mImage->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-		if (image->mMemoryBlock == nullptr || !image->mMemoryBlock->isInitialized())
+		image->mMemoryBlock = image->mImage->allocateMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		if (image->mMemoryBlock == nullptr)
 		{
 			image.reset();
 			return image;
@@ -87,14 +87,14 @@ ImageHelper::Ptr ImageHelper::createSampledImage(Device& device, VkImageType typ
 		}
 
 		image->mImage = device.createImage(type, format, size, numMipmaps, numLayers, VK_SAMPLE_COUNT_1_BIT, usage | VK_IMAGE_USAGE_SAMPLED_BIT, cubemap);
-		if (image->mImage == nullptr || !image->mImage->isInitialized())
+		if (image->mImage == nullptr)
 		{
 			image.reset();
 			return image;
 		}
 
-		image->mMemoryBlock = image->mImage->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-		if (image->mMemoryBlock == nullptr || !image->mMemoryBlock->isInitialized())
+		image->mMemoryBlock = image->mImage->allocateMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		if (image->mMemoryBlock == nullptr)
 		{
 			image.reset();
 			return image;
@@ -141,14 +141,14 @@ ImageHelper::Ptr ImageHelper::createCombinedImageSampler(Device& device, VkImage
 		}
 
 		image->mImage = device.createImage(type, format, size, numMipmaps, numLayers, VK_SAMPLE_COUNT_1_BIT, usage | VK_IMAGE_USAGE_SAMPLED_BIT, cubemap);
-		if (image->mImage == nullptr || !image->mImage->isInitialized())
+		if (image->mImage == nullptr)
 		{
 			image.reset();
 			return image;
 		}
 
-		image->mMemoryBlock = image->mImage->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-		if (image->mMemoryBlock == nullptr || !image->mMemoryBlock->isInitialized())
+		image->mMemoryBlock = image->mImage->allocateMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		if (image->mMemoryBlock == nullptr)
 		{
 			image.reset();
 			return image;
@@ -185,14 +185,14 @@ ImageHelper::Ptr ImageHelper::createStorageImage(Device& device, VkImageType typ
 		}
 
 		image->mImage = device.createImage(type, format, size, numMipmaps, numLayers, VK_SAMPLE_COUNT_1_BIT, usage | VK_IMAGE_USAGE_STORAGE_BIT, false);
-		if (image->mImage == nullptr || !image->mImage->isInitialized())
+		if (image->mImage == nullptr)
 		{
 			image.reset();
 			return image;
 		}
 
-		image->mMemoryBlock = image->mImage->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-		if (image->mMemoryBlock == nullptr || !image->mMemoryBlock->isInitialized())
+		image->mMemoryBlock = image->mImage->allocateMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		if (image->mMemoryBlock == nullptr)
 		{
 			image.reset();
 			return image;
@@ -230,14 +230,14 @@ ImageHelper::Ptr ImageHelper::createInputAttachment(Device& device, VkImageType 
 		}
 
 		image->mImage = device.createImage(type, format, size, 1, 1, VK_SAMPLE_COUNT_1_BIT, usage | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, false);
-		if (image->mImage == nullptr || !image->mImage->isInitialized())
+		if (image->mImage == nullptr)
 		{
 			image.reset();
 			return image;
 		}
 
-		image->mMemoryBlock = image->mImage->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-		if (image->mMemoryBlock == nullptr || !image->mMemoryBlock->isInitialized())
+		image->mMemoryBlock = image->mImage->allocateMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		if (image->mMemoryBlock == nullptr)
 		{
 			image.reset();
 			return image;
@@ -260,7 +260,7 @@ Image* ImageHelper::getImage()
 
 MemoryBlock* ImageHelper::getMemoryBlock()
 {
-	return mMemoryBlock.get();
+	return mMemoryBlock;
 }
 
 ImageView* ImageHelper::getImageView()
@@ -283,161 +283,6 @@ ImageHelper::ImageHelper()
 	, mMemoryBlock(nullptr)
 	, mImageView(nullptr)
 	, mSampler(nullptr)
-{
-}
-
-BufferHelper::Ptr BufferHelper::createUniformTexelBuffer(Device& device, VkFormat format, VkDeviceSize size, VkImageUsageFlags usage)
-{
-	BufferHelper::Ptr buffer(new BufferHelper());
-	if (buffer != nullptr)
-	{
-		const VkFormatProperties& formatProperties = device.getPhysicalDevice().getFormatProperties(format);
-		if (!(formatProperties.bufferFeatures & VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT))
-		{
-			// TODO : Use Numea System Log
-			printf("Provided format is not supported for a uniform texel buffer\n");
-			buffer.reset();
-			return buffer;
-		}
-
-		buffer->mBuffer = device.createBuffer(size, usage | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT);
-		if (buffer->mBuffer == nullptr || !buffer->mBuffer->isInitialized())
-		{
-			buffer.reset();
-			return buffer;
-		}
-
-		buffer->mMemoryBlock = buffer->mBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-		if (buffer->mMemoryBlock == nullptr || !buffer->mMemoryBlock->isInitialized())
-		{
-			buffer.reset();
-			return buffer;
-		}
-
-		buffer->mBufferView = buffer->mBuffer->createBufferView(format, 0, VK_WHOLE_SIZE);
-		if (buffer->mBufferView == nullptr || !buffer->mBufferView->isInitialized())
-		{
-			buffer.reset();
-			return buffer;
-		}
-	}
-	return buffer;
-}
-
-BufferHelper::Ptr BufferHelper::createStorageTexelBuffer(Device& device, VkFormat format, VkDeviceSize size, VkBufferUsageFlags usage, bool atomicOperations)
-{
-	BufferHelper::Ptr buffer(new BufferHelper());
-	if (buffer != nullptr)
-	{
-		const VkFormatProperties& formatProperties = device.getPhysicalDevice().getFormatProperties(format);
-		if (!(formatProperties.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT))
-		{
-			// TODO : Use Numea System Log
-			printf("Provided format is not supported for a storage texel buffer\n");
-			buffer.reset();
-			return buffer;
-		}
-
-		if (atomicOperations && !(formatProperties.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT))
-		{
-			// TODO : Use Numea System Log
-			printf("Provided format is not supported for atomic operations on storage texel buffers\n");
-			buffer.reset();
-			return buffer;
-		}
-
-		buffer->mBuffer = device.createBuffer(size, usage | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT);
-		if (buffer->mBuffer == nullptr || !buffer->mBuffer->isInitialized())
-		{
-			buffer.reset();
-			return buffer;
-		}
-
-		buffer->mMemoryBlock = buffer->mBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-		if (buffer->mMemoryBlock == nullptr || !buffer->mMemoryBlock->isInitialized())
-		{
-			buffer.reset();
-			return buffer;
-		}
-
-		buffer->mBufferView = buffer->mBuffer->createBufferView(format, 0, VK_WHOLE_SIZE);
-		if (buffer->mBufferView == nullptr || !buffer->mBufferView->isInitialized())
-		{
-			buffer.reset();
-			return buffer;
-		}
-	}
-	return buffer;
-}
-
-BufferHelper::Ptr BufferHelper::createUniformBuffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage)
-{
-	BufferHelper::Ptr buffer(new BufferHelper());
-	if (buffer != nullptr)
-	{
-		buffer->mBuffer = device.createBuffer(size, usage | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-		if (buffer->mBuffer == nullptr || !buffer->mBuffer->isInitialized())
-		{
-			buffer.reset();
-			return buffer;
-		}
-
-		buffer->mMemoryBlock = buffer->mBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-		if (buffer->mMemoryBlock == nullptr || !buffer->mMemoryBlock->isInitialized())
-		{
-			buffer.reset();
-			return buffer;
-		}
-	}
-	return buffer;
-}
-
-BufferHelper::Ptr BufferHelper::createStorageBuffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage)
-{
-	BufferHelper::Ptr buffer(new BufferHelper());
-	if (buffer != nullptr)
-	{
-		buffer->mBuffer = device.createBuffer(size, usage | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-		if (buffer->mBuffer == nullptr || !buffer->mBuffer->isInitialized())
-		{
-			buffer.reset();
-			return buffer;
-		}
-
-		buffer->mMemoryBlock = buffer->mBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-		if (buffer->mMemoryBlock == nullptr || !buffer->mMemoryBlock->isInitialized())
-		{
-			buffer.reset();
-			return buffer;
-		}
-	}
-	return buffer;
-}
-
-Buffer* BufferHelper::getBuffer()
-{
-	return mBuffer.get();
-}
-
-MemoryBlock* BufferHelper::getMemoryBlock()
-{
-	return mMemoryBlock.get();
-}
-
-BufferView* BufferHelper::getBufferView()
-{
-	return mBufferView.get();
-}
-
-bool BufferHelper::hasBufferView() const
-{
-	return mBufferView != nullptr;
-}
-
-BufferHelper::BufferHelper()
-	: mBuffer(nullptr)
-	, mMemoryBlock(nullptr)
-	, mBufferView(nullptr)
 {
 }
 

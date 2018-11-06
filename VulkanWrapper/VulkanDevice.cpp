@@ -184,6 +184,11 @@ Image::Ptr Device::createImage(VkImageType type, VkFormat format, VkExtent3D siz
 	return Image::createImage(*this, type, format, size, numMipmaps, numLayers, samples, usageScenarios, cubemap);
 }
 
+MemoryBlock::Ptr Device::createMemoryBlock(VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags memoryProperties)
+{
+	return MemoryBlock::createMemoryBlock(*this, memoryRequirements, memoryProperties);
+}
+
 PipelineCache::Ptr Device::createPipelineCache(const std::vector<unsigned char>& cacheData)
 {
 	return PipelineCache::createPipelineCache(*this, cacheData);

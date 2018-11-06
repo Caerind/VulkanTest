@@ -1,9 +1,14 @@
 #ifndef NU_VULKAN_MEMORY_BLOCK_HPP
 #define NU_VULKAN_MEMORY_BLOCK_HPP
 
+#include <memory>
+
 #include "VulkanFunctions.hpp"
 
-#include <memory>
+// TODO : Can multiple memory range from the same memory block be mapped at the same time ? -> If yes, instead of the variables, use a vector. It will be easier to flush everything at the same time
+// TODO : Control over flushing
+// TODO : Read/Write only a subpart of mapped memory
+// TODO : Binding on MemoryBlock side or Image/Buffer side ?
 
 namespace nu
 {
@@ -18,30 +23,52 @@ class MemoryBlock
 	public:
 		typedef std::unique_ptr<MemoryBlock> Ptr;
 
-		static MemoryBlock::Ptr createMemoryBlock(Buffer* buffer, VkMemoryPropertyFlagBits memoryProperties);
-		static MemoryBlock::Ptr createMemoryBlock(Image* buffer, VkMemoryPropertyFlagBits memoryProperties);
-
 		~MemoryBlock();
 
-		bool mapUpdateAndUnmapHostVisibleMemory(VkDeviceSize offset, VkDeviceSize dataSize, void* data, bool unmap, void** pointer);
+		bool map(VkDeviceSize offset, VkDeviceSize size);
+		bool read(void* data);
+		bool write(const void* data);
+		bool unmap();
 
-		bool isInitialized() const;
+		bool bind(Buffer* buffer, VkDeviceSize memoryOffset);
+		bool bind(Image* image, VkDeviceSize memoryOffset);
+
+		bool isHostVisible() const;
+		bool isDeviceLocal() const;
+		bool isHostCoherent() const;
+
+		VkDeviceSize getSize() const;
+		VkDeviceSize getAlignment() const;
+		uint32_t getMemoryType() const;
+		VkMemoryPropertyFlags getMemoryProperties() const;
+
+		bool isMapped() const;
+		VkDeviceSize getMappedOffset() const;
+		VkDeviceSize getMappedSize() const;
+
+		Device& getDevice();
+		const Device& getDevice() const;
 		const VkDeviceMemory& getHandle() const;
 		const VkDevice& getDeviceHandle() const;
 
 	private:
-		MemoryBlock(Device& device, Buffer* buffer, VkMemoryPropertyFlagBits memoryProperties);
-		MemoryBlock(Device& device, Image* image, VkMemoryPropertyFlagBits memoryProperties);
+		friend class Device;
+		static MemoryBlock::Ptr createMemoryBlock(Device& device, VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags memoryProperties);
+
+		MemoryBlock(Device& device, VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags memoryProperties);
 
 		bool init();
-		bool release();
+		void release();
 
 		Device& mDevice;
-		Buffer* mBuffer;
-		Image* mImage;
 		VkDeviceMemory mMemoryBlock;
-		VkMemoryPropertyFlagBits mMemoryProperties;
-	};
+		VkMemoryRequirements mMemoryRequirements;
+		VkMemoryPropertyFlags mMemoryProperties;
+
+		void* mMappedData;
+		VkDeviceSize mMappedOffset;
+		VkDeviceSize mMappedSize;
+};
 
 } // namespace Vulkan
 } // namespace nu

@@ -10,6 +10,10 @@
 
 #include "../../CookBook/OrbitingCamera.hpp"
 
+#include "../../VertexBuffer.hpp"
+#include "../../StagingBuffer.hpp"
+#include "../../UniformBuffer.hpp"
+
 class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 {
 	public:
@@ -20,15 +24,11 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 
 		const uint32_t PARTICLES_COUNT = 2000;
 
-		nu::Vulkan::Buffer::Ptr mParticlesVertexBuffer;
-		nu::Vulkan::MemoryBlock::Ptr mParticlesVertexBufferMemory;
+		nu::VertexBuffer::Ptr mParticlesVertexBuffer;
 		nu::Vulkan::BufferView::Ptr mParticlesVertexBufferView;
 
-		bool mUpdateUniformBuffer;
-		nu::Vulkan::Buffer::Ptr mUniformBuffer;
-		nu::Vulkan::MemoryBlock::Ptr mUniformBufferMemory;
-		nu::Vulkan::Buffer::Ptr mStagingBuffer;
-		nu::Vulkan::MemoryBlock::Ptr mStagingBufferMemory;
+		nu::UniformBuffer::Ptr mUniformBuffer;
+		nu::StagingBuffer::Ptr mStagingBuffer;
 
 		std::vector<nu::Vulkan::DescriptorSetLayout::Ptr> mDescriptorSetLayouts;
 		nu::Vulkan::DescriptorPool::Ptr mDescriptorPool;
@@ -100,48 +100,21 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 					return false;
 				}
 
-				mParticlesVertexBuffer = mLogicalDevice->createBuffer(sizeof(particles[0]) * particles.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT);
-				if (mParticlesVertexBuffer == nullptr || !mParticlesVertexBuffer->isInitialized())
-				{
-					return false;
-				}
-				mParticlesVertexBufferMemory = mParticlesVertexBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-				if (mParticlesVertexBufferMemory == nullptr || !mParticlesVertexBufferMemory->isInitialized())
-				{
-					return false;
-				}
-				mParticlesVertexBufferView = mParticlesVertexBuffer->createBufferView(VK_FORMAT_R32G32B32A32_SFLOAT, 0, VK_WHOLE_SIZE);
-				if (mParticlesVertexBufferView == nullptr || !mParticlesVertexBufferView->isInitialized())
-				{
-					return false;
-				}
-
-				if (!mGraphicsQueue->useStagingBufferToUpdateBufferAndWait(sizeof(particles[0]) * particles.size(), &particles[0], mParticlesVertexBuffer.get(),
-					0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-					mFramesResources.front().mCommandBuffer.get(), {}, 50000000))
+				mParticlesVertexBuffer = nu::VertexBuffer::createVertexBuffer(*mLogicalDevice, (uint32_t)sizeof(particles[0]) * (uint32_t)particles.size());
+				if (!mParticlesVertexBuffer || !mParticlesVertexBuffer->updateAndWait((uint32_t)sizeof(particles[0]) * (uint32_t)particles.size(), &particles[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue.get(), {}, 50000000))
 				{
 					return false;
 				}
 			}
 
 			// Staging buffer & Uniform buffer
-			mStagingBuffer = mLogicalDevice->createBuffer(2 * 16 * sizeof(float), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-			if (mStagingBuffer == nullptr || !mStagingBuffer->isInitialized())
+			mUniformBuffer = nu::UniformBuffer::createUniformBuffer(*mLogicalDevice, 2 * 16 * sizeof(float));
+			if (mUniformBuffer == nullptr)
 			{
 				return false;
 			}
-			mStagingBufferMemory = mStagingBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-			if (mStagingBufferMemory == nullptr || !mStagingBufferMemory->isInitialized())
-			{
-				return false;
-			}
-			mUniformBuffer = mLogicalDevice->createBuffer(2 * 16 * sizeof(float), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-			if (mUniformBuffer == nullptr || !mUniformBuffer->isInitialized())
-			{
-				return false;
-			}
-			mUniformBufferMemory = mUniformBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-			if (mUniformBufferMemory == nullptr || !mUniformBufferMemory->isInitialized())
+			mStagingBuffer = mUniformBuffer->createStagingBuffer();
+			if (mStagingBuffer == nullptr)
 			{
 				return false;
 			}
@@ -208,19 +181,10 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 				return false;
 			}
 
-			nu::Vulkan::BufferDescriptorInfo bufferDescriptorUpdate = {
-				mDescriptorSets[0]->getHandle(),            // VkDescriptorSet                      TargetDescriptorSet
-				0,                                          // uint32_t                             TargetDescriptorBinding
-				0,                                          // uint32_t                             TargetArrayElement
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          // VkDescriptorType                     TargetDescriptorType
-				{                                           // std::vector<VkDescriptorBufferInfo>  BufferInfos
-					{
-						mUniformBuffer->getHandle(),              // VkBuffer                             buffer
-						0,                                        // VkDeviceSize                         offset
-						VK_WHOLE_SIZE                             // VkDeviceSize                         range
-					}
-				}
-			};
+			// Update descriptor
+			// TODO : Update more than one at once
+			mUniformBuffer->updateDescriptor(mDescriptorSets[0].get(), 0, 0);
+
 			nu::Vulkan::TexelBufferDescriptorInfo storageTexelBufferDescriptorUpdate = {
 				mDescriptorSets[1]->getHandle(),            // VkDescriptorSet                      TargetDescriptorSet
 				0,                                          // uint32_t                             TargetDescriptorBinding
@@ -233,7 +197,7 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 				}
 			};
 
-			mLogicalDevice->updateDescriptorSets({}, { bufferDescriptorUpdate }, { storageTexelBufferDescriptorUpdate }, {});
+			mLogicalDevice->updateDescriptorSets({}, {}, { storageTexelBufferDescriptorUpdate }, {});
 
 			// Render pass
 			mRenderPass = mLogicalDevice->initRenderPass();
@@ -439,36 +403,9 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 					return false;
 				}
 
-				if (mUpdateUniformBuffer)
+				if (mStagingBuffer->needToSend())
 				{
-					mUpdateUniformBuffer = false;
-
-					nu::Vulkan::BufferTransition preTransferTransition = {
-						mUniformBuffer.get(),         // Buffer*          buffer
-						VK_ACCESS_UNIFORM_READ_BIT,   // VkAccessFlags    currentAccess
-						VK_ACCESS_TRANSFER_WRITE_BIT, // VkAccessFlags    newAccess
-						VK_QUEUE_FAMILY_IGNORED,      // uint32_t         currentQueueFamily
-						VK_QUEUE_FAMILY_IGNORED       // uint32_t         newQueueFamily
-					};
-					commandBuffer->setBufferMemoryBarrier(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, { preTransferTransition });
-			
-					std::vector<VkBufferCopy> regions = {
-						{
-							0,                        // VkDeviceSize     srcOffset
-							0,                        // VkDeviceSize     dstOffset
-							2 * 16 * sizeof(float)    // VkDeviceSize     size
-						}
-					};
-					commandBuffer->copyDataBetweenBuffers(mStagingBuffer.get(), mUniformBuffer.get(), regions);
-
-					nu::Vulkan::BufferTransition postTransferTransition = {
-						mUniformBuffer.get(),         // Buffer*          buffer
-						VK_ACCESS_TRANSFER_WRITE_BIT, // VkAccessFlags    currentAccess
-						VK_ACCESS_UNIFORM_READ_BIT,   // VkAccessFlags    newAccess
-						VK_QUEUE_FAMILY_IGNORED,      // uint32_t         currentQueueFamily
-						VK_QUEUE_FAMILY_IGNORED       // uint32_t         newQueueFamily
-					};
-					commandBuffer->setBufferMemoryBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, { postTransferTransition });
+					mStagingBuffer->send(commandBuffer);
 				}
 
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex()) 
@@ -514,7 +451,7 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 				};
 				commandBuffer->setScissorStateDynamically(0, { scissor });
 
-				commandBuffer->bindVertexBuffers(0, { { mParticlesVertexBuffer.get(), 0 } });
+				mParticlesVertexBuffer->bindTo(commandBuffer, 0, 0);
 				commandBuffer->bindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS, mGraphicsPipelineLayout->getHandle(), 0, { mDescriptorSets[0].get() }, {});
 				commandBuffer->bindPipeline(mGraphicsPipelines[GraphicsPipelineNames::ParticlesPipeline].get());
 				commandBuffer->drawGeometry(PARTICLES_COUNT, 1, 0, 0);
@@ -606,7 +543,6 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 
 		bool updateStagingBuffer(bool force)
 		{
-			mUpdateUniformBuffer = true;
 			static float horizontalAngle = 0.0f;
 			static float verticalAngle = 0.0f;
 
@@ -625,14 +561,14 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 
 				nu::Matrix4f modelViewMatrix = viewMatrix * modelMatrix;
 
-				if (!mStagingBufferMemory->mapUpdateAndUnmapHostVisibleMemory(0, sizeof(float) * 16, &modelViewMatrix[0], true, nullptr))
+				if (!mStagingBuffer->mapUpdateAndUnmapHostVisibleMemory(0, sizeof(float) * 16, &modelViewMatrix[0], true, nullptr))
 				{
 					return false;
 				}
 
 				nu::Matrix4f perspectiveMatrix = nu::Matrix4f::perspective(50.0f, static_cast<float>(mSwapchain->getSize().width) / static_cast<float>(mSwapchain->getSize().height), 0.5f, 10.0f);
 
-				if (!mStagingBufferMemory->mapUpdateAndUnmapHostVisibleMemory(sizeof(float) * 16, sizeof(float) * 16, &perspectiveMatrix[0], true, nullptr))
+				if (!mStagingBuffer->mapUpdateAndUnmapHostVisibleMemory(sizeof(float) * 16, sizeof(float) * 16, &perspectiveMatrix[0], true, nullptr))
 				{
 					return false;
 				}

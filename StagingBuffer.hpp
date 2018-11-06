@@ -11,18 +11,30 @@
 namespace nu
 {
 
+class UniformBuffer;
 class StagingBuffer
 {
 	public:
 		typedef std::unique_ptr<StagingBuffer> Ptr;
 
-		static StagingBuffer::Ptr createStagingBuffer(Vulkan::Device& device);
+		static StagingBuffer::Ptr createStagingBuffer(Vulkan::Buffer& dstBuffer);
+
 		~StagingBuffer();
 
-	private:
-		StagingBuffer();
+		bool mapUpdateAndUnmapHostVisibleMemory(uint32_t offset, uint32_t dataSize, void* data, bool unmap = true, void** pointer = nullptr);
 
+		void send(Vulkan::CommandBuffer* commandBuffer);
+
+		bool needToSend() const;
+
+	private:
+		StagingBuffer(Vulkan::Buffer& dstBuffer);
+
+		bool init();
+
+		Vulkan::Buffer& mDstBuffer;
 		Vulkan::Buffer::Ptr mBuffer;
+		bool mNeedToSend;
 };
 
 } // namespace nu

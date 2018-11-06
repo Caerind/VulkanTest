@@ -21,17 +21,25 @@ bool Queue::useStagingBufferToUpdateBufferAndWait(VkDeviceSize dataSize, void* d
 	}
 
 	nu::Vulkan::Buffer::Ptr stagingBuffer = mDevice.createBuffer(dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-	if (stagingBuffer == nullptr || !stagingBuffer->isInitialized())
+	if (stagingBuffer == nullptr)
 	{
 		return false;
 	}
-	nu::Vulkan::MemoryBlock::Ptr stagingBufferMemory = stagingBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-	if (stagingBufferMemory == nullptr || !stagingBuffer->isInitialized())
+	nu::Vulkan::MemoryBlock* stagingBufferMemory = stagingBuffer->allocateMemoryBlock(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+	if (stagingBufferMemory == nullptr)
 	{
 		return false;
 	}
 
-	if (!stagingBufferMemory->mapUpdateAndUnmapHostVisibleMemory(0, dataSize, data, true, nullptr))
+	if (!stagingBufferMemory->map(0, dataSize))
+	{
+		return false;
+	}
+	if (!stagingBufferMemory->write(data))
+	{
+		return false;
+	}
+	if (!stagingBufferMemory->unmap())
 	{
 		return false;
 	}
@@ -67,17 +75,25 @@ bool Queue::useStagingBufferToUpdateImageAndWait(VkDeviceSize dataSize, void* da
 	}
 
 	nu::Vulkan::Buffer::Ptr stagingBuffer = mDevice.createBuffer(dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-	if (stagingBuffer == nullptr || !stagingBuffer->isInitialized())
+	if (stagingBuffer == nullptr)
 	{
 		return false;
 	}
-	nu::Vulkan::MemoryBlock::Ptr stagingBufferMemory = stagingBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-	if (stagingBufferMemory == nullptr || !stagingBuffer->isInitialized())
+	nu::Vulkan::MemoryBlock* stagingBufferMemory = stagingBuffer->allocateMemoryBlock(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+	if (stagingBufferMemory == nullptr)
 	{
 		return false;
 	}
 
-	if (!stagingBufferMemory->mapUpdateAndUnmapHostVisibleMemory(0, dataSize, data, true, nullptr))
+	if (!stagingBufferMemory->map(0, dataSize))
+	{
+		return false;
+	}
+	if (!stagingBufferMemory->write(data))
+	{
+		return false;
+	}
+	if (!stagingBufferMemory->unmap())
 	{
 		return false;
 	}

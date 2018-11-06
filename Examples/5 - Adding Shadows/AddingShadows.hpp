@@ -8,6 +8,10 @@
 #include "../../Mesh.hpp"
 #include "../../Window.hpp"
 
+#include "../../VertexBuffer.hpp"
+#include "../../StagingBuffer.hpp"
+#include "../../UniformBuffer.hpp"
+
 /* 
 
 TODO : FIND WHY THIS ISNT WORKING ....
@@ -18,8 +22,7 @@ class AddingShadows : public SampleBase
 {
 	public:
 		std::array<nu::Mesh, 2> mScene;
-		nu::Vulkan::Buffer::Ptr mVertexBuffer;
-		nu::Vulkan::MemoryBlock::Ptr mVertexBufferMemory;
+		nu::VertexBuffer::Ptr mVertexBuffer;
 
 		nu::Vulkan::ImageHelper::Ptr mShadowMap;
 		nu::Vulkan::Framebuffer::Ptr mShadowMapFramebuffer;
@@ -41,11 +44,8 @@ class AddingShadows : public SampleBase
 			Count
 		};
 
-		nu::Vulkan::Buffer::Ptr mStagingBuffer;
-		nu::Vulkan::MemoryBlock::Ptr mStagingBufferMemory;
-		bool mUpdateUniformBuffer;
-		nu::Vulkan::Buffer::Ptr mUniformBuffer;
-		nu::Vulkan::MemoryBlock::Ptr mUniformBufferMemory;
+		nu::UniformBuffer::Ptr mUniformBuffer;
+		nu::StagingBuffer::Ptr mStagingBuffer;
 
 		uint32_t mFrameIndex = 0;
 
@@ -65,52 +65,25 @@ class AddingShadows : public SampleBase
 			{
 				return false;
 			}
-
 			std::vector<float> vertexData(mScene[0].data);
 			vertexData.insert(vertexData.end(), mScene[1].data.begin(), mScene[1].data.end());
-
-			mVertexBuffer = mLogicalDevice->createBuffer(sizeof(vertexData[0]) * vertexData.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-			if (mVertexBuffer == nullptr || !mVertexBuffer->isInitialized())
-			{
-				return false;
-			}
-			mVertexBufferMemory = mVertexBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-			if (mVertexBufferMemory == nullptr || !mVertexBufferMemory->isInitialized())
+			mVertexBuffer = nu::VertexBuffer::createVertexBuffer(*mLogicalDevice, (uint32_t)sizeof(vertexData[0]) * (uint32_t)vertexData.size());
+			if (!mVertexBuffer || !mVertexBuffer->updateAndWait((uint32_t)sizeof(vertexData[0]) * (uint32_t)vertexData.size(), &vertexData[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue.get(), {}, 50000000))
 			{
 				return false;
 			}
 
-			if (!mGraphicsQueue->useStagingBufferToUpdateBufferAndWait(sizeof(vertexData[0]) * vertexData.size(), &vertexData[0], mVertexBuffer.get(),
-				0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-				mFramesResources.front().mCommandBuffer.get(), {}, 50000000))
+			// Staging buffer & Uniform buffer
+			mUniformBuffer = nu::UniformBuffer::createUniformBuffer(*mLogicalDevice, 3 * 16 * sizeof(float));
+			if (mUniformBuffer == nullptr)
 			{
 				return false;
 			}
-
-			// Staging buffer
-			mStagingBuffer = mLogicalDevice->createBuffer(3 * 16 * sizeof(float), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-			if (mStagingBuffer == nullptr || !mStagingBuffer->isInitialized())
+			mStagingBuffer = mUniformBuffer->createStagingBuffer();
+			if (mStagingBuffer == nullptr)
 			{
 				return false;
 			}
-			mStagingBufferMemory = mStagingBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-			if (mStagingBufferMemory == nullptr || !mStagingBufferMemory->isInitialized())
-			{
-				return false;
-			}
-
-			// Uniform buffer
-			mUniformBuffer = mLogicalDevice->createBuffer(3 * 16 * sizeof(float), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-			if (mUniformBuffer == nullptr || !mUniformBuffer->isInitialized())
-			{
-				return false;
-			}
-			mUniformBufferMemory = mUniformBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-			if (mUniformBufferMemory == nullptr || !mUniformBufferMemory->isInitialized())
-			{
-				return false;
-			}
-
 			if (!updateStagingBuffer(true))
 			{
 				return false;
@@ -176,19 +149,8 @@ class AddingShadows : public SampleBase
 				return false;
 			}
 
-			nu::Vulkan::BufferDescriptorInfo bufferDescriptorUpdate = {
-				mDescriptorSets[0]->getHandle(),            // VkDescriptorSet                      TargetDescriptorSet
-				0,                                          // uint32_t                             TargetDescriptorBinding
-				0,                                          // uint32_t                             TargetArrayElement
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          // VkDescriptorType                     TargetDescriptorType
-				{                                           // std::vector<VkDescriptorBufferInfo>  BufferInfos
-					{
-						mUniformBuffer->getHandle(),              // VkBuffer                             buffer
-						0,                                        // VkDeviceSize                         offset
-						VK_WHOLE_SIZE                             // VkDeviceSize                         range
-					}
-				}
-			};
+			// TODO : Update more than one at once
+			mUniformBuffer->updateDescriptor(mDescriptorSets[0].get(), 0, 0);
 
 			nu::Vulkan::ImageDescriptorInfo imageDescriptorUpdate = {
 				mDescriptorSets[0]->getHandle(),                  // VkDescriptorSet                      TargetDescriptorSet
@@ -204,7 +166,7 @@ class AddingShadows : public SampleBase
 				}
 			};
 
-			mLogicalDevice->updateDescriptorSets({ imageDescriptorUpdate }, { bufferDescriptorUpdate }, {}, {});
+			mLogicalDevice->updateDescriptorSets({ imageDescriptorUpdate }, {  }, {}, {});
 
 			// Shadow map render pass - for rendering into depth attachment
 
@@ -421,41 +383,14 @@ class AddingShadows : public SampleBase
 					return false;
 				}
 
-				if (mUpdateUniformBuffer)
+				if (mStagingBuffer->needToSend())
 				{
-					mUpdateUniformBuffer = false;
-
-					nu::Vulkan::BufferTransition preTransferTransition = {
-						mUniformBuffer.get(),         // Buffer*          buffer
-						VK_ACCESS_UNIFORM_READ_BIT,   // VkAccessFlags    currentAccess
-						VK_ACCESS_TRANSFER_WRITE_BIT, // VkAccessFlags    newAccess
-						VK_QUEUE_FAMILY_IGNORED,      // uint32_t         currentQueueFamily
-						VK_QUEUE_FAMILY_IGNORED       // uint32_t         newQueueFamily
-					};
-					commandBuffer->setBufferMemoryBarrier(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, { preTransferTransition });
-
-					std::vector<VkBufferCopy> regions = {
-						{
-							0,                        // VkDeviceSize     srcOffset
-							0,                        // VkDeviceSize     dstOffset
-							3 * 16 * sizeof(float)    // VkDeviceSize     size
-						}
-					};
-					commandBuffer->copyDataBetweenBuffers(mStagingBuffer.get(), mUniformBuffer.get(), regions);
-
-					nu::Vulkan::BufferTransition postTransferTransition = {
-						mUniformBuffer.get(),         // Buffer*          buffer
-						VK_ACCESS_TRANSFER_WRITE_BIT, // VkAccessFlags    currentAccess
-						VK_ACCESS_UNIFORM_READ_BIT,   // VkAccessFlags    newAccess
-						VK_QUEUE_FAMILY_IGNORED,      // uint32_t         currentQueueFamily
-						VK_QUEUE_FAMILY_IGNORED       // uint32_t         newQueueFamily
-					};
-					commandBuffer->setBufferMemoryBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, { postTransferTransition });
+					mStagingBuffer->send(commandBuffer);
 				}
 
 				// Shadow map generation
 				commandBuffer->beginRenderPass(mShadowRenderPass->getHandle(), mShadowMapFramebuffer->getHandle(), { { 0, 0, },{ 512, 512 } }, { { 1.0f, 0 } }, VK_SUBPASS_CONTENTS_INLINE);
-				commandBuffer->bindVertexBuffers(0, { { mVertexBuffer.get(), 0 } });
+				mVertexBuffer->bindTo(commandBuffer, 0, 0);
 				commandBuffer->bindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout->getHandle(), 0, { mDescriptorSets[0].get() }, {});
 				commandBuffer->bindPipeline(mPipelines[PipelineNames::ShadowPipeline].get());
 				commandBuffer->drawGeometry(mScene[0].parts[0].vertexCount + mScene[1].parts[0].vertexCount, 1, 0, 0);
@@ -599,7 +534,6 @@ class AddingShadows : public SampleBase
 
 		bool updateStagingBuffer(bool force)
 		{
-			mUpdateUniformBuffer = true;
 			static float horizontalAngle = 0.0f;
 			static float verticalAngle = 0.0f;
 
@@ -618,14 +552,14 @@ class AddingShadows : public SampleBase
 
 				nu::Matrix4f modelViewMatrix = viewMatrix * modelMatrix;
 
-				if (!mStagingBufferMemory->mapUpdateAndUnmapHostVisibleMemory(0, sizeof(float) * 16, &modelViewMatrix[0], true, nullptr))
+				if (!mStagingBuffer->mapUpdateAndUnmapHostVisibleMemory(0, sizeof(float) * 16, &modelViewMatrix[0]))
 				{
 					return false;
 				}
 
 				nu::Matrix4f perspectiveMatrix = nu::Matrix4f::perspective(50.0f, static_cast<float>(mSwapchain->getSize().width) / static_cast<float>(mSwapchain->getSize().height), 0.5f, 10.0f);
 
-				if (!mStagingBufferMemory->mapUpdateAndUnmapHostVisibleMemory(sizeof(float) * 16, sizeof(float) * 16, &perspectiveMatrix[0], true, nullptr))
+				if (!mStagingBuffer->mapUpdateAndUnmapHostVisibleMemory(sizeof(float) * 16, sizeof(float) * 16, &perspectiveMatrix[0]))
 				{
 					return false;
 				}

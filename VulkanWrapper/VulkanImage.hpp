@@ -19,30 +19,42 @@ class Image
 	public:
 		typedef std::unique_ptr<Image> Ptr;
 
-		static Image::Ptr createImage(Device& device, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usageScenarios, bool cubemap);
-
 		~Image();
 
 		const VkMemoryRequirements& getMemoryRequirements() const;
 
-		MemoryBlock::Ptr allocateAndBindMemoryBlock(VkMemoryPropertyFlagBits memoryProperties);
+		MemoryBlock* allocateMemoryBlock(VkMemoryPropertyFlagBits memoryProperties);
 
 		ImageView::Ptr createImageView(VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspect);
 
-		bool isInitialized() const;
-		const VkImage& getHandle() const;
-		const VkDevice& getDeviceHandle() const;
 		Device& getDevice();
 		const Device& getDevice() const;
+		const VkImage& getHandle() const;
+		const VkDevice& getDeviceHandle() const;
+
+		bool ownMemoryBlock() const;
+		bool isBoundToMemoryBlock() const;
+		MemoryBlock* getMemoryBlock();
 
 	private:
+		friend class Device;
+		friend class MemoryBlock;
+
+		static Image::Ptr createImage(Device& device, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usageScenarios, bool cubemap);
+
 		Image(Device& device, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usageScenarios, bool cubemap);
 
 		bool init();
-		bool release();
+		bool release(); 
+		
+		void bindToMemoryBlock(MemoryBlock* memoryBlock, VkDeviceSize offsetInMemoryBlock);
 
 		Device& mDevice;
 		VkImage mImage;
+
+		MemoryBlock::Ptr mOwnedMemoryBlock;
+		MemoryBlock* mMemoryBlock;
+		VkDeviceSize mOffsetInMemoryBlock;
 
 		VkImageType mType;
 		VkFormat mFormat;

@@ -1,9 +1,9 @@
 #ifndef NU_VULKAN_BUFFER_VIEW_HPP
 #define NU_VULKAN_BUFFER_VIEW_HPP
 
-#include "VulkanFunctions.hpp"
-
 #include <memory>
+
+#include "VulkanFunctions.hpp"
 
 namespace nu
 {
@@ -17,28 +17,34 @@ class BufferView
 	public:
 		typedef std::unique_ptr<BufferView> Ptr;
 
-		static BufferView::Ptr createBufferView(Device& device, Buffer& buffer, VkFormat format, VkDeviceSize memoryOffset, VkDeviceSize memoryRange);
-
 		~BufferView();
 
-		bool isInitialized() const;
+		VkFormat getFormat() const;
+		VkDeviceSize getOffset() const;
+		VkDeviceSize getSize() const;
+
+		Device& getDevice();
+		const Device& getDevice() const;
 		const VkBufferView& getHandle() const;
 		const VkBuffer& getBufferHandle() const;
 		const VkDevice& getDeviceHandle() const;
 
 	private:
-		BufferView(Device& device, Buffer& buffer, VkFormat format, VkDeviceSize memoryOffset, VkDeviceSize memoryRange);
+		friend class Buffer;
+		static BufferView::Ptr createBufferView(Buffer& buffer, VkFormat format, VkDeviceSize offset, VkDeviceSize size);
+
+		BufferView(Buffer& buffer, VkFormat format, VkDeviceSize offset, VkDeviceSize size);
 
 		bool init();
-		bool release();
+		void release();
 
 		Device& mDevice;
 		Buffer& mBuffer;
 		VkBufferView mBufferView;
 
 		VkFormat mFormat;
-		VkDeviceSize mMemoryOffset;
-		VkDeviceSize mMemoryRange;
+		VkDeviceSize mOffset;
+		VkDeviceSize mSize;
 };
 
 } // namespace Vulkan

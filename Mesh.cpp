@@ -10,7 +10,7 @@ namespace nu
 
 uint32_t Mesh::size() const
 {
-	return sizeof(float) * data.size();
+	return (uint32_t)sizeof(float) * (uint32_t)data.size();
 }
 
 bool Mesh::loadFromFile(const char* filename, bool loadNormals, bool loadTexcoords, bool generateTangents, bool unify, uint32_t* vertexStride)
@@ -25,7 +25,7 @@ bool Mesh::loadFromFile(const char* filename, bool loadNormals, bool loadTexcoor
 	if (!result) 
 	{
 		// TODO : Use Numea Log System
-		printf("Could not open the '%s' file\n");
+		printf("Could not open the '%s' file\n", filename);
 		if (error.size() > 0)
 		{
 			// TODO : Use Numea Log System

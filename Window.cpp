@@ -150,17 +150,17 @@ bool Window::pollEvent(Event& event)
 		{
 			case USER_MESSAGE_MOUSE_CLICK:
 				event.type = EventType::MouseClick;
-				event.param1 = message.wParam;
+				event.param1 = (int)message.wParam;
 				event.param2 = (int)(message.lParam > 0);
 				break;
 			case USER_MESSAGE_MOUSE_MOVE:
 				event.type = EventType::MouseMove;
-				event.param1 = message.wParam;
-				event.param2 = message.lParam;
+				event.param1 = (int)message.wParam;
+				event.param2 = (int)message.lParam;
 				break;
 			case USER_MESSAGE_MOUSE_WHEEL:
 				event.type = EventType::MouseWheel;
-				event.param1 = message.wParam;
+				event.param1 = (int)message.wParam;
 				event.param2 = 0;
 				break;
 			case USER_MESSAGE_RESIZE:

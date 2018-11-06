@@ -8,12 +8,15 @@
 #include "../../Mesh.hpp"
 #include "../../Window.hpp"
 
+#include "../../VertexBuffer.hpp"
+#include "../../StagingBuffer.hpp"
+#include "../../UniformBuffer.hpp"
+
 class VertexDiffuseLightning : public SampleBase
 {
 	public:
 		nu::Mesh mMesh;
-		nu::Vulkan::Buffer::Ptr mVertexBuffer;
-		nu::Vulkan::MemoryBlock::Ptr mVertexBufferMemory;
+		nu::VertexBuffer::Ptr mVertexBuffer;
 
 		nu::Vulkan::DescriptorSetLayout::Ptr mDescriptorSetLayout;
 		nu::Vulkan::DescriptorPool::Ptr mDescriptorPool;
@@ -28,11 +31,8 @@ class VertexDiffuseLightning : public SampleBase
 			Count
 		};
 
-		nu::Vulkan::Buffer::Ptr mStagingBuffer;
-		nu::Vulkan::MemoryBlock::Ptr mStagingBufferMemory;
-		bool mUpdateUniformBuffer;
-		nu::Vulkan::Buffer::Ptr mUniformBuffer;
-		nu::Vulkan::MemoryBlock::Ptr mUniformBufferMemory;
+		nu::UniformBuffer::Ptr mUniformBuffer;
+		nu::StagingBuffer::Ptr mStagingBuffer;
 
 		uint32_t mFrameIndex = 0;
 
@@ -48,44 +48,20 @@ class VertexDiffuseLightning : public SampleBase
 			{
 				return false;
 			}
-			mVertexBuffer = mLogicalDevice->createBuffer(mMesh.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-			if (mVertexBuffer == nullptr || !mVertexBuffer->isInitialized())
-			{
-				return false;
-			}
-			mVertexBufferMemory = mVertexBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-			if (mVertexBufferMemory == nullptr || !mVertexBufferMemory->isInitialized())
-			{
-				return false;
-			}
-
-			if (!mGraphicsQueue->useStagingBufferToUpdateBufferAndWait(mMesh.size(), &mMesh.data[0], mVertexBuffer.get(),
-				0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-				mFramesResources.front().mCommandBuffer.get(), {}, 50000000)) 
-			{
-				return false;
-			}
-
-			// Staging buffer
-			mStagingBuffer = mLogicalDevice->createBuffer(2 * 16 * sizeof(float), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-			if (mStagingBuffer == nullptr || !mStagingBuffer->isInitialized())
-			{
-				return false;
-			}
-			mStagingBufferMemory = mStagingBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-			if (mStagingBufferMemory == nullptr || !mStagingBufferMemory->isInitialized())
+			mVertexBuffer = nu::VertexBuffer::createVertexBuffer(*mLogicalDevice, mMesh.size());
+			if (!mVertexBuffer || !mVertexBuffer->updateAndWait(mMesh.size(), &mMesh.data[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue.get(), {}, 50000000))
 			{
 				return false;
 			}
 
 			// Uniform buffer
-			mUniformBuffer = mLogicalDevice->createBuffer(2 * 16 * sizeof(float), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-			if (mUniformBuffer == nullptr || !mUniformBuffer->isInitialized())
+			mUniformBuffer = nu::UniformBuffer::createUniformBuffer(*mLogicalDevice, 2 * 16 * sizeof(float));
+			if (mUniformBuffer == nullptr)
 			{
 				return false;
 			}
-			mUniformBufferMemory = mUniformBuffer->allocateAndBindMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-			if (mUniformBufferMemory == nullptr || !mUniformBufferMemory->isInitialized())
+			mStagingBuffer = mUniformBuffer->createStagingBuffer();
+			if (mStagingBuffer == nullptr)
 			{
 				return false;
 			}
@@ -127,42 +103,22 @@ class VertexDiffuseLightning : public SampleBase
 				return false;
 			}
 
-			nu::Vulkan::BufferDescriptorInfo bufferDescriptorUpdate = {
-				mDescriptorSets[0]->getHandle(),            // VkDescriptorSet                      TargetDescriptorSet
-				0,                                          // uint32_t                             TargetDescriptorBinding
-				0,                                          // uint32_t                             TargetArrayElement
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          // VkDescriptorType                     TargetDescriptorType
-				{                                           // std::vector<VkDescriptorBufferInfo>  BufferInfos
-					{
-						mUniformBuffer->getHandle(),              // VkBuffer                             buffer
-						0,                                        // VkDeviceSize                         offset
-						VK_WHOLE_SIZE                             // VkDeviceSize                         range
-					}
-				}
-			};
-
-			mLogicalDevice->updateDescriptorSets({}, { bufferDescriptorUpdate }, {}, {});
+			// Update descriptor
+			// TODO : Update more than one at once
+			mUniformBuffer->updateDescriptor(mDescriptorSets[0].get(), 0, 0);
 
 			// Render pass
 			mRenderPass = mLogicalDevice->initRenderPass();
-
-			// Color attachment
 			mRenderPass->addAttachment(mSwapchain->getFormat());
 			mRenderPass->setAttachmentLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR);
 			mRenderPass->setAttachmentStoreOp(VK_ATTACHMENT_STORE_OP_STORE);
 			mRenderPass->setAttachmentFinalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-
-			// Depth attachment
 			mRenderPass->addAttachment(mSwapchain->getDepthFormat());
 			mRenderPass->setAttachmentLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR);
 			mRenderPass->setAttachmentFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-
-			// Subpass
 			mRenderPass->addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS);
 			mRenderPass->addColorAttachmentToSubpass(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 			mRenderPass->addDepthStencilAttachmentToSubpass(1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-
-			// Subpass Dependencies
 			mRenderPass->addDependency(
 				VK_SUBPASS_EXTERNAL,                            // uint32_t                   srcSubpass
 				0,                                              // uint32_t                   dstSubpass
@@ -262,36 +218,9 @@ class VertexDiffuseLightning : public SampleBase
 					return false;
 				}
 
-				if (mUpdateUniformBuffer)
+				if (mStagingBuffer->needToSend())
 				{
-					mUpdateUniformBuffer = false;
-
-					nu::Vulkan::BufferTransition preTransferTransition = {
-						mUniformBuffer.get(),         // Buffer*          buffer
-						VK_ACCESS_UNIFORM_READ_BIT,   // VkAccessFlags    currentAccess
-						VK_ACCESS_TRANSFER_WRITE_BIT, // VkAccessFlags    newAccess
-						VK_QUEUE_FAMILY_IGNORED,      // uint32_t         currentQueueFamily
-						VK_QUEUE_FAMILY_IGNORED       // uint32_t         newQueueFamily
-					};
-					commandBuffer->setBufferMemoryBarrier(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, { preTransferTransition });
-			
-					std::vector<VkBufferCopy> regions = {
-						{
-							0,                        // VkDeviceSize     srcOffset
-							0,                        // VkDeviceSize     dstOffset
-							2 * 16 * sizeof(float)    // VkDeviceSize     size
-						}
-					};
-					commandBuffer->copyDataBetweenBuffers(mStagingBuffer.get(), mUniformBuffer.get(), regions);
-
-					nu::Vulkan::BufferTransition postTransferTransition = {
-						mUniformBuffer.get(),         // Buffer*          buffer
-						VK_ACCESS_TRANSFER_WRITE_BIT, // VkAccessFlags    currentAccess
-						VK_ACCESS_UNIFORM_READ_BIT,   // VkAccessFlags    newAccess
-						VK_QUEUE_FAMILY_IGNORED,      // uint32_t         currentQueueFamily
-						VK_QUEUE_FAMILY_IGNORED       // uint32_t         newQueueFamily
-					};
-					commandBuffer->setBufferMemoryBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, { postTransferTransition });
+					mStagingBuffer->send(commandBuffer);
 				}
 
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex()) 
@@ -337,7 +266,7 @@ class VertexDiffuseLightning : public SampleBase
 				};
 				commandBuffer->setScissorStateDynamically(0, { scissor });
 
-				commandBuffer->bindVertexBuffers(0, { { mVertexBuffer.get(), 0 } } );
+				mVertexBuffer->bindTo(commandBuffer, 0, 0 );
 
 				commandBuffer->bindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout->getHandle(), 0, { mDescriptorSets[0].get() }, {});
 
@@ -435,7 +364,6 @@ class VertexDiffuseLightning : public SampleBase
 
 		bool updateStagingBuffer(bool force)
 		{
-			mUpdateUniformBuffer = true;
 			static float horizontalAngle = 0.0f;
 			static float verticalAngle = 0.0f;
 
@@ -454,14 +382,13 @@ class VertexDiffuseLightning : public SampleBase
 
 				nu::Matrix4f modelViewMatrix = viewMatrix * modelMatrix;
 
-				if (!mStagingBufferMemory->mapUpdateAndUnmapHostVisibleMemory(0, sizeof(float) * 16, &modelViewMatrix[0], true, nullptr))
+				nu::Matrix4f perspectiveMatrix = nu::Matrix4f::perspective(50.0f, static_cast<float>(mSwapchain->getSize().width) / static_cast<float>(mSwapchain->getSize().height), 0.5f, 10.0f);
+
+				if (!mStagingBuffer->mapUpdateAndUnmapHostVisibleMemory(0, sizeof(float) * 16, &modelViewMatrix[0]))
 				{
 					return false;
 				}
-
-				nu::Matrix4f perspectiveMatrix = nu::Matrix4f::perspective(50.0f, static_cast<float>(mSwapchain->getSize().width) / static_cast<float>(mSwapchain->getSize().height), 0.5f, 10.0f);
-
-				if (!mStagingBufferMemory->mapUpdateAndUnmapHostVisibleMemory(sizeof(float) * 16, sizeof(float) * 16, &perspectiveMatrix[0], true, nullptr))
+				if (!mStagingBuffer->mapUpdateAndUnmapHostVisibleMemory(sizeof(float) * 16, sizeof(float) * 16, &perspectiveMatrix[0]))
 				{
 					return false;
 				}

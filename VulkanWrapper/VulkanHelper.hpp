@@ -41,33 +41,9 @@ class ImageHelper
 		ImageHelper();
 
 		Image::Ptr mImage;
-		MemoryBlock::Ptr mMemoryBlock;
+		MemoryBlock* mMemoryBlock;
 		ImageView::Ptr mImageView;
 		Sampler::Ptr mSampler;
-};
-
-class BufferHelper
-{
-	public:
-		typedef std::unique_ptr<BufferHelper> Ptr;
-
-		static BufferHelper::Ptr createUniformTexelBuffer(Device& device, VkFormat format, VkDeviceSize size, VkImageUsageFlags usage);
-		static BufferHelper::Ptr createStorageTexelBuffer(Device& device, VkFormat format, VkDeviceSize size, VkBufferUsageFlags usage, bool atomicOperations);
-		static BufferHelper::Ptr createUniformBuffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage);
-		static BufferHelper::Ptr createStorageBuffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage);
-
-		Buffer* getBuffer();
-		MemoryBlock* getMemoryBlock();
-		BufferView* getBufferView();
-
-		bool hasBufferView() const;
-
-	protected:
-		BufferHelper();
-
-		Buffer::Ptr mBuffer;
-		MemoryBlock::Ptr mMemoryBlock;
-		BufferView::Ptr mBufferView;
 };
 
 } // namespace Vulkan

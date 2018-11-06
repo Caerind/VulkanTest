@@ -22,17 +22,30 @@
 #define NU_ALIGN64 NU_ALIGN(64)
 #define NU_ALIGN128 NU_ALIGN(128)
 
+// From here : https://stackoverflow.com/questions/11761703/overloading-macro-on-number-of-arguments
+#define NU_OVERLOAD_ARGS2(_1,_2,MACRO,...) MACRO
+#define NU_OVERLOAD_ARGS3(_1,_2,_3,MACRO,...) MACRO
+#define NU_OVERLOAD_ARGS4(_1,_2,_3,_4,MACRO,...) MACRO
+
 #ifdef assert
 #undef assert
 #endif
 #if NU_ENABLE_ASSERT
-	#define assert(expr) \
+	#define NU_ASSERT_1_ARG(expr) \
 		if (expr) {} \
 		else \
 		{ \
 			printf("Assertion failed!\nExpr : %s\n File : %s\n Line : %d\n", #expr, __FILE__, __LINE__); \
 			for (;;) {} \
 		}
+	#define NU_ASSERT_2_ARG(expr, text) \
+			if (expr) {} \
+			else \
+			{ \
+				printf("Assertion failed : %s !\nExpr : %s\n File : %s\n Line : %d\n", text, #expr, __FILE__, __LINE__); \
+				for (;;) {} \
+			}
+	#define assert(...) NU_OVERLOAD_ARGS2(__VA_ARGS__, NU_ASSERT_2_ARG, NU_ASSERT_1_ARG)(__VA_ARGS__)
 #else
 	#define assert
 #endif

@@ -11,13 +11,16 @@
 
 int main() 
 {
-	/*
 	printf("1 - Vertex Diffuse Lightning\n");
 	{
 		nu::Window window("1 - Vertex Diffuse Lightning", 0, 0, 1280, 920);
 
 		VertexDiffuseLightning sample;
-		sample.initialize(window.getParameters());
+		if (!sample.initialize(window.getParameters()))
+		{
+			printf("Could not initialize the sample\n");
+			window.close();
+		}
 
 		while (window.isOpen())
 		{
@@ -65,7 +68,11 @@ int main()
 		nu::Window window("2 - Fragment Specular Lightning", 0, 0, 1280, 920);
 
 		FragmentSpecularLightning sample;
-		sample.initialize(window.getParameters());
+		if (!sample.initialize(window.getParameters()))
+		{
+			printf("Could not initialize the sample\n");
+			window.close();
+		}
 
 		while (window.isOpen())
 		{
@@ -113,7 +120,11 @@ int main()
 		nu::Window window("3 - Normal Mapped Geometry", 0, 0, 1280, 920);
 
 		NormalMappedGeometry sample;
-		sample.initialize(window.getParameters());
+		if (!sample.initialize(window.getParameters()))
+		{
+			printf("Could not initialize the sample\n");
+			window.close();
+		}
 
 		while (window.isOpen())
 		{
@@ -161,7 +172,11 @@ int main()
 		nu::Window window("4 - Reflective and Refractive Geometry Using Cubemaps", 0, 0, 1280, 920);
 
 		ReflectiveAndRefractiveGeometryUsingCubemaps sample;
-		sample.initialize(window.getParameters());
+		if (!sample.initialize(window.getParameters()))
+		{
+			printf("Could not initialize the sample\n");
+			window.close();
+		}
 
 		while (window.isOpen())
 		{
@@ -209,7 +224,11 @@ int main()
 		nu::Window window("5 - Adding Shadows", 0, 0, 1280, 920);
 
 		AddingShadows sample;
-		sample.initialize(window.getParameters());
+		if (!sample.initialize(window.getParameters()))
+		{
+			printf("Could not initialize the sample\n");
+			window.close();
+		}
 
 		while (window.isOpen())
 		{
@@ -257,7 +276,11 @@ int main()
 		nu::Window window("6 - Drawing Skybox", 0, 0, 1280, 920);
 
 		DrawingSkybox sample;
-		sample.initialize(window.getParameters());
+		if (!sample.initialize(window.getParameters()))
+		{
+			printf("Could not initialize the sample\n");
+			window.close();
+		}
 
 		while (window.isOpen())
 		{
@@ -305,7 +328,11 @@ int main()
 		nu::Window window("7 - Drawing Billboards Using Geometry Shaders", 0, 0, 1280, 920);
 
 		DrawingBillboardsUsingGeometryShaders sample;
-		sample.initialize(window.getParameters());
+		if (!sample.initialize(window.getParameters()))
+		{
+			printf("Could not initialize the sample\n");
+			window.close();
+		}
 
 		while (window.isOpen())
 		{
@@ -353,7 +380,11 @@ int main()
 		nu::Window window("8 - Drawing Particles Using Compute And Graphics Pipelines", 0, 0, 1280, 920);
 
 		DrawingParticlesUsingComputeAndGraphicsPipelines sample;
-		sample.initialize(window.getParameters());
+		if (!sample.initialize(window.getParameters()))
+		{
+			printf("Could not initialize the sample\n");
+			window.close();
+		}
 
 		while (window.isOpen())
 		{
@@ -401,7 +432,11 @@ int main()
 		nu::Window window("9 - Rendering Tesselated Terrain", 0, 0, 1280, 920);
 
 		RenderingTesselatedTerrain sample;
-		sample.initialize(window.getParameters());
+		if (!sample.initialize(window.getParameters()))
+		{
+			printf("Could not initialize the sample\n");
+			window.close();
+		}
 
 		while (window.isOpen())
 		{
@@ -443,14 +478,17 @@ int main()
 	printf("\n\n");
 
 	nu::Vulkan::ObjectTracker::checkForLeaks();
-	*/
 
 	printf("10 - Postprocessing\n");
 	{
 		nu::Window window("10 - Postprocessing", 0, 0, 1280, 920);
 
 		Postprocessing sample;
-		sample.initialize(window.getParameters());
+		if (!sample.initialize(window.getParameters()))
+		{
+			printf("Could not initialize the sample\n");
+			window.close();
+		}
 
 		while (window.isOpen())
 		{

@@ -1,36 +1,43 @@
-#include "VulkanBuffer.hpp"
+#include "VulkanBufferView.hpp"
 
 #include "VulkanDevice.hpp"
-#include "VulkanBufferView.hpp"
+#include "VulkanBuffer.hpp"
 
 namespace nu
 {
 namespace Vulkan
 {
 
-BufferView::Ptr BufferView::createBufferView(Device& device, Buffer& buffer, VkFormat format, VkDeviceSize memoryOffset, VkDeviceSize memoryRange)
-{
-	BufferView::Ptr bufferView(new BufferView(device, buffer, format, memoryOffset, memoryRange));
-	if (bufferView != nullptr)
-	{
-		if (!bufferView->init())
-		{
-			bufferView.reset();
-		}
-	}
-	return bufferView;
-}
-
 BufferView::~BufferView()
 {
-	ObjectTracker::unregisterObject(ObjectType_BufferView);
-
 	release();
+
+	ObjectTracker::unregisterObject(ObjectType_BufferView);
 }
 
-bool BufferView::isInitialized() const
+VkFormat BufferView::getFormat() const
 {
-	return mBufferView != VK_NULL_HANDLE;
+	return mFormat;
+}
+
+VkDeviceSize BufferView::getOffset() const
+{
+	return mOffset;
+}
+
+VkDeviceSize BufferView::getSize() const
+{
+	return mSize;
+}
+
+Device& BufferView::getDevice()
+{
+	return mDevice;
+}
+
+const Device& BufferView::getDevice() const
+{
+	return mDevice;
 }
 
 const VkBufferView& BufferView::getHandle() const
@@ -48,13 +55,26 @@ const VkDevice& BufferView::getDeviceHandle() const
 	return mDevice.getHandle();
 }
 
-BufferView::BufferView(Device& device, Buffer& buffer, VkFormat format, VkDeviceSize memoryOffset, VkDeviceSize memoryRange)
-	: mDevice(device)
+BufferView::Ptr BufferView::createBufferView(Buffer& buffer, VkFormat format, VkDeviceSize offset, VkDeviceSize size)
+{
+	BufferView::Ptr bufferView(new BufferView(buffer, format, offset, size));
+	if (bufferView != nullptr)
+	{
+		if (!bufferView->init())
+		{
+			bufferView.reset();
+		}
+	}
+	return bufferView;
+}
+
+BufferView::BufferView(Buffer& buffer, VkFormat format, VkDeviceSize offset, VkDeviceSize size)
+	: mDevice(buffer.getDevice())
 	, mBuffer(buffer)
 	, mBufferView(VK_NULL_HANDLE)
 	, mFormat(format)
-	, mMemoryOffset(memoryOffset)
-	, mMemoryRange(memoryRange)
+	, mOffset(offset)
+	, mSize(size)
 {
 	ObjectTracker::registerObject(ObjectType_BufferView);
 }
@@ -67,8 +87,8 @@ bool BufferView::init()
 		0,                                            // VkBufferViewCreateFlags    flags
 		mBuffer.getHandle(),                          // VkBuffer                   buffer
 		mFormat,                                      // VkFormat                   format
-		mMemoryOffset,                                // VkDeviceSize               offset
-		mMemoryRange                                  // VkDeviceSize               range
+		mOffset,                                      // VkDeviceSize               offset
+		mSize                                         // VkDeviceSize               range
 	};
 
 	VkResult result = vkCreateBufferView(mDevice.getHandle(), &bufferViewCreateInfo, nullptr, &mBufferView);
@@ -81,15 +101,13 @@ bool BufferView::init()
 	return true;
 }
 
-bool BufferView::release()
+void BufferView::release()
 {
 	if (mBufferView != VK_NULL_HANDLE)
 	{
 		vkDestroyBufferView(mDevice.getHandle(), mBufferView, nullptr);
 		mBufferView = VK_NULL_HANDLE;
-		return true;
 	}
-	return false;
 }
 
 } // namespace Vulkan
