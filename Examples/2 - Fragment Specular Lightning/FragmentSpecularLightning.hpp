@@ -226,7 +226,7 @@ class FragmentSpecularLightning : public SampleBase
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex()) 
 				{
 					nu::Vulkan::ImageTransition imageTransitionBeforeDrawing = {
-						mSwapchain->getImage(swapchainImageIndex), // VkImage             image
+						mSwapchain->getImageHandle(swapchainImageIndex), // VkImage             image
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        currentAccess
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        newAccess
 						VK_IMAGE_LAYOUT_UNDEFINED,                // VkImageLayout        currentLayout
@@ -285,7 +285,7 @@ class FragmentSpecularLightning : public SampleBase
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex())
 				{
 					nu::Vulkan::ImageTransition imageTransitionBeforePresent = {
-						mSwapchain->getImage(swapchainImageIndex),  // VkImage            image
+						mSwapchain->getImageHandle(swapchainImageIndex),  // VkImage            image
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        currentAccess
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        newAccess
 						VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,          // VkImageLayout        currentLayout
@@ -319,7 +319,7 @@ class FragmentSpecularLightning : public SampleBase
 				return false;
 			}
 
-			std::vector<VkImageView> attachments = { mSwapchain->getImageView(imageIndex) };
+			std::vector<VkImageView> attachments = { mSwapchain->getImageViewHandle(imageIndex) };
 			if (currentFrame.mDepthAttachment != nullptr)
 			{
 				attachments.push_back(currentFrame.mDepthAttachment->getHandle());

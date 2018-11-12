@@ -47,6 +47,8 @@ class Image
 		VkImageUsageFlags getUsage() const;
 		bool isCubemap() const;
 
+		bool isSwapchainImage() const;
+
 		Device& getDevice();
 		const Device& getDevice() const;
 		const VkImage& getHandle() const;
@@ -55,6 +57,9 @@ class Image
 	private:
 		friend class Device;
 		static Image::Ptr createImage(Device& device, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usage, bool cubemap);
+
+		friend class Swapchain;
+		static Image::Ptr createImageFromSwapchain(Device& device, VkImage swapchainImageHandle, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usage, bool cubemap);
 
 		Image(Device& device, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usage, bool cubemap);
 
@@ -81,6 +86,8 @@ class Image
 		VkSampleCountFlagBits mSamples;
 		VkImageUsageFlags mUsage;
 		bool mCubemap;
+
+		bool mIsSwapchainImage;
 
 		mutable bool mMemoryRequirementsQueried;
 		mutable VkMemoryRequirements mMemoryRequirements;

@@ -9,7 +9,10 @@ namespace Vulkan
 
 Image::~Image()
 {
-	release();
+	if (!isSwapchainImage())
+	{
+		release();
+	}
 
 	ObjectTracker::unregisterObject(ObjectType_Image);
 }
@@ -135,6 +138,11 @@ bool Image::isCubemap() const
 	return mCubemap;
 }
 
+bool Image::isSwapchainImage() const
+{
+	return mIsSwapchainImage;
+}
+
 Device& Image::getDevice()
 {
 	return mDevice;
@@ -168,6 +176,17 @@ Image::Ptr Image::createImage(Device& device, VkImageType type, VkFormat format,
 	return image;
 }
 
+Image::Ptr Image::createImageFromSwapchain(Device& device, VkImage swapchainImageHandle, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usage, bool cubemap)
+{
+	Image::Ptr image(new Image(device, type, format, size, numMipmaps, numLayers, samples, usage, cubemap));
+	if (image != nullptr)
+	{
+		image->mImage = swapchainImageHandle;
+		image->mIsSwapchainImage = true;
+	}
+	return image;
+}
+
 Image::Image(Device& device, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usage, bool cubemap)
 	: mDevice(device)
 	, mImage(VK_NULL_HANDLE)
@@ -183,6 +202,7 @@ Image::Image(Device& device, VkImageType type, VkFormat format, VkExtent3D size,
 	, mSamples(samples)
 	, mUsage(usage)
 	, mCubemap(cubemap)
+	, mIsSwapchainImage(false)
 	, mMemoryRequirementsQueried(false)
 	, mMemoryRequirements()
 {

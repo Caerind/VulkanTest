@@ -1,5 +1,7 @@
 #include "VulkanSwapchain.hpp"
 
+#include "../System/CallOnExit.hpp"
+
 #include "VulkanDevice.hpp"
 #include "VulkanSurface.hpp"
 
@@ -17,6 +19,8 @@ Swapchain::~Swapchain()
 
 bool Swapchain::recreate(std::vector<FrameResources>& framesResources)
 {
+	// TODO : Check if re-init is find
+	// TODO : No need to re-select every parameter if already choosen and valid
 	return init(framesResources);
 }
 
@@ -42,8 +46,7 @@ const VkFormat& Swapchain::getDepthFormat() const
 
 bool Swapchain::acquireImageIndex(uint64_t timeout, VkSemaphore semaphore, VkFence fence, uint32_t& imageIndex)
 {
-	VkResult result;
-	result = vkAcquireNextImageKHR(mDevice.getHandle(), mSwapchain, timeout, semaphore, fence, &imageIndex);
+	VkResult result = vkAcquireNextImageKHR(mDevice.getHandle(), mSwapchain, timeout, semaphore, fence, &imageIndex);
 	switch (result)
 	{
 		case VK_SUCCESS:
@@ -54,29 +57,54 @@ bool Swapchain::acquireImageIndex(uint64_t timeout, VkSemaphore semaphore, VkFen
 	}
 }
 
-VkImage Swapchain::getImage(uint32_t index) const
+VkImage Swapchain::getImageHandle(uint32_t index) const
 {
 	uint32_t size = (uint32_t)mSwapchainImages.size();
-	if (index < size)
+	if (index < size && mSwapchainImages[index] != nullptr)
 	{
-		return mSwapchainImages[index];
+		return mSwapchainImages[index]->getHandle();
 	}
 	return VK_NULL_HANDLE;
 }
 
-VkImageView Swapchain::getImageView(uint32_t index) const
+VkImageView Swapchain::getImageViewHandle(uint32_t index) const
 {
-	uint32_t size = (uint32_t)mSwapchainImageViewsRaw.size();
-	if (index < size)
+	uint32_t size = (uint32_t)mSwapchainImages.size();
+	if (index < size && mSwapchainImages[index] != nullptr && mSwapchainImages[index]->getImageViewCount() == 1)
 	{
-		return mSwapchainImageViewsRaw[index];
+		return mSwapchainImages[index]->getImageView(0)->getHandle();
 	}
 	return VK_NULL_HANDLE;
+}
+
+Surface& Swapchain::getSurface()
+{
+	return mSurface;
+}
+
+const Surface& Swapchain::getSurface() const
+{
+	return mSurface;
+}
+
+Device& Swapchain::getDevice()
+{
+	return mDevice;
+}
+
+const Device& Swapchain::getDevice() const
+{
+	return mDevice;
 }
 
 const VkSwapchainKHR& Swapchain::getHandle() const
 {
 	return mSwapchain;
+}
+
+const VkSurfaceKHR& Swapchain::getSurfaceHandle() const
+{
+	return mSurface.getHandle();
 }
 
 const VkDevice& Swapchain::getDeviceHandle() const
@@ -104,6 +132,7 @@ Swapchain::Swapchain(Device& device, Surface& surface)
 	, mReady(false)
 {
 	// TODO : Default values for each variables
+
 	mDepthFormat = VK_FORMAT_D16_UNORM; // TODO : Unhardcode
 
 	ObjectTracker::registerObject(ObjectType_Swapchain);
@@ -111,38 +140,134 @@ Swapchain::Swapchain(Device& device, Surface& surface)
 
 bool Swapchain::init(std::vector<FrameResources>& framesResources)
 {
+	// TODO : Do we really need to wait ?
+	// TODO : Maybe only for recreate ?
+	// TODO : Even not sure for the first todo question...
 	mDevice.waitForAllSubmittedCommands();
 
 	mReady = false;
 
-	mSwapchainImageViewsRaw.clear();
-	mSwapchainImageViews.clear();
 	mSwapchainImages.clear();
-
-	VkImageUsageFlags swapchainImageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // TODO : Unhardcode
 
 	VkSwapchainKHR oldSwapchain = mSwapchain;
 	mSwapchain = VK_NULL_HANDLE;
 
-	bool result = createSwapchainInternal(swapchainImageUsage, oldSwapchain); // TODO : Move oldSwapchain inside
-	if (oldSwapchain != VK_NULL_HANDLE)
+	// We will need to destroy the old swapchain
+	// This is used to avoid forgetting about it and duplication of code
+	CallOnExit oldSwapchainDestroyer([&]()
 	{
-		vkDestroySwapchainKHR(mDevice.getHandle(), oldSwapchain, nullptr);
-		oldSwapchain = VK_NULL_HANDLE;
+		if (oldSwapchain != VK_NULL_HANDLE)
+		{
+			vkDestroySwapchainKHR(mDevice.getHandle(), oldSwapchain, nullptr);
+			oldSwapchain = VK_NULL_HANDLE;
+		}
+	});
+
+	VkPresentModeKHR desiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR; // TODO : Unhardcode
+	if (!selectPresentMode(desiredPresentMode))
+	{
+		return false; // oldSwapchainDestroyer.call() will happend here
 	}
-	if (!result)
+
+	if (!queryCapabilities())
+	{
+		return false; // oldSwapchainDestroyer.call() will happend here
+	}
+
+	uint32_t desiredImageCount = 3; // TODO : Unhardcode
+	if (!selectImageCount(desiredImageCount))
+	{
+		return false; // oldSwapchainDestroyer.call() will happend here
+	}
+
+	if (!querySize())
+	{
+		return false; // oldSwapchainDestroyer.call() will happend here
+	}
+
+	VkImageUsageFlags desiredSwapchainImageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // TODO : Unhardcode
+	if (!selectImageUsage(desiredSwapchainImageUsage))
+	{
+		return false; // oldSwapchainDestroyer.call() will happend here
+	}
+
+	VkSurfaceTransformFlagBitsKHR desiredSurfaceTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR; // TODO : Unhardcode
+	if (!selectSurfaceTransform(desiredSurfaceTransform))
+	{
+		return false; // oldSwapchainDestroyer.call() will happend here
+	}
+
+	// TODO : Find what's wrong with this desiredSurfaceFormat
+	VkSurfaceFormatKHR desiredSurfaceFormat = { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }; // TODO : Unhardcode
+	if (!selectSurfaceFormat(desiredSurfaceFormat))
+	{
+		return false; // oldSwapchainDestroyer.call() will happend here
+	}
+
+	VkSwapchainCreateInfoKHR swapchainCreateInfo = {
+		VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,  // VkStructureType                  sType
+		nullptr,                                      // const void                     * pNext
+		0,                                            // VkSwapchainCreateFlagsKHR        flags
+		mSurface.getHandle(),                         // VkSurfaceKHR                     surface
+		mImageCount,                                  // uint32_t                         minImageCount
+		mFormat,                                      // VkFormat                         imageFormat
+		mColorSpace,                                  // VkColorSpaceKHR                  imageColorSpace
+		mSize,                                        // VkExtent2D                       imageExtent
+		1,                                            // uint32_t                         imageArrayLayers
+		mImageUsage,                                  // VkImageUsageFlags                imageUsage
+		VK_SHARING_MODE_EXCLUSIVE,                    // VkSharingMode                    imageSharingMode
+		0,                                            // uint32_t                         queueFamilyIndexCount
+		nullptr,                                      // const uint32_t                 * pQueueFamilyIndices
+		mSurfaceTransform,                            // VkSurfaceTransformFlagBitsKHR    preTransform
+		VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,            // VkCompositeAlphaFlagBitsKHR      compositeAlpha
+		mPresentMode,                                 // VkPresentModeKHR                 presentMode
+		VK_TRUE,                                      // VkBool32                         clipped
+		oldSwapchain                                  // VkSwapchainKHR                   oldSwapchain
+	};
+
+	VkResult result = vkCreateSwapchainKHR(mDevice.getHandle(), &swapchainCreateInfo, nullptr, &mSwapchain);
+	if (result != VK_SUCCESS || mSwapchain == VK_NULL_HANDLE)
+	{
+		// TODO : Use Numea System Log
+		printf("Could not create a swapchain\n");
+		return false; // oldSwapchainDestroyer.call() will happend here
+	}
+
+	// Don't forget to destroy the old swapchain if we arrive here
+	oldSwapchainDestroyer.callAndReset();
+
+	std::vector<VkImage> swapchainImageHandles;
+	if (!queryImageHandles(swapchainImageHandles))
 	{
 		return false;
 	}
 
-	for (size_t i = 0; i < mSwapchainImages.size(); i++)
+	for (size_t i = 0; i < swapchainImageHandles.size(); i++)
 	{
-		mSwapchainImageViews.emplace_back(ImageView::createImageViewFromSwapchain(mDevice, mSwapchainImages[i], VK_IMAGE_VIEW_TYPE_2D, mFormat, VK_IMAGE_ASPECT_COLOR_BIT));
-		if (mSwapchainImageViews[i] == nullptr || !mSwapchainImageViews[i]->isInitialized())
+		// TODO : Move this parameters
+		VkImageType imageType = VK_IMAGE_TYPE_2D;
+		VkFormat imageFormat = mFormat;
+		VkExtent3D imageSize = { mSize.width, mSize.height, 1 };
+		uint32_t imageNumMipmaps = 1; // TODO : Is this correct ?
+		uint32_t imageNumLayers = 1; // 1 for non-stereoscopic-3D applications // TODO : Pass this as parameters ?
+		VkSampleCountFlagBits imageSamples = VK_SAMPLE_COUNT_1_BIT;
+		VkImageUsageFlags imageUsage = mImageUsage;
+		bool imageCubemap = false;
+		// TODO : And maybe the initial layout, which might not be (isn't?) undefined
+
+		// Create an image from swapchain image
+		mSwapchainImages.emplace_back(Image::createImageFromSwapchain(mDevice, swapchainImageHandles[i], imageType, imageFormat, imageSize, imageNumMipmaps, imageNumLayers, imageSamples, imageUsage, imageCubemap));
+		if (mSwapchainImages.back() == nullptr)
 		{
 			return false;
 		}
-		mSwapchainImageViewsRaw.push_back(mSwapchainImageViews[i]->getHandle());
+
+		// Create an image view which will be used later by getImageViewHandle(...)
+		ImageView* imageView = mSwapchainImages.back()->createImageView(VK_IMAGE_VIEW_TYPE_2D, mFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+		if (imageView == nullptr)
+		{
+			return false;
+		}
 	}
 
 	mSwapchainDepthImages.clear();
@@ -150,8 +275,10 @@ bool Swapchain::init(std::vector<FrameResources>& framesResources)
 	// TODO : Only if wanted
 	if (true) // Use depth
 	{
+		// TODO : Use Image Count ?
+		// TODO : Where is the frame count set for frameresources ?
 		const uint32_t framesCount = 3; // TODO : Unhardcode
-		for (uint32_t i = 0; i < framesCount; ++i)
+		for (uint32_t i = 0; i < framesCount; i++)
 		{
 			ImageHelper::Ptr depthImage = ImageHelper::createImage2DAndView(mDevice, mDepthFormat, mSize, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT);
 			if (depthImage == nullptr || depthImage->getImage() == nullptr || depthImage->getMemoryBlock() == nullptr || depthImage->getImageView() == nullptr)
@@ -179,131 +306,7 @@ void Swapchain::release()
 	}
 }
 
-
-bool Swapchain::createSwapchainInternal(VkImageUsageFlags desiredImageUsage, VkSwapchainKHR& oldSwapchain)
-{
-	VkPresentModeKHR desiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR; // TODO : Unhardcode
-	VkPresentModeKHR presentMode; // TODO : Do this need to be saved ?
-	if (!selectDesiredPresentMode(desiredPresentMode, presentMode))
-	{
-		return false;
-	}
-
-	VkSurfaceCapabilitiesKHR surfaceCapabilities; // TODO : Do this need to be saved ?// TODO : Do this need to be saved ?
-	if (!queryCapabilities(surfaceCapabilities))
-	{
-		return false;
-	}
-
-	uint32_t imageCount; // TODO : Do this need to be saved ?
-	imageCount = surfaceCapabilities.minImageCount + 1; // TODO : Improve selection of number of images
-	if (surfaceCapabilities.maxImageCount > 0 && imageCount > surfaceCapabilities.maxImageCount)
-	{
-		imageCount = surfaceCapabilities.maxImageCount;
-	}
-
-	// On some platform extent works weird // TODO : Improve that comment
-	if (surfaceCapabilities.currentExtent.width == 0xFFFFFFFF)
-	{
-		mSize = { 640, 480 }; // TODO : Unhardcode default size
-
-		if (mSize.width < surfaceCapabilities.minImageExtent.width)
-		{
-			mSize.width = surfaceCapabilities.minImageExtent.width;
-		}
-		else if (mSize.width > surfaceCapabilities.maxImageExtent.width)
-		{
-			mSize.width = surfaceCapabilities.maxImageExtent.width;
-		}
-
-		if (mSize.height < surfaceCapabilities.minImageExtent.height)
-		{
-			mSize.height = surfaceCapabilities.minImageExtent.height;
-		}
-		else if (mSize.height > surfaceCapabilities.maxImageExtent.height)
-		{
-			mSize.height = surfaceCapabilities.maxImageExtent.height;
-		}
-	}
-	else
-	{
-		mSize = surfaceCapabilities.currentExtent;
-	}
-	if (mSize.width == 0 || mSize.height == 0)
-	{
-		return false;
-	}
-
-	VkImageUsageFlags imageUsage; // TODO : Do this need to be saved ?
-	imageUsage = desiredImageUsage & surfaceCapabilities.supportedUsageFlags;
-	if (imageUsage != desiredImageUsage)
-	{
-		// TODO : Use Numea System Log
-		printf("Could not create swapchain with that image usage\n");
-		return false;
-	}
-
-	VkSurfaceTransformFlagBitsKHR desiredSurfaceTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR; // TODO : Unhardcode
-	VkSurfaceTransformFlagBitsKHR surfaceTransform; // TODO : Do this need to be saved ?
-	if (surfaceCapabilities.supportedTransforms & desiredSurfaceTransform)
-	{
-		surfaceTransform = desiredSurfaceTransform;
-	}
-	else
-	{
-		surfaceTransform = surfaceCapabilities.currentTransform;
-	}
-
-	VkSurfaceFormatKHR desiredSurfaceFormat = { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }; // TODO : Unhardcode
-	if (!selectSurfaceFormat(desiredSurfaceFormat))
-	{
-		return false;
-	}
-
-	VkSwapchainCreateInfoKHR swapchainCreateInfo = {
-		VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,  // VkStructureType                  sType
-		nullptr,                                      // const void                     * pNext
-		0,                                            // VkSwapchainCreateFlagsKHR        flags
-		mSurface.getHandle(),                         // VkSurfaceKHR                     surface
-		imageCount,                                   // uint32_t                         minImageCount
-		mFormat,                                      // VkFormat                         imageFormat
-		mColorSpace,                                  // VkColorSpaceKHR                  imageColorSpace
-		mSize,                                        // VkExtent2D                       imageExtent
-		1,                                            // uint32_t                         imageArrayLayers
-		imageUsage,                                   // VkImageUsageFlags                imageUsage
-		VK_SHARING_MODE_EXCLUSIVE,                    // VkSharingMode                    imageSharingMode
-		0,                                            // uint32_t                         queueFamilyIndexCount
-		nullptr,                                      // const uint32_t                 * pQueueFamilyIndices
-		surfaceTransform,                             // VkSurfaceTransformFlagBitsKHR    preTransform
-		VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,            // VkCompositeAlphaFlagBitsKHR      compositeAlpha
-		presentMode,                                  // VkPresentModeKHR                 presentMode
-		VK_TRUE,                                      // VkBool32                         clipped
-		oldSwapchain                                  // VkSwapchainKHR                   oldSwapchain
-	};
-
-	VkResult result = vkCreateSwapchainKHR(mDevice.getHandle(), &swapchainCreateInfo, nullptr, &mSwapchain);
-	if (result != VK_SUCCESS || mSwapchain == VK_NULL_HANDLE)
-	{
-		// TODO : Use Numea System Log
-		printf("Could not create a swapchain\n");
-		return false;
-	}
-
-	if (oldSwapchain != VK_NULL_HANDLE)
-	{
-		vkDestroySwapchainKHR(mDevice.getHandle(), oldSwapchain, nullptr);
-		oldSwapchain = VK_NULL_HANDLE;
-	}
-
-	if (!queryHandlesOfImages())
-	{
-		return false;
-	}
-
-	return true;
-}
-
-bool Swapchain::selectDesiredPresentMode(VkPresentModeKHR desiredPresentMode, VkPresentModeKHR& presentMode)
+bool Swapchain::selectPresentMode(VkPresentModeKHR desiredPresentMode)
 {
 	uint32_t presentModesCount = 0;
 	VkResult result;
@@ -330,7 +333,7 @@ bool Swapchain::selectDesiredPresentMode(VkPresentModeKHR desiredPresentMode, Vk
 	{
 		if (currentPresentMode == desiredPresentMode)
 		{
-			presentMode = desiredPresentMode;
+			mPresentMode = desiredPresentMode;
 			return true;
 		}
 	}
@@ -341,19 +344,21 @@ bool Swapchain::selectDesiredPresentMode(VkPresentModeKHR desiredPresentMode, Vk
 	{
 		if (currentPresentMode == VK_PRESENT_MODE_FIFO_KHR)
 		{
-			presentMode = VK_PRESENT_MODE_FIFO_KHR;
+			mPresentMode = VK_PRESENT_MODE_FIFO_KHR;
 			return true;
 		}
 	}
+
+	mPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR; // TODO : Is this correct ?
 
 	// TODO : Use Numea System Log
 	printf("VK_PRESENT_MODE_FIFO_KHR is not supported though it's mandatory for all drivers!\n");
 	return false;
 }
 
-bool Swapchain::queryCapabilities(VkSurfaceCapabilitiesKHR& surfaceCapabilities)
+bool Swapchain::queryCapabilities()
 {
-	VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mDevice.getPhysicalHandle(), mSurface.getHandle(), &surfaceCapabilities);
+	VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mDevice.getPhysicalHandle(), mSurface.getHandle(), &mSurfaceCapabilities);
 	if (result != VK_SUCCESS)
 	{
 		// TODO : Use Numea System Log
@@ -363,12 +368,84 @@ bool Swapchain::queryCapabilities(VkSurfaceCapabilitiesKHR& surfaceCapabilities)
 	return true;
 }
 
+bool Swapchain::selectImageCount(uint32_t desiredImageCount)
+{
+	// TODO : Use desired image count
+	// TODO : Improve selection of number of images
+	mImageCount = mSurfaceCapabilities.minImageCount + 1;
+	if (mSurfaceCapabilities.maxImageCount > 0 && mImageCount > mSurfaceCapabilities.maxImageCount)
+	{
+		mImageCount = mSurfaceCapabilities.maxImageCount;
+	}
+	return true;
+}
+
+bool Swapchain::querySize()
+{
+	// On some platform extent works weird // TODO : Improve that comment
+	if (mSurfaceCapabilities.currentExtent.width == 0xFFFFFFFF)
+	{
+		mSize = { 640, 480 };
+
+		if (mSize.width < mSurfaceCapabilities.minImageExtent.width)
+		{
+			mSize.width = mSurfaceCapabilities.minImageExtent.width;
+		}
+		else if (mSize.width > mSurfaceCapabilities.maxImageExtent.width)
+		{
+			mSize.width = mSurfaceCapabilities.maxImageExtent.width;
+		}
+
+		if (mSize.height < mSurfaceCapabilities.minImageExtent.height)
+		{
+			mSize.height = mSurfaceCapabilities.minImageExtent.height;
+		}
+		else if (mSize.height > mSurfaceCapabilities.maxImageExtent.height)
+		{
+			mSize.height = mSurfaceCapabilities.maxImageExtent.height;
+		}
+	}
+	else
+	{
+		mSize = mSurfaceCapabilities.currentExtent;
+	}
+	if (mSize.width == 0 || mSize.height == 0)
+	{
+		return false;
+	}
+	return true;
+}
+
+bool Swapchain::selectImageUsage(VkImageUsageFlags desiredImageUsage)
+{
+	mImageUsage = desiredImageUsage & mSurfaceCapabilities.supportedUsageFlags;
+	if (mImageUsage != desiredImageUsage)
+	{
+		// TODO : Use Numea System Log
+		printf("Could not create swapchain with that image usage\n");
+		return false;
+	}
+	return true;
+}
+
+bool Swapchain::selectSurfaceTransform(VkSurfaceTransformFlagBitsKHR desiredSurfaceTransform)
+{
+	if (mSurfaceCapabilities.supportedTransforms & desiredSurfaceTransform)
+	{
+		mSurfaceTransform = desiredSurfaceTransform;
+	}
+	else
+	{
+		mSurfaceTransform = mSurfaceCapabilities.currentTransform;
+	}
+	return true;
+}
+
 bool Swapchain::selectSurfaceFormat(VkSurfaceFormatKHR desiredSurfaceFormat)
 {
 	uint32_t formatsCount = 0;
-	VkResult result;
 
-	result = vkGetPhysicalDeviceSurfaceFormatsKHR(mDevice.getPhysicalHandle(), mSurface.getHandle(), &formatsCount, nullptr);
+	VkResult result = vkGetPhysicalDeviceSurfaceFormatsKHR(mDevice.getPhysicalHandle(), mSurface.getHandle(), &formatsCount, nullptr);
 	if (result != VK_SUCCESS || formatsCount == 0)
 	{
 		// TODO : Use Numea System Log
@@ -378,7 +455,7 @@ bool Swapchain::selectSurfaceFormat(VkSurfaceFormatKHR desiredSurfaceFormat)
 
 	std::vector<VkSurfaceFormatKHR> surfaceFormats(formatsCount);
 	result = vkGetPhysicalDeviceSurfaceFormatsKHR(mDevice.getPhysicalHandle(), mSurface.getHandle(), &formatsCount, surfaceFormats.data());
-	if (result != VK_SUCCESS || formatsCount == 0)
+	if (result != VK_SUCCESS || formatsCount == 0 || surfaceFormats.size() == 0)
 	{
 		// TODO : Use Numea System Log
 		printf("Could not enumerate supported surface formats\n");
@@ -388,6 +465,7 @@ bool Swapchain::selectSurfaceFormat(VkSurfaceFormatKHR desiredSurfaceFormat)
 	// TODO : Instead of choosing the nearest to what the user want, make the user directly choose the one he prefers
 	// Moving the querying of surface formats at upper level
 
+	// TODO : Is this useful ?
 	if (surfaceFormats.size() == 1 && surfaceFormats[0].format == VK_FORMAT_UNDEFINED)
 	{
 		mFormat = desiredSurfaceFormat.format;
@@ -395,6 +473,7 @@ bool Swapchain::selectSurfaceFormat(VkSurfaceFormatKHR desiredSurfaceFormat)
 		return true;
 	}
 
+	// Try to find desired surface format
 	for (auto& surfaceFormat : surfaceFormats)
 	{
 		if (desiredSurfaceFormat.format == surfaceFormat.format && desiredSurfaceFormat.colorSpace == surfaceFormat.colorSpace)
@@ -405,6 +484,7 @@ bool Swapchain::selectSurfaceFormat(VkSurfaceFormatKHR desiredSurfaceFormat)
 		}
 	}
 
+	// Try to find desired format and any available color space with it
 	for (auto& surfaceFormat : surfaceFormats)
 	{
 		if (desiredSurfaceFormat.format == surfaceFormat.format)
@@ -418,22 +498,24 @@ bool Swapchain::selectSurfaceFormat(VkSurfaceFormatKHR desiredSurfaceFormat)
 		}
 	}
 
-	// TODO : assert(surfaceFormats.size() > 0);
-
+	// Fallback scenario
 	mFormat = surfaceFormats[0].format;
 	mColorSpace = surfaceFormats[0].colorSpace;
+
+	// TODO : I always get this error... WHY ?
+	// TODO : What is the Desired Surface Format I want, and do I really don't support it ?
+	// TODO : Or there is something else ?
 
 	// TODO : Use Numea System Log
 	printf("Desired format is not supported. Selecting available format - colorspace combination\n");
 	return true;
 }
 
-bool Swapchain::queryHandlesOfImages()
+bool Swapchain::queryImageHandles(std::vector<VkImage>& swapchainImageHandles)
 {
 	uint32_t imagesCount = 0;
-	VkResult result;
 
-	result = vkGetSwapchainImagesKHR(mDevice.getHandle(), mSwapchain, &imagesCount, nullptr);
+	VkResult result = vkGetSwapchainImagesKHR(mDevice.getHandle(), mSwapchain, &imagesCount, nullptr);
 	if (result != VK_SUCCESS || imagesCount == 0)
 	{
 		// TODO : Use Numea System Log
@@ -441,8 +523,9 @@ bool Swapchain::queryHandlesOfImages()
 		return false;
 	}
 
-	mSwapchainImages.resize(imagesCount);
-	result = vkGetSwapchainImagesKHR(mDevice.getHandle(), mSwapchain, &imagesCount, mSwapchainImages.data());
+	swapchainImageHandles.resize(imagesCount);
+
+	result = vkGetSwapchainImagesKHR(mDevice.getHandle(), mSwapchain, &imagesCount, swapchainImageHandles.data());
 	if (result != VK_SUCCESS || imagesCount == 0)
 	{
 		// TODO : Use Numea System Log

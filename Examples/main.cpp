@@ -219,6 +219,7 @@ int main()
 
 	nu::Vulkan::ObjectTracker::checkForLeaks();
 
+	/*
 	printf("5 - Adding Shadows\n");
 	{
 		nu::Window window("5 - Adding Shadows", 0, 0, 1280, 920);
@@ -270,6 +271,7 @@ int main()
 	printf("\n\n");
 
 	nu::Vulkan::ObjectTracker::checkForLeaks();
+	*/
 
 	printf("6 - Drawing Skybox\n");
 	{
@@ -375,6 +377,7 @@ int main()
 
 	nu::Vulkan::ObjectTracker::checkForLeaks();
 
+	/*
 	printf("8 - Drawing Particles Using Compute And Graphics Pipelines\n");
 	{
 		nu::Window window("8 - Drawing Particles Using Compute And Graphics Pipelines", 0, 0, 1280, 920);
@@ -426,6 +429,7 @@ int main()
 	printf("\n\n");
 
 	nu::Vulkan::ObjectTracker::checkForLeaks();
+	*/
 
 	printf("9 - Rendering Tesselated Terrain\n");
 	{

@@ -34,11 +34,15 @@ class Swapchain
 		bool acquireImageIndex(uint64_t timeout, VkSemaphore semaphore, VkFence fence, uint32_t& imageIndex);
 		// TODO : Maybe acquireImage directly instead of index ?
 
-		// TODO : Improve accessors (const and ref where needed)
-		VkImage getImage(uint32_t index) const;
-		VkImageView getImageView(uint32_t index) const;
+		VkImage getImageHandle(uint32_t index) const;
+		VkImageView getImageViewHandle(uint32_t index) const;
 
+		Surface& getSurface();
+		const Surface& getSurface() const;
+		Device& getDevice();
+		const Device& getDevice() const;
 		const VkSwapchainKHR& getHandle() const;
+		const VkSurfaceKHR& getSurfaceHandle() const;
 		const VkDevice& getDeviceHandle() const;
 
 	private:
@@ -50,11 +54,14 @@ class Swapchain
 		bool init(std::vector<FrameResources>& framesResources);
 		void release();
 
-		bool createSwapchainInternal(VkImageUsageFlags desiredImageUsage, VkSwapchainKHR& oldSwapchain); // TODO : Move old swapchain inside
-		bool selectDesiredPresentMode(VkPresentModeKHR desiredPresentMode, VkPresentModeKHR& presentMode);
-		bool queryCapabilities(VkSurfaceCapabilitiesKHR& surfaceCapabilities);
+		bool selectPresentMode(VkPresentModeKHR desiredPresentMode);
+		bool queryCapabilities();
+		bool selectImageCount(uint32_t desiredImageCount);
+		bool querySize();
+		bool selectImageUsage(VkImageUsageFlags desiredImageUsage);
+		bool selectSurfaceTransform(VkSurfaceTransformFlagBitsKHR desiredSurfaceTransform);
 		bool selectSurfaceFormat(VkSurfaceFormatKHR desiredSurfaceFormat);
-		bool queryHandlesOfImages();
+		bool queryImageHandles(std::vector<VkImage>& swapchainImageHandles);
 
 	private:
 		Device& mDevice;
@@ -62,13 +69,16 @@ class Swapchain
 		VkSwapchainKHR mSwapchain;
 		bool mReady;
 
+		VkPresentModeKHR mPresentMode;
+		VkSurfaceCapabilitiesKHR mSurfaceCapabilities;
+		uint32_t mImageCount;
+		VkExtent2D mSize;
+		VkImageUsageFlags mImageUsage;
+		VkSurfaceTransformFlagBitsKHR mSurfaceTransform;
 		VkFormat mFormat;
 		VkColorSpaceKHR mColorSpace;
-		VkExtent2D mSize;
 
-		std::vector<VkImage> mSwapchainImages;
-		std::vector<ImageView::Ptr> mSwapchainImageViews;
-		std::vector<VkImageView> mSwapchainImageViewsRaw;
+		std::vector<Image::Ptr> mSwapchainImages;
 
 		VkFormat mDepthFormat;
 		std::vector<ImageHelper::Ptr> mSwapchainDepthImages;

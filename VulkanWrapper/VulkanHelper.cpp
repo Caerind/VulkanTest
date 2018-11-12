@@ -27,7 +27,7 @@ ImageHelper::Ptr ImageHelper::createImage2DAndView(Device& device, VkFormat form
 		}
 			
 		image->mImageView = image->mImage->createImageView(VK_IMAGE_VIEW_TYPE_2D, format, aspect);
-		if (image->mImageView == nullptr || !image->mImageView->isInitialized())
+		if (image->mImageView == nullptr)
 		{
 			image.reset();
 			return image;
@@ -56,7 +56,7 @@ ImageHelper::Ptr ImageHelper::createLayered2DImageWithCubemapView(Device& device
 		}
 
 		image->mImageView = image->mImage->createImageView(VK_IMAGE_VIEW_TYPE_CUBE, VK_FORMAT_R8G8B8A8_UNORM, aspect);
-		if (image->mImageView == nullptr || !image->mImageView->isInitialized())
+		if (image->mImageView == nullptr)
 		{
 			image.reset();
 			return image;
@@ -101,7 +101,7 @@ ImageHelper::Ptr ImageHelper::createSampledImage(Device& device, VkImageType typ
 		}
 
 		image->mImageView = image->mImage->createImageView(viewType, format, aspect);
-		if (image->mImageView == nullptr || !image->mImageView->isInitialized())
+		if (image->mImageView == nullptr)
 		{
 			image.reset();
 			return image;
@@ -116,7 +116,7 @@ ImageHelper::Ptr ImageHelper::createCombinedImageSampler(Device& device, VkImage
 	if (image != nullptr)
 	{
 		image->mSampler = device.createSampler(magFilter, minFilter, mipmapMode, uAddressMode, vAddressMode, wAddressMode, lodBias, minLod, maxLod, anisotropyEnable, maxAnisotropy, compareEnable, compareOperator, borderColor, unnormalizedCoords);
-		if (image->mSampler == nullptr || !image->mSampler->isInitialized())
+		if (image->mSampler == nullptr)
 		{
 			image.reset();
 			return image;
@@ -155,7 +155,7 @@ ImageHelper::Ptr ImageHelper::createCombinedImageSampler(Device& device, VkImage
 		}
 
 		image->mImageView = image->mImage->createImageView(viewType, format, aspect);
-		if (image->mImageView == nullptr || !image->mImageView->isInitialized())
+		if (image->mImageView == nullptr)
 		{
 			image.reset();
 			return image;
@@ -199,7 +199,7 @@ ImageHelper::Ptr ImageHelper::createStorageImage(Device& device, VkImageType typ
 		}
 
 		image->mImageView = image->mImage->createImageView(viewType, format, aspect);
-		if (image->mImageView == nullptr || !image->mImageView->isInitialized())
+		if (image->mImageView == nullptr)
 		{
 			image.reset();
 			return image;
@@ -244,7 +244,7 @@ ImageHelper::Ptr ImageHelper::createInputAttachment(Device& device, VkImageType 
 		}
 
 		image->mImageView = image->mImage->createImageView(viewType, format, aspect);
-		if (image->mImageView == nullptr || !image->mImageView->isInitialized())
+		if (image->mImageView == nullptr)
 		{
 			image.reset();
 			return image;
@@ -265,7 +265,7 @@ MemoryBlock* ImageHelper::getMemoryBlock()
 
 ImageView* ImageHelper::getImageView()
 {
-	return mImageView.get();
+	return mImageView;
 }
 
 Sampler* ImageHelper::getSampler()

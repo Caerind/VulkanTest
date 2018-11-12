@@ -8,9 +8,66 @@ namespace nu
 namespace Vulkan
 {
 
-ImageView::Ptr ImageView::createImageView(Device& device, Image& image, VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspect)
+ImageView::~ImageView()
 {
-	ImageView::Ptr imageView(new ImageView(device, &image, VK_NULL_HANDLE, viewType, format, aspect));
+	release();
+
+	ObjectTracker::unregisterObject(ObjectType_ImageView);
+}
+
+VkImageViewType ImageView::getViewType() const
+{
+	return mViewType;
+}
+
+VkFormat ImageView::getFormat() const
+{
+	return mFormat;
+}
+
+VkImageAspectFlags ImageView::getAspect() const
+{
+	return mAspect;
+}
+
+Image& ImageView::getImage()
+{
+	return mImage;
+}
+
+const Image& ImageView::getImage() const
+{
+	return mImage;
+}
+
+Device& ImageView::getDevice()
+{
+	return mDevice;
+}
+
+const Device& ImageView::getDevice() const
+{
+	return mDevice;
+}
+
+const VkImageView& ImageView::getHandle() const
+{
+	return mImageView;
+}
+
+const VkImage& ImageView::getImageHandle() const
+{
+	return mImage.getHandle();
+}
+
+const VkDevice& ImageView::getDeviceHandle() const
+{
+	return mDevice.getHandle();
+}
+
+ImageView::Ptr ImageView::createImageView(Image& image, VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspect)
+{
+	ImageView::Ptr imageView(new ImageView(image, VK_NULL_HANDLE, viewType, format, aspect));
 	if (imageView != nullptr)
 	{
 		if (!imageView->init())
@@ -21,48 +78,13 @@ ImageView::Ptr ImageView::createImageView(Device& device, Image& image, VkImageV
 	return imageView;
 }
 
-ImageView::~ImageView()
-{
-	ObjectTracker::unregisterObject(ObjectType_ImageView);
-
-	release();
-}
-
-bool ImageView::isInitialized() const
-{
-	return mImageView != VK_NULL_HANDLE;
-}
-
-const VkImageView& ImageView::getHandle() const
-{
-	return mImageView;
-}
-
-const VkImage& ImageView::getImageHandle() const
-{
-	if (mImage != nullptr)
-	{
-		return mImage->getHandle();
-	}
-	else
-	{
-		return mImageHandleFromSwapchain;
-	}
-}
-
-const VkDevice& ImageView::getDeviceHandle() const
-{
-	return mDevice.getHandle();
-}
-
-ImageView::ImageView(Device& device, Image* image, VkImage imageHandleFromSwapchain, VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspect)
-	: mDevice(device)
+ImageView::ImageView(Image& image, VkImage imageHandleFromSwapchain, VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspect)
+	: mDevice(image.getDevice())
 	, mImage(image)
 	, mImageView(VK_NULL_HANDLE)
 	, mViewType(viewType)
 	, mFormat(format)
 	, mAspect(aspect)
-	, mImageHandleFromSwapchain(imageHandleFromSwapchain)
 {
 	ObjectTracker::registerObject(ObjectType_ImageView);
 }
@@ -73,7 +95,7 @@ bool ImageView::init()
 		VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,   // VkStructureType            sType
 		nullptr,                                    // const void               * pNext
 		0,                                          // VkImageViewCreateFlags     flags
-		getImageHandle(),                           // VkImage                    image
+		mImage.getHandle(),                         // VkImage                    image
 		mViewType,                                  // VkImageViewType            viewType
 		mFormat,                                    // VkFormat                   format
 		{                                           // VkComponentMapping         components
@@ -90,6 +112,11 @@ bool ImageView::init()
 			VK_REMAINING_ARRAY_LAYERS                   // uint32_t                   layerCount
 		}
 	};
+	// TODO : Swizzle components ?
+	// TODO : baseMipLevel ?
+	// TODO : levelCount ?
+	// TODO : baseArrayLayer ?
+	// TODO : layerCount ?
 
 	VkResult result = vkCreateImageView(mDevice.getHandle(), &imageViewCreateInfo, nullptr, &mImageView);
 	if (result != VK_SUCCESS || mImageView == VK_NULL_HANDLE) 
@@ -101,28 +128,13 @@ bool ImageView::init()
 	return true;
 }
 
-bool ImageView::release()
+void ImageView::release()
 {
 	if (mImageView != VK_NULL_HANDLE)
 	{
 		vkDestroyImageView(mDevice.getHandle(), mImageView, nullptr);
 		mImageView = VK_NULL_HANDLE;
-		return true;
 	}
-	return false;
-}
-
-ImageView::Ptr ImageView::createImageViewFromSwapchain(Device& device, VkImage imageHandleFromSwapchain, VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspect)
-{
-	ImageView::Ptr imageView(new ImageView(device, nullptr, imageHandleFromSwapchain, viewType, format, aspect));
-	if (imageView != nullptr)
-	{
-		if (!imageView->init())
-		{
-			imageView.reset();
-		}
-	}
-	return imageView;
 }
 
 } // namespace Vulkan

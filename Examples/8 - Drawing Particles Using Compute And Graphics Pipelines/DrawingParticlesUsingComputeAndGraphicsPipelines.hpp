@@ -24,8 +24,7 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 
 		const uint32_t PARTICLES_COUNT = 2000;
 
-		nu::VertexBuffer::Ptr mParticlesVertexBuffer;
-		nu::Vulkan::BufferView::Ptr mParticlesVertexBufferView;
+		nu::VertexBuffer::Ptr mParticlesVertexBuffer; // TODO : StorageTexelBuffer
 
 		nu::UniformBuffer::Ptr mUniformBuffer;
 		nu::StagingBuffer::Ptr mStagingBuffer;
@@ -105,6 +104,8 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 				{
 					return false;
 				}
+
+				// TODO : Create mParticlesVertexBuffer BufferView
 			}
 
 			// Staging buffer & Uniform buffer
@@ -192,7 +193,7 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 				VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,    // VkDescriptorType                     TargetDescriptorType
 				{                                           // std::vector<VkDescriptorBufferInfo>  BufferInfos
 					{
-						mParticlesVertexBufferView->getHandle()
+						// TODO : mParticlesVertexBufferView->getHandle()
 					}
 				}
 			};
@@ -411,7 +412,7 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex()) 
 				{
 					nu::Vulkan::ImageTransition imageTransitionBeforeDrawing = {
-						mSwapchain->getImage(swapchainImageIndex), // VkImage             image
+						mSwapchain->getImageHandle(swapchainImageIndex), // VkImage             image
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        currentAccess
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        newAccess
 						VK_IMAGE_LAYOUT_UNDEFINED,                // VkImageLayout        currentLayout
@@ -461,7 +462,7 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex())
 				{
 					nu::Vulkan::ImageTransition imageTransitionBeforePresent = {
-						mSwapchain->getImage(swapchainImageIndex),  // VkImage            image
+						mSwapchain->getImageHandle(swapchainImageIndex),  // VkImage            image
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        currentAccess
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        newAccess
 						VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,          // VkImageLayout        currentLayout
@@ -495,7 +496,7 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 				return false;
 			}
 
-			std::vector<VkImageView> attachments = { mSwapchain->getImageView(imageIndex) };
+			std::vector<VkImageView> attachments = { mSwapchain->getImageViewHandle(imageIndex) };
 			if (currentFrame.mDepthAttachment != nullptr)
 			{
 				attachments.push_back(currentFrame.mDepthAttachment->getHandle());

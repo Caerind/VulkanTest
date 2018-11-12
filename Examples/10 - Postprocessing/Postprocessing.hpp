@@ -467,7 +467,7 @@ class Postprocessing : public SampleBase
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex()) 
 				{
 					nu::Vulkan::ImageTransition imageTransitionBeforeDrawing = {
-						mSwapchain->getImage(swapchainImageIndex), // VkImage             image
+						mSwapchain->getImageHandle(swapchainImageIndex), // VkImage             image
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        currentAccess
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        newAccess
 						VK_IMAGE_LAYOUT_UNDEFINED,                // VkImageLayout        currentLayout
@@ -545,7 +545,7 @@ class Postprocessing : public SampleBase
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex())
 				{
 					nu::Vulkan::ImageTransition imageTransitionBeforePresent = {
-						mSwapchain->getImage(swapchainImageIndex),  // VkImage            image
+						mSwapchain->getImageHandle(swapchainImageIndex),  // VkImage            image
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        currentAccess
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        newAccess
 						VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,          // VkImageLayout        currentLayout
@@ -579,7 +579,7 @@ class Postprocessing : public SampleBase
 				return false;
 			}
 
-			std::vector<VkImageView> attachments = { mSceneImage->getImageView()->getHandle(), currentFrame.mDepthAttachment->getHandle(), mSwapchain->getImageView(imageIndex) };
+			std::vector<VkImageView> attachments = { mSceneImage->getImageView()->getHandle(), currentFrame.mDepthAttachment->getHandle(), mSwapchain->getImageViewHandle(imageIndex) };
 
 			// TODO : Only create once
 			currentFrame.mFramebuffer = mRenderPass->createFramebuffer(attachments, mSwapchain->getSize().width, mSwapchain->getSize().height, 1);

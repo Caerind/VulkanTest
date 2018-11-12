@@ -42,7 +42,7 @@ class ImageHelper
 
 		Image::Ptr mImage;
 		MemoryBlock* mMemoryBlock;
-		ImageView::Ptr mImageView;
+		ImageView* mImageView;
 		Sampler::Ptr mSampler;
 };
 
