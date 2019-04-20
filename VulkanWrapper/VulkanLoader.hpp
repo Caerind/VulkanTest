@@ -1,29 +1,18 @@
-#ifndef NU_VULKAN_LOADER_HPP
-#define NU_VULKAN_LOADER_HPP
+#pragma once
 
-#include <vector>
+#include "VulkanDynamicLibrary.hpp"
 
-#include "../System/DynamicLibrary.hpp"
+VULKAN_NAMESPACE_BEGIN
 
-#include "VulkanFunctions.hpp"
-
-namespace nu
-{
-namespace Vulkan
-{
-
-class Instance;
-class Device;
-class Loader
+class VulkanLoader
 {
 	public:
-		Loader() = delete;
-		~Loader() = delete;
+		VulkanLoader() = delete;
 
 		static bool ensureDynamicLibraryLoaded();
 		static bool ensureExportedFunctionLoaded();
 		static bool ensureGlobalLevelFunctionsLoaded();
-		static bool ensureInstanceLevelFunctionsLoaded(const Instance& instance);
+		static bool ensureInstanceLevelFunctionsLoaded(const VulkanInstance& instance);
 		static bool ensureDeviceLevelFunctionsLoaded(const VkDevice& device, const std::vector<const char*>& enabledExtensions); // TODO : enabledExtensions in Device class and pass a Device
 
 		static bool usingDynamicLinking();
@@ -32,18 +21,15 @@ class Loader
 		static bool loadDynamicLibrary();
 		static bool loadExportedFunction();
 		static bool loadGlobalLevelFunctions();
-		static bool loadInstanceLevelFunctions(const Instance& instance);
+		static bool loadInstanceLevelFunctions(const VulkanInstance& instance);
 		static bool loadDeviceLevelFunctions(const VkDevice& device, const std::vector<const char*>& enabledExtensions); // TODO : enabledExtensions in Device class and pass a Device
 
 	private:
-		static DynamicLibrary sDynamicLibrary;
+		static VulkanDynamicLibrary sDynamicLibrary;
 		static bool sExportedFunctionLoaded;
 		static bool sGlobalLevelFunctionsLoaded;
 		static bool sInstanceLevelFunctionsLoaded;
 		static bool sDeviceLevelFunctionsLoaded;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_LOADER_HPP
+VULKAN_NAMESPACE_END

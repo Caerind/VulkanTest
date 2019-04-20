@@ -1,56 +1,47 @@
-#ifndef NU_VULKAN_QUEUE_HPP
-#define NU_VULKAN_QUEUE_HPP
+#pragma once
 
 #include "VulkanFunctions.hpp"
 
-#include "VulkanCommandBuffer.hpp"
-#include "VulkanFence.hpp"
-
-#include <memory>
-#include <vector>
-
 #include "../CookBook/Common.hpp" // TODO : WaitSemaphore & PresentInfo
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-class Device;
-class Queue
+// TODO : Create a specific handle
+
+class VulkanQueue : public VulkanDeviceObject<VulkanObjectType_Queue>
 {
 	public:
-		typedef std::unique_ptr<Queue> Ptr;
+		~VulkanQueue();
 
-		~Queue();
+		bool useStagingBufferToUpdateBufferAndWait(VkDeviceSize dataSize, void* data, VulkanBuffer* buffer, VkDeviceSize offset, VkAccessFlags currentAccess, VkAccessFlags newAccess, VkPipelineStageFlags generatingStages, VkPipelineStageFlags consumingStages, VulkanCommandBuffer* commandBuffer, std::vector<VkSemaphore> signalSemaphores, uint64_t timeout);
+		bool useStagingBufferToUpdateImageAndWait(VkDeviceSize dataSize, void* data, VulkanImage* image, VkImageSubresourceLayers subresource, VkOffset3D offset, VkExtent3D size, VkImageLayout currentLayout, VkImageLayout newLayout, VkAccessFlags currentAccess, VkAccessFlags newAccess, VkImageAspectFlags aspect, VkPipelineStageFlags generatingStages, VkPipelineStageFlags consumingStages, VulkanCommandBuffer* commandBuffer, std::vector<VkSemaphore> signalSemaphores, uint64_t timeout);
 
-		bool useStagingBufferToUpdateBufferAndWait(VkDeviceSize dataSize, void* data, Buffer* buffer, VkDeviceSize offset, VkAccessFlags currentAccess, VkAccessFlags newAccess, VkPipelineStageFlags generatingStages, VkPipelineStageFlags consumingStages, CommandBuffer* commandBuffer, std::vector<VkSemaphore> signalSemaphores, uint64_t timeout);
-		bool useStagingBufferToUpdateImageAndWait(VkDeviceSize dataSize, void* data, Image* image, VkImageSubresourceLayers subresource, VkOffset3D offset, VkExtent3D size, VkImageLayout currentLayout, VkImageLayout newLayout, VkAccessFlags currentAccess, VkAccessFlags newAccess, VkImageAspectFlags aspect, VkPipelineStageFlags generatingStages, VkPipelineStageFlags consumingStages, CommandBuffer* commandBuffer, std::vector<VkSemaphore> signalSemaphores, uint64_t timeout);
-
-		bool submitCommandBuffers(std::vector<CommandBuffer*> commandBuffers, std::vector<WaitSemaphoreInfo> waitSemaphoreInfos, std::vector<VkSemaphore> signalSemaphores, Fence* fence);
-		bool submitCommandBuffersAndWait(std::vector<CommandBuffer*> commandBuffers, std::vector<WaitSemaphoreInfo> waitSemaphoreInfos, std::vector<VkSemaphore> signalSemaphores, Fence* fence, uint64_t timeout);
+		bool submitCommandBuffers(std::vector<VulkanCommandBuffer*> commandBuffers, std::vector<WaitSemaphoreInfo> waitSemaphoreInfos, std::vector<VkSemaphore> signalSemaphores, VulkanFence* fence);
+		bool submitCommandBuffersAndWait(std::vector<VulkanCommandBuffer*> commandBuffers, std::vector<WaitSemaphoreInfo> waitSemaphoreInfos, std::vector<VkSemaphore> signalSemaphores, VulkanFence* fence, uint64_t timeout);
 		
 		bool presentImage(std::vector<VkSemaphore> renderingSemaphores, std::vector<PresentInfo> imagesToPresent);
 
-		uint32_t getFamilyIndex() const;
-		uint32_t getIndex() const;
+		VulkanU32 getFamilyIndex() const;
+		VulkanU32 getIndex() const;
+		const VkQueueFamilyProperties& getFamilyProperties() const;
+		const VkQueueFlags& getFlags() const;
+		bool hasGraphicsFlag() const;
+		bool hasComputeFlag() const;
+		bool hasTransferFlag() const;
+		bool hasSparseBindingFlag() const;
 
 		bool isInitialized() const;
 		const VkQueue& getHandle() const;
-		const VkDevice& getDeviceHandle() const;
 
 	private:
-		friend class Device;
-		Queue(Device& device, uint32_t queueFamilyIndex, uint32_t queueIndex);
+		friend class VulkanQueueManager;
+		VulkanQueue(VulkanDevice& device, VulkanU32 familyIndex, VulkanU32 index);
+		bool initialize();
 
-		Device& mDevice;
 		VkQueue mQueue;
 
-		uint32_t mFamilyIndex;
-		uint32_t mIndex;
+		VulkanU32 mFamilyIndex;
+		VulkanU32 mIndex;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_QUEUE_HPP
+VULKAN_NAMESPACE_END

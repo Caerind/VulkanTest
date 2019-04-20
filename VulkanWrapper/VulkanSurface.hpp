@@ -1,54 +1,36 @@
-#ifndef NU_VULKAN_SURFACE_HPP
-#define NU_VULKAN_SURFACE_HPP
-
-#include <memory>
+#pragma once
 
 #include "VulkanFunctions.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-struct WindowParameters
-{
-	PlatformConnectionType platformConnection;
-	PlatformWindowType platformWindow;
-};
-
-class Instance;
-class Surface
+class VulkanSurface : public VulkanInstanceObject<VulkanObjectType_Surface>
 {
 	public:
-		typedef std::unique_ptr<Surface> Ptr;
+		~VulkanSurface();
 
-		~Surface();
+		const VulkanWindowParameters& getWindowParameters() const;
+		VulkanPlatformConnectionType getPlatformConnection() const;
+		VulkanPlatformWindowType getPlatformWindow() const;
 
-		const WindowParameters& getWindowParameters() const;
-		PlatformConnectionType getPlatformConnection() const;
-		PlatformWindowType getPlatformWindow() const;
-
-		Instance& getInstance();
-		const Instance& getInstance() const;
 		const VkSurfaceKHR& getHandle() const;
-		const VkInstance& getInstanceHandle() const;
-
+		
 	private:
-		friend class Instance;
-		static Surface::Ptr createSurface(Instance& instance, const WindowParameters& windowParameters);
+		friend class VulkanInstance;
+		static VulkanSurfacePtr createSurface(const VulkanWindowParameters& windowParameters);
 
-		Surface(Instance& instance, const WindowParameters& windowParameters);
+		VulkanSurface(const VulkanWindowParameters& windowParameters);
+		
+		// NonCopyable
+		VulkanSurface(const VulkanSurface& other) = delete;
+		VulkanSurface& operator=(const VulkanSurface& other) = delete;
 
 		bool init();
 		void release();
 
-		Instance& mInstance;
 		VkSurfaceKHR mSurface;
 
-		WindowParameters mWindowParameters;
+		VulkanWindowParameters mWindowParameters;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_SURFACE_HPP
+VULKAN_NAMESPACE_END

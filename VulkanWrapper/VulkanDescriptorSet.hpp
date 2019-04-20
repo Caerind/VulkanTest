@@ -1,41 +1,28 @@
-#ifndef NU_VULKAN_DESCRIPTOR_SET_HPP
-#define NU_VULKAN_DESCRIPTOR_SET_HPP
+#pragma once
 
 #include "VulkanFunctions.hpp"
 
-#include <memory>
+VULKAN_NAMESPACE_BEGIN
 
-namespace nu
-{
-namespace Vulkan
-{
-
-class DescriptorPool;
-class DescriptorSetLayout;
-class DescriptorSet
+class VulkanDescriptorSet : public VulkanObject<VulkanObjectType_DescriptorSet>
 {
 	public:
-		typedef std::unique_ptr<DescriptorSet> Ptr;
-
-		~DescriptorSet();
+		~VulkanDescriptorSet();
 
 		bool isInitialized() const;
 		const VkDescriptorSet& getHandle() const;
-		const DescriptorPool& getDescriptorPool() const;
+		const VulkanDescriptorPool& getDescriptorPool() const;
 
 	private:
-		friend class DescriptorPool;
-		DescriptorSet(DescriptorPool& descriptorPool, DescriptorSetLayout* descriptorSetLayout);
+		friend class VulkanDescriptorPool;
+		VulkanDescriptorSet(VulkanDescriptorPool& descriptorPool, VulkanDescriptorSetLayout* descriptorSetLayout);
 
 		bool init();
 		bool release();
 
-		DescriptorPool& mDescriptorPool;
-		DescriptorSetLayout* mDescriptorSetLayout;
+		VulkanDescriptorPool& mDescriptorPool;
+		VulkanDescriptorSetLayout* mDescriptorSetLayout;
 		VkDescriptorSet mDescriptorSet;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_DESCRIPTOR_SET_HPP
+VULKAN_NAMESPACE_END

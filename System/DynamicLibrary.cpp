@@ -1,6 +1,7 @@
 #include "DynamicLibrary.hpp"
 
 #if defined(NU_PLATFORM_WINDOWS)
+	#include <Windows.h>
 	#include "String.hpp"
 #endif
 
@@ -31,9 +32,7 @@ DynamicLibrary::~DynamicLibrary()
 bool DynamicLibrary::loadLibrary(const std::string& libraryName)
 {
 	#if defined(NU_PLATFORM_WINDOWS)
-		std::wstring wideLibraryName;
-		toWideString(libraryName, wideLibraryName);
-		mLibraryHandle = LoadLibrary(wideLibraryName.c_str());
+		mLibraryHandle = LoadLibrary(libraryName.c_str());
 	#elif defined(NU_PLATFORM_LINUX)
 		mLibraryHandle = dlopen(libraryName.c_str(), RTLD_NOW);
 	#endif

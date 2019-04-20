@@ -507,7 +507,7 @@ inline Vector2<T>& Vector2<T>::maximize(const Vector2<T>& v)
 template<typename T>
 inline Vector2<T> Vector2<T>::maximum(const Vector2<T>& v1, const Vector2<T>& v2)
 {
-	return Vector2<T>(std::max(v1.data[0], v2.data[0]), std::max(v1.data[1], v2.data[1]));
+	return Vector2<T>(v1.data[0] >= v2.data[0] ? v1.data[0] : v2.data[0], v1.data[1] >= v2.data[1] ? v1.data[1] : v2.data[1]);
 }
 
 template<typename T>
@@ -521,7 +521,7 @@ inline Vector2<T>& Vector2<T>::minimize(const Vector2<T>& v)
 template<typename T>
 inline Vector2<T> Vector2<T>::minimum(const Vector2<T>& v1, const Vector2<T>& v2)
 {
-	return Vector2<T>(std::min(v1.data[0], v2.data[0]), std::min(v1.data[1], v2.data[1]));
+	return Vector2<T>(v1.data[0] <= v2.data[0] ? v1.data[0] : v2.data[0], v1.data[1] <= v2.data[1] ? v1.data[1] : v2.data[1]);
 }
 
 template<typename T>

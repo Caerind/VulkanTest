@@ -1,5 +1,4 @@
-#ifndef NORMAL_MAPPED_GEOMETRY_HPP
-#define NORMAL_MAPPED_GEOMETRY_HPP
+#pragma once
 
 #include "../../CookBook/SampleBase.hpp"
 
@@ -18,15 +17,15 @@ class NormalMappedGeometry : public SampleBase
 		nu::Mesh mMesh;
 		nu::VertexBuffer::Ptr mVertexBuffer;
 
-		nu::Vulkan::ImageHelper::Ptr mTexture;
+		VulkanImageHelperPtr mTexture;
 
-		nu::Vulkan::DescriptorSetLayout::Ptr mDescriptorSetLayout;
-		nu::Vulkan::DescriptorPool::Ptr mDescriptorPool;
-		std::vector<nu::Vulkan::DescriptorSet::Ptr> mDescriptorSets;
+		VulkanDescriptorSetLayoutPtr mDescriptorSetLayout;
+		VulkanDescriptorPoolPtr mDescriptorPool;
+		std::vector<VulkanDescriptorSetPtr> mDescriptorSets;
 
-		nu::Vulkan::RenderPass::Ptr mRenderPass;
-		nu::Vulkan::PipelineLayout::Ptr mPipelineLayout;
-		std::vector<nu::Vulkan::GraphicsPipeline::Ptr> mPipelines;
+		VulkanRenderPassPtr mRenderPass;
+		VulkanPipelineLayoutPtr mPipelineLayout;
+		std::vector<VulkanGraphicsPipelinePtr> mPipelines;
 		enum PipelineNames
 		{
 			MeshPipeline = 0,
@@ -38,7 +37,7 @@ class NormalMappedGeometry : public SampleBase
 
 		uint32_t mFrameIndex = 0;
 
-		virtual bool initialize(nu::Vulkan::WindowParameters windowParameters) override 
+		virtual bool initialize(VulkanWindowParameters windowParameters) override 
 		{
 			if (!initializeVulkan(windowParameters, nullptr)) 
 			{
@@ -49,11 +48,11 @@ class NormalMappedGeometry : public SampleBase
 			int width = 1;
 			int height = 1;
 			std::vector<unsigned char> imageData;
-			if (!loadTextureDataFromFile("../Data/Textures/normal_map.png", 4, imageData, &width, &height))
+			if (!loadTextureDataFromFile("../../Data/Textures/normal_map.png", 4, imageData, &width, &height))
 			{
 				return false;
 			}
-			mTexture = nu::Vulkan::ImageHelper::createCombinedImageSampler(*mLogicalDevice, VK_IMAGE_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, { (uint32_t)width, (uint32_t)height, 1 },
+			mTexture = VulkanImageHelper::createCombinedImageSampler(VulkanDevice::get(), VK_IMAGE_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, { (uint32_t)width, (uint32_t)height, 1 },
 				1, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, false, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT, VK_FILTER_LINEAR,
 				VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT,
 				VK_SAMPLER_ADDRESS_MODE_REPEAT, 0.0f, 0.0f, 1.0f, false, 1.0f, false, VK_COMPARE_OP_ALWAYS, VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK, false);
@@ -77,18 +76,18 @@ class NormalMappedGeometry : public SampleBase
 
 			// Vertex data
 			uint32_t vertexStride = 0;
-			if (!mMesh.loadFromFile("../Data/Models/ice.obj", true, true, true, true, &vertexStride))
+			if (!mMesh.loadFromFile("../../Data/Models/ice.obj", true, true, true, true, &vertexStride))
 			{
 				return false;
 			}
-			mVertexBuffer = nu::VertexBuffer::createVertexBuffer(*mLogicalDevice, mMesh.size());
-			if (!mVertexBuffer || !mVertexBuffer->updateAndWait(mMesh.size(), &mMesh.data[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue.get(), {}, 50000000))
+			mVertexBuffer = nu::VertexBuffer::createVertexBuffer(VulkanDevice::get(), mMesh.size());
+			if (!mVertexBuffer || !mVertexBuffer->updateAndWait(mMesh.size(), &mMesh.data[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue, {}, 50000000))
 			{
 				return false;
 			}
 
 			// Uniform buffer
-			mUniformBuffer = nu::UniformBuffer::createUniformBuffer(*mLogicalDevice, 2 * 16 * sizeof(float));
+			mUniformBuffer = nu::UniformBuffer::createUniformBuffer(VulkanDevice::get(), 2 * 16 * sizeof(float));
 			if (mUniformBuffer == nullptr)
 			{
 				return false;
@@ -120,7 +119,7 @@ class NormalMappedGeometry : public SampleBase
 					nullptr                                     // const VkSampler    * pImmutableSamplers
 				}
 			};
-			mDescriptorSetLayout = mLogicalDevice->createDescriptorSetLayout(descriptorSetLayoutBindings);
+			mDescriptorSetLayout = VulkanDevice::get().createDescriptorSetLayout(descriptorSetLayoutBindings);
 			if (mDescriptorSetLayout == nullptr || !mDescriptorSetLayout->isInitialized())
 			{
 				return false;
@@ -136,7 +135,7 @@ class NormalMappedGeometry : public SampleBase
 					1                                           // uint32_t             descriptorCount
 				}
 			};
-			mDescriptorPool = mLogicalDevice->createDescriptorPool(false, 1, descriptorPoolSizes);
+			mDescriptorPool = VulkanDevice::get().createDescriptorPool(false, 1, descriptorPoolSizes);
 			if (mDescriptorPool == nullptr || !mDescriptorPool->isInitialized())
 			{
 				return false;
@@ -153,7 +152,7 @@ class NormalMappedGeometry : public SampleBase
 			// TODO : Update more than one at once
 			mUniformBuffer->updateDescriptor(mDescriptorSets[0].get(), 0, 0);
 
-			nu::Vulkan::ImageDescriptorInfo imageDescriptorUpdate = {
+			VulkanImageDescriptorInfo imageDescriptorUpdate = {
 				mDescriptorSets[0]->getHandle(),            // VkDescriptorSet                      TargetDescriptorSet
 				1,                                          // uint32_t                             TargetDescriptorBinding
 				0,                                          // uint32_t                             TargetArrayElement
@@ -167,10 +166,10 @@ class NormalMappedGeometry : public SampleBase
 				}
 			};
 
-			mLogicalDevice->updateDescriptorSets({ imageDescriptorUpdate }, {}, {}, {});
+			VulkanDevice::get().updateDescriptorSets({ imageDescriptorUpdate }, {}, {}, {});
 
 			// Render pass
-			mRenderPass = mLogicalDevice->initRenderPass();
+			mRenderPass = VulkanDevice::get().initRenderPass();
 			mRenderPass->addAttachment(mSwapchain->getFormat());
 			mRenderPass->setAttachmentLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR);
 			mRenderPass->setAttachmentStoreOp(VK_ATTACHMENT_STORE_OP_STORE);
@@ -215,29 +214,29 @@ class NormalMappedGeometry : public SampleBase
 				}
 			};
 
-			mPipelineLayout = mLogicalDevice->createPipelineLayout({ mDescriptorSetLayout->getHandle() }, pushConstantRanges);
+			mPipelineLayout = VulkanDevice::get().createPipelineLayout({ mDescriptorSetLayout->getHandle() }, pushConstantRanges);
 			if (mPipelineLayout == nullptr || !mPipelineLayout->isInitialized())
 			{
 				return false;
 			}
 
 
-			nu::Vulkan::ShaderModule::Ptr vertexShaderModule = mLogicalDevice->initShaderModule();
-			if (vertexShaderModule == nullptr || !vertexShaderModule->loadFromFile("../Examples/3 - Normal Mapped Geometry/shader.vert.spv", nu::Vulkan::ShaderModule::Vertex))
+			VulkanShaderModulePtr vertexShaderModule = VulkanDevice::get().initShaderModule();
+			if (vertexShaderModule == nullptr || !vertexShaderModule->loadFromFile("../../Examples/3 - Normal Mapped Geometry/shader.vert.spv", VulkanShaderModule::Vertex))
 			{
 				return false;
 			}
 
-			nu::Vulkan::ShaderModule::Ptr fragmentShaderModule = mLogicalDevice->initShaderModule();
-			if (fragmentShaderModule == nullptr || !fragmentShaderModule->loadFromFile("../Examples/3 - Normal Mapped Geometry/shader.frag.spv", nu::Vulkan::ShaderModule::Fragment))
+			VulkanShaderModulePtr fragmentShaderModule = VulkanDevice::get().initShaderModule();
+			if (fragmentShaderModule == nullptr || !fragmentShaderModule->loadFromFile("../../Examples/3 - Normal Mapped Geometry/shader.frag.spv", VulkanShaderModule::Fragment))
 			{
 				return false;
 			}
 
 			mPipelines.resize(PipelineNames::Count);
-			mPipelines[PipelineNames::MeshPipeline] = mLogicalDevice->initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
+			mPipelines[PipelineNames::MeshPipeline] = VulkanDevice::get().initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
 
-			nu::Vulkan::GraphicsPipeline* modelPipeline = mPipelines[PipelineNames::MeshPipeline].get();
+			VulkanGraphicsPipeline* modelPipeline = mPipelines[PipelineNames::MeshPipeline].get();
 
 			modelPipeline->setSubpass(0);
 
@@ -278,7 +277,7 @@ class NormalMappedGeometry : public SampleBase
 
 		virtual bool draw() override 
 		{
-			auto prepareFrame = [&](nu::Vulkan::CommandBuffer* commandBuffer, uint32_t swapchainImageIndex, nu::Vulkan::Framebuffer* framebuffer) 
+			auto prepareFrame = [&](VulkanCommandBuffer* commandBuffer, uint32_t swapchainImageIndex, VulkanFramebuffer* framebuffer) 
 			{
 				if (!commandBuffer->beginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, nullptr))
 				{
@@ -292,7 +291,7 @@ class NormalMappedGeometry : public SampleBase
 
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex()) 
 				{
-					nu::Vulkan::ImageTransition imageTransitionBeforeDrawing = {
+					VulkanImageTransition imageTransitionBeforeDrawing = {
 						mSwapchain->getImageHandle(swapchainImageIndex), // VkImage             image
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        currentAccess
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        newAccess
@@ -351,7 +350,7 @@ class NormalMappedGeometry : public SampleBase
 
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex())
 				{
-					nu::Vulkan::ImageTransition imageTransitionBeforePresent = {
+					VulkanImageTransition imageTransitionBeforePresent = {
 						mSwapchain->getImageHandle(swapchainImageIndex),  // VkImage            image
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        currentAccess
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        newAccess
@@ -484,5 +483,3 @@ class NormalMappedGeometry : public SampleBase
 			return true;
 		}
 };
-
-#endif // NORMAL_MAPPED_GEOMETRY_HPP

@@ -1,45 +1,27 @@
-#ifndef NU_VULKAN_SEMAPHORE_HPP
-#define NU_VULKAN_SEMAPHORE_HPP
-
-#include <memory>
+#pragma once
 
 #include "VulkanFunctions.hpp"
 
-// TODO : Add getters
+VULKAN_NAMESPACE_BEGIN
 
-namespace nu
-{
-namespace Vulkan
-{
-
-class Device;
-class Semaphore
+class VulkanSemaphore : public VulkanDeviceObject<VulkanObjectType_Semaphore>
 {
 	public:
-		typedef std::unique_ptr<Semaphore> Ptr;
+		~VulkanSemaphore();
 
-		~Semaphore();
-
-		Device& getDevice();
-		const Device& getDevice() const;
 		const VkSemaphore& getHandle() const;
-		const VkDevice& getDeviceHandle() const;
 
 	private:
-		friend class Device;
-		static Semaphore::Ptr createSemaphore(Device& device);
+		friend class VulkanDevice;
+		static VulkanSemaphorePtr createSemaphore();
 
-		Semaphore(Device& device);
+		VulkanSemaphore();
 
 		bool init();
 		void release();
 
 	private:
-		Device& mDevice;
 		VkSemaphore mSemaphore;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_SEMAPHORE_HPP
+VULKAN_NAMESPACE_END

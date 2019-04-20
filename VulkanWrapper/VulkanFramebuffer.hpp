@@ -1,48 +1,34 @@
-#ifndef NU_VULKAN_FRAMEBUFFER_HPP
-#define NU_VULKAN_FRAMEBUFFER_HPP
+#pragma once
 
 #include "VulkanFunctions.hpp"
 
-#include <memory>
-#include <vector>
+VULKAN_NAMESPACE_BEGIN
 
-namespace nu
-{
-namespace Vulkan
-{
-
-class Device;
-class RenderPass;
-class Framebuffer
+class VulkanFramebuffer : public VulkanObject<VulkanObjectType_Framebuffer>
 {
 	public:
-		typedef std::unique_ptr<Framebuffer> Ptr;
+		static VulkanFramebufferPtr createFramebuffer(VulkanDevice& device, VulkanRenderPass& renderPass, const std::vector<VkImageView>& attachments, VulkanU32 width, VulkanU32 height, VulkanU32 layers);
 
-		static Framebuffer::Ptr createFramebuffer(Device& device, RenderPass& renderPass, const std::vector<VkImageView>& attachments, uint32_t width, uint32_t height, uint32_t layers);
-
-		~Framebuffer();
+		~VulkanFramebuffer();
 
 		bool isInitialized() const;
 		const VkFramebuffer& getHandle() const;
 		const VkDevice& getDeviceHandle() const;
 
 	private:
-		Framebuffer(Device& device, RenderPass& renderPass, const std::vector<VkImageView>& attachments, uint32_t width, uint32_t height, uint32_t layers);
+		VulkanFramebuffer(VulkanDevice& device, VulkanRenderPass& renderPass, const std::vector<VkImageView>& attachments, VulkanU32 width, VulkanU32 height, VulkanU32 layers);
 
 		bool init();
 		bool release();
 
-		Device& mDevice;
-		RenderPass& mRenderPass;
+		VulkanDevice& mDevice;
+		VulkanRenderPass& mRenderPass;
 		VkFramebuffer mFramebuffer;
 
 		std::vector<VkImageView> mAttachments;
-		uint32_t mWidth;
-		uint32_t mHeight;
-		uint32_t mLayers;
+		VulkanU32 mWidth;
+		VulkanU32 mHeight;
+		VulkanU32 mLayers;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_FRAMEBUFFER_HPP
+VULKAN_NAMESPACE_END

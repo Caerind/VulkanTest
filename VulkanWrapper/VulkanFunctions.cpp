@@ -1,18 +1,18 @@
 #include "VulkanFunctions.hpp"
 
-namespace nu 
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-#define NU_EXPORTED_VULKAN_FUNCTION(name) PFN_##name name;
-#define NU_GLOBAL_LEVEL_VULKAN_FUNCTION(name) PFN_##name name;
-#define NU_INSTANCE_LEVEL_VULKAN_FUNCTION(name) PFN_##name name;
-#define NU_INSTANCE_LEVEL_VULKAN_FUNCTION_FROM_EXTENSION(name, extension) PFN_##name name;
-#define NU_DEVICE_LEVEL_VULKAN_FUNCTION(name) PFN_##name name;
-#define NU_DEVICE_LEVEL_VULKAN_FUNCTION_FROM_EXTENSION(name, extension) PFN_##name name;
+#if (defined VULKAN_LINKING_DYNAMIC)
+
+#define VULKAN_EXPORTED_FUNCTION(name) PFN_##name name;
+#define VULKAN_GLOBAL_LEVEL_FUNCTION(name) PFN_##name name;
+#define VULKAN_INSTANCE_LEVEL_FUNCTION(name) PFN_##name name;
+#define VULKAN_INSTANCE_LEVEL_FUNCTION_FROM_EXTENSION(name, extension) PFN_##name name;
+#define VULKAN_DEVICE_LEVEL_FUNCTION(name) PFN_##name name;
+#define VULKAN_DEVICE_LEVEL_FUNCTION_FROM_EXTENSION(name, extension) PFN_##name name;
 
 #include "ListOfVulkanFunctions.inl"
 
-} // namespace Vulkan
-} // namespace nu
+#endif
+
+VULKAN_NAMESPACE_END

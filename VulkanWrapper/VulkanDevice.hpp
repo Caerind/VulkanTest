@@ -1,143 +1,155 @@
-#ifndef NU_VULKAN_DEVICE_HPP
-#define NU_VULKAN_DEVICE_HPP
+#pragma once
 
-#include "VulkanInstance.hpp"
-#include "VulkanPhysicalDevice.hpp"
+#include <unordered_map>
 
-#include <memory>
-#include <vector>
+#include "VulkanFunctions.hpp"
 
-#include "VulkanBuffer.hpp"
-#include "VulkanCommandPool.hpp"
-#include "VulkanComputePipeline.hpp"
-#include "VulkanDescriptorSetLayout.hpp"
-#include "VulkanDescriptorPool.hpp"
-#include "VulkanFence.hpp"
-#include "VulkanGraphicsPipeline.hpp"
-#include "VulkanImage.hpp"
-#include "VulkanMemoryBlock.hpp"
-#include "VulkanPipelineCache.hpp"
-#include "VulkanPipelineLayout.hpp"
-#include "VulkanQueue.hpp"
-#include "VulkanRenderPass.hpp"
-#include "VulkanSampler.hpp"
-#include "VulkanSemaphore.hpp"
-#include "VulkanShaderModule.hpp"
-#include "VulkanSwapchain.hpp"
+#include "../CookBook/Common.hpp" // TODO : Remove this
 
-namespace nu
+#include "VulkanQueueManager.hpp"
+
+VULKAN_NAMESPACE_BEGIN
+
+struct VulkanImageDescriptorInfo 
 {
-namespace Vulkan
-{
-
-struct QueueInfo
-{
-	uint32_t familyIndex;
-	std::vector<float> priorities;
-};
-
-struct ImageDescriptorInfo 
-{
-	VkDescriptorSet targetDescriptorSet;
-	uint32_t targetDescriptorBinding;
-	uint32_t targetArrayElement;
+	VkDescriptorSet targetDescriptorSet; // TODO : Ptr ?
+	VulkanU32 targetDescriptorBinding;
+	VulkanU32 targetArrayElement;
 	VkDescriptorType targetDescriptorType;
 	std::vector<VkDescriptorImageInfo> imageInfos;
 };
 
-struct BufferDescriptorInfo 
+struct VulkanBufferDescriptorInfo 
 {
-	VkDescriptorSet targetDescriptorSet;
-	uint32_t targetDescriptorBinding;
-	uint32_t targetArrayElement;
+	VkDescriptorSet targetDescriptorSet; // TODO : Ptr ?
+	VulkanU32 targetDescriptorBinding;
+	VulkanU32 targetArrayElement;
 	VkDescriptorType targetDescriptorType;
 	std::vector<VkDescriptorBufferInfo> bufferInfos;
 };
 
-struct TexelBufferDescriptorInfo 
+struct VulkanTexelBufferDescriptorInfo 
 {
-	VkDescriptorSet targetDescriptorSet;
-	uint32_t targetDescriptorBinding;
-	uint32_t targetArrayElement;
+	VkDescriptorSet targetDescriptorSet; // TODO : Ptr ?
+	VulkanU32 targetDescriptorBinding;
+	VulkanU32 targetArrayElement;
 	VkDescriptorType targetDescriptorType;
-	std::vector<VkBufferView> texelBufferViews;
+	std::vector<VkBufferView> texelBufferViews; // TODO : Ptr ?
 };
 
-struct CopyDescriptorInfo 
+struct VulkanCopyDescriptorInfo 
 {
-	VkDescriptorSet targetDescriptorSet;
-	uint32_t targetDescriptorBinding;
-	uint32_t targetArrayElement;
-	VkDescriptorSet sourceDescriptorSet;
-	uint32_t sourceDescriptorBinding;
-	uint32_t sourceArrayElement;
-	uint32_t descriptorCount;
+	VkDescriptorSet targetDescriptorSet; // TODO : Ptr ?
+	VulkanU32 targetDescriptorBinding;
+	VulkanU32 targetArrayElement;
+	VkDescriptorSet sourceDescriptorSet; // TODO : Ptr ?
+	VulkanU32 sourceDescriptorBinding;
+	VulkanU32 sourceArrayElement;
+	VulkanU32 descriptorCount;
 };
 
-class Device
+// TODO : Add DeviceObjectTracker ? Manage its objects ?
+// TODO : Keep extensions ? features ? (as attributes)
+// TODO : Add initialization parameters for layers/extensions/... ?
+
+class VulkanDevice : VulkanObject<VulkanObjectType_Device>
 {
 	public:
-		typedef std::unique_ptr<Device> Ptr;
+		#if (defined VULKAN_MONO_DEVICE)
+		static VulkanDevice& get();
+		static bool initialize(VulkanPhysicalDevice& physicalDevice, VkPhysicalDeviceFeatures* desiredFeatures, const VulkanQueueParameters& queueParameters, VulkanSurface* surface = nullptr);
+		static bool uninitialize();
+		static bool initialized();
+		#else
+		static VulkanDevice& get(VulkanDeviceId id);
+		static bool initialize(VulkanDeviceId id, VulkanPhysicalDevice& physicalDevice, VkPhysicalDeviceFeatures* desiredFeatures, const VulkanQueueParameters& queueParameters, VulkanSurface* surface = nullptr);
+		static bool uninitialize(VulkanDeviceId id);
+		static bool initialized(VulkanDeviceId id);
+		#endif
+	
+	public:
+		VulkanBufferPtr createBuffer(VkDeviceSize size, VkBufferUsageFlags usage);
 
-		static Device::Ptr createDevice(PhysicalDevice& physicalDevice, const std::vector<uint32_t>& queueFamilyIndexes, VkPhysicalDeviceFeatures* desiredFeatures);
+		VulkanCommandPoolPtr createCommandPool(VkCommandPoolCreateFlags parameters, VulkanU32 queueFamily);
 
-		~Device();
+		VulkanDescriptorPoolPtr createDescriptorPool(bool freeIndividualSets, VulkanU32 maxSetsCount, const std::vector<VkDescriptorPoolSize>& descriptorTypes); 
+		VulkanDescriptorSetLayoutPtr createDescriptorSetLayout(const std::vector<VkDescriptorSetLayoutBinding>& bindings);
+		void updateDescriptorSets(const std::vector<VulkanImageDescriptorInfo>& imageDescriptorInfos, const std::vector<VulkanBufferDescriptorInfo>& bufferDescriptorInfos, const std::vector<VulkanTexelBufferDescriptorInfo>& texelBufferDescriptorInfos, const std::vector<VulkanCopyDescriptorInfo>& copyDescriptorInfos);
 
-		Queue::Ptr getQueue(uint32_t queueFamilyIndex, uint32_t queueIndex);
+		VulkanFencePtr createFence(bool signaled = false);
+		bool waitFences(const std::vector<VulkanFence*>& fences, bool waitForAll, VulkanU64 timeout); // TODO : Friendlier Time type
+		bool resetFences(const std::vector<VulkanFence*>& fences);
 
-		Buffer::Ptr createBuffer(VkDeviceSize size, VkBufferUsageFlags usage);
-
-		CommandPool::Ptr createCommandPool(VkCommandPoolCreateFlags parameters, uint32_t queueFamily);
-
-		DescriptorPool::Ptr createDescriptorPool(bool freeIndividualSets, uint32_t maxSetsCount, const std::vector<VkDescriptorPoolSize>& descriptorTypes); 
-		DescriptorSetLayout::Ptr createDescriptorSetLayout(const std::vector<VkDescriptorSetLayoutBinding>& bindings);
-		void updateDescriptorSets(const std::vector<ImageDescriptorInfo>& imageDescriptorInfos, const std::vector<BufferDescriptorInfo>& bufferDescriptorInfos, const std::vector<TexelBufferDescriptorInfo>& texelBufferDescriptorInfos, const std::vector<CopyDescriptorInfo>& copyDescriptorInfos);
-
-		Fence::Ptr createFence(bool signaled = false);
-		bool waitFences(const std::vector<Fence*>& fences, bool waitForAll, uint64_t timeout);
-		bool resetFences(const std::vector<Fence*>& fences);
-
-		Image::Ptr createImage(VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usageScenarios, bool cubemap);
+		VulkanImagePtr createImage(VkImageType type, VkFormat format, VkExtent3D size, VulkanU32 numMipmaps, VulkanU32 numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usageScenarios, bool cubemap);
 		
-		MemoryBlock::Ptr createMemoryBlock(VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags memoryProperties);
+		VulkanMemoryBlockPtr createMemoryBlock(VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags memoryProperties);
+   
+   		// TODO : Endianness ?
+		VulkanPipelineCachePtr createPipelineCache(const std::vector<VulkanU8>& cacheData = {});
 
-		PipelineCache::Ptr createPipelineCache(const std::vector<unsigned char>& cacheData = {});
+		VulkanPipelineLayoutPtr createPipelineLayout(const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, const std::vector<VkPushConstantRange> pushConstantRanges);
 
-		PipelineLayout::Ptr createPipelineLayout(const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, const std::vector<VkPushConstantRange> pushConstantRanges);
+		VulkanComputePipelinePtr createComputePipeline(VulkanShaderModule* computeShader, VulkanPipelineLayout* layout, VulkanPipelineCache* cache, VkPipelineCreateFlags additionalOptions);
 
-		ComputePipeline::Ptr createComputePipeline(ShaderModule* computeShader, PipelineLayout* layout, PipelineCache* cache, VkPipelineCreateFlags additionalOptions);
+		VulkanGraphicsPipelinePtr initGraphicsPipeline(VulkanPipelineLayout& layout, VulkanRenderPass& renderPass, VulkanPipelineCache* cache = nullptr);
 
-		GraphicsPipeline::Ptr initGraphicsPipeline(PipelineLayout& layout, RenderPass& renderPass, PipelineCache* cache = nullptr);
+		VulkanRenderPassPtr initRenderPass();
 
-		RenderPass::Ptr initRenderPass();
+		VulkanSamplerPtr createSampler(VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, VulkanF32 lodBias, VulkanF32 minLod, VulkanF32 maxLod, bool anisotropyEnable, VulkanF32 maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, VkBorderColor borderColor, bool unnormalizedCoords);
 
-		Sampler::Ptr createSampler(VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, float lodBias, float minLod, float maxLod, bool anisotropyEnable, float maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, VkBorderColor borderColor, bool unnormalizedCoords);
-
-		Semaphore::Ptr createSemaphore();
+		VulkanSemaphorePtr createSemaphore();
 		
-		ShaderModule::Ptr initShaderModule();
+		VulkanShaderModulePtr initShaderModule();
 
-		Swapchain::Ptr createSwapchain(Surface& surface, std::vector<FrameResources>& framesResources);
+		VulkanSwapchainPtr createSwapchain(VulkanSurface& surface, std::vector<FrameResources>& framesResources);
 
 		bool waitForAllSubmittedCommands();
 
 		bool isInitialized() const;
 		const VkDevice& getHandle() const;
-		const VkPhysicalDevice& getPhysicalHandle() const;
-		PhysicalDevice& getPhysicalDevice();
-		const PhysicalDevice& getPhysicalDevice() const;
+		const VulkanPhysicalDevice& getPhysicalDevice() const;
+		const VkPhysicalDevice& getPhysicalDeviceHandle() const;
+		
+		// VulkanPhysicalDevice 
+		const std::vector<VkExtensionProperties>& getAvailableExtensions() const;
+		const VkPhysicalDeviceFeatures& getSupportedFeatures() const;
+		const VkPhysicalDeviceProperties& getProperties() const;
+		const std::vector<VkQueueFamilyProperties>& getQueueFamiliesProperties() const;
+		const VkPhysicalDeviceMemoryProperties& getMemoryProperties() const;
+		const VkFormatProperties& getFormatProperties(VkFormat format) const;
+		bool isExtensionSupported(const char* extensionName) const;
+
+		// VulkanQueueManager
+		VulkanQueue* getQueue(VulkanU32 index);
+		const VulkanQueue* getQueue(VulkanU32 index) const;
+		VulkanU32 getQueueCount() const;
 
 	private:
-		Device(PhysicalDevice& physicalDevice);
+		VulkanDevice(VulkanPhysicalDevice& physicalDevice);
+		~VulkanDevice();
+		
+		// NonCopyable and NonMovable
+		VulkanDevice(const VulkanDevice& other) = delete;
+		VulkanDevice(VulkanDevice&& other) = delete;
+		VulkanDevice& operator=(const VulkanDevice& other) = delete;
+		VulkanDevice& operator=(VulkanDevice&& other) = delete;
 
-		bool init(const std::vector<uint32_t>& queueFamilyIndexes, VkPhysicalDeviceFeatures* desiredFeatures);
-		bool release();
+		bool initializeInternal(VkPhysicalDeviceFeatures* desiredFeatures, const VulkanQueueParameters& queueParameters, VulkanSurface* surface = nullptr);
+		bool uninitializeInternal();
 
 		VkDevice mDevice;
-		PhysicalDevice& mPhysicalDevice;
+		VulkanPhysicalDevice& mPhysicalDevice;
+		VulkanQueueManager mQueueManager;
+		
+		#if (defined VULKAN_MONO_DEVICE)
+		static VulkanDevice* sDevice;
+		#else
+	public:
+		VulkanDeviceId getDeviceId() const { return mDeviceId; }
+	private:	
+		VulkanDeviceId mDeviceId;
+		static std::unordered_map<VulkanDeviceId, VulkanDevice*> sDevices;
+		#endif
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_DEVICE_HPP
+VULKAN_NAMESPACE_END

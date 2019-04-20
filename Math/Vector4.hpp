@@ -604,7 +604,7 @@ inline Vector4<T>& Vector4<T>::maximize(const Vector4<T>& v)
 template<typename T>
 inline Vector4<T> Vector4<T>::maximum(const Vector4<T>& v1, const Vector4<T>& v2)
 {
-	return Vector4<T>(std::max(v1.data[0], v2.data[0]), std::max(v1.data[1], v2.data[1]), std::max(v1.data[2], v2.data[2]), std::max(v1.data[3], v2.data[3]));
+	return Vector4<T>(v1.data[0] >= v2.data[0] ? v1.data[0] : v2.data[0], v1.data[1] >= v2.data[1] ? v1.data[1] : v2.data[1], v1.data[2] >= v2.data[2] ? v1.data[2] : v2.data[2], v1.data[3] >= v2.data[3] ? v1.data[3] : v2.data[3]);
 }
 
 template<typename T>
@@ -620,7 +620,7 @@ inline Vector4<T>& Vector4<T>::minimize(const Vector4<T>& v)
 template<typename T>
 inline Vector4<T> Vector4<T>::minimum(const Vector4<T>& v1, const Vector4<T>& v2)
 {
-	return Vector4<T>(std::min(v1.data[0], v2.data[0]), std::min(v1.data[1], v2.data[1]), std::min(v1.data[2], v2.data[2]), std::min(v1.data[3], v2.data[3]));
+	return Vector4<T>(v1.data[0] <= v2.data[0] ? v1.data[0] : v2.data[0], v1.data[1] <= v2.data[1] ? v1.data[1] : v2.data[1], v1.data[2] <= v2.data[2] ? v1.data[2] : v2.data[2], v1.data[3] <= v2.data[3] ? v1.data[3] : v2.data[3]);
 }
 
 template<typename T>

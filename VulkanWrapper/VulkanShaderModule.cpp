@@ -2,19 +2,18 @@
 
 #include "VulkanDevice.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+#include <fstream>
 
-ShaderModule::~ShaderModule()
-{
-	ObjectTracker::unregisterObject(ObjectType_ShaderModule);
+VULKAN_NAMESPACE_BEGIN
 
+VulkanShaderModule::~VulkanShaderModule()
+{
 	destroy();
+
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-bool ShaderModule::loadFromFile(const std::string& filename, ShaderStageFlags stage, const std::string& entrypoint)
+bool VulkanShaderModule::loadFromFile(const std::string& filename, ShaderStageFlags stage, const std::string& entrypoint)
 {
 	mStages = ShaderStageFlags::None;
 	mShaderStageCreateInfos.clear();
@@ -62,43 +61,43 @@ bool ShaderModule::loadFromFile(const std::string& filename, ShaderStageFlags st
 	return create();
 }
 
-void ShaderModule::setVertexEntrypointName(const std::string& entrypoint)
+void VulkanShaderModule::setVertexEntrypointName(const std::string& entrypoint)
 {
-	mStages = mStages | ShaderStageFlags::Vertex;
+	mStages = static_cast<ShaderStageFlags>(mStages | ShaderStageFlags::Vertex);
 	mVertexEntrypointName = entrypoint;
 }
 
-void ShaderModule::setTessellationControlEntrypointName(const std::string& entrypoint)
+void VulkanShaderModule::setTessellationControlEntrypointName(const std::string& entrypoint)
 {
-	mStages = mStages | ShaderStageFlags::TessellationControl;
+	mStages = static_cast<ShaderStageFlags>(mStages | ShaderStageFlags::TessellationControl);
 	mTessellationControlEntrypointName = entrypoint;
 }
 
-void ShaderModule::setTessellationEvaluationEntrypointName(const std::string& entrypoint)
+void VulkanShaderModule::setTessellationEvaluationEntrypointName(const std::string& entrypoint)
 {
-	mStages = mStages | ShaderStageFlags::TessellationEvaluation;
+	mStages = static_cast<ShaderStageFlags>(mStages | ShaderStageFlags::TessellationEvaluation);
 	mTessellationEvaluationEntrypointName = entrypoint;
 }
 
-void ShaderModule::setGeometryEntrypointName(const std::string& entrypoint)
+void VulkanShaderModule::setGeometryEntrypointName(const std::string& entrypoint)
 {
-	mStages = mStages | ShaderStageFlags::Geometry;
+	mStages = static_cast<ShaderStageFlags>(mStages | ShaderStageFlags::Geometry);
 	mGeometryEntrypointName = entrypoint;
 }
 
-void ShaderModule::setFragmentEntrypointName(const std::string& entrypoint)
+void VulkanShaderModule::setFragmentEntrypointName(const std::string& entrypoint)
 {
-	mStages = mStages | ShaderStageFlags::Fragment;
+	mStages = static_cast<ShaderStageFlags>(mStages | ShaderStageFlags::Fragment);
 	mFragmentEntrypointName = entrypoint;
 }
 
-void ShaderModule::setComputeEntrypointName(const std::string& entrypoint)
+void VulkanShaderModule::setComputeEntrypointName(const std::string& entrypoint)
 {
-	mStages = mStages | ShaderStageFlags::Compute;
+	mStages = static_cast<ShaderStageFlags>(mStages | ShaderStageFlags::Compute);
 	mComputeEntrypointName = entrypoint;
 }
 
-bool ShaderModule::create()
+bool VulkanShaderModule::create()
 {
 	VkShaderModuleCreateInfo shaderModuleCreateInfo = {
 		VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,              // VkStructureType              sType
@@ -108,7 +107,7 @@ bool ShaderModule::create()
 		reinterpret_cast<uint32_t const *>(mSpirvBlob.data())     // const uint32_t             * pCode
 	};
 
-	VkResult result = vkCreateShaderModule(mDevice.getHandle(), &shaderModuleCreateInfo, nullptr, &mShaderModule);
+	VkResult result = vkCreateShaderModule(getDeviceHandle(), &shaderModuleCreateInfo, nullptr, &mShaderModule);
 	if (result != VK_SUCCESS || mShaderModule == VK_NULL_HANDLE)
 	{
 		// TODO : Use Numea System Log
@@ -119,68 +118,67 @@ bool ShaderModule::create()
 	return true;
 }
 
-void ShaderModule::destroy()
+void VulkanShaderModule::destroy()
 {
 	if (mShaderModule != VK_NULL_HANDLE)
 	{
-		vkDestroyShaderModule(mDevice.getHandle(), mShaderModule, nullptr);
+		vkDestroyShaderModule(getDeviceHandle(), mShaderModule, nullptr);
 		mShaderModule = VK_NULL_HANDLE;
 	}
 }
 
-bool ShaderModule::isCreated() const
+bool VulkanShaderModule::isCreated() const
 {
 	return mShaderModule != VK_NULL_HANDLE;
 }
 
-const VkShaderModule& ShaderModule::getHandle() const
+const VkShaderModule& VulkanShaderModule::getHandle() const
 {
 	return mShaderModule;
 }
 
-const std::string& ShaderModule::getVertexEntrypointName() const
+const std::string& VulkanShaderModule::getVertexEntrypointName() const
 {
 	return mVertexEntrypointName;
 }
 
-const std::string& ShaderModule::getTessellationControlEntrypointName() const
+const std::string& VulkanShaderModule::getTessellationControlEntrypointName() const
 {
 	return mTessellationControlEntrypointName;
 }
 
-const std::string& ShaderModule::getTessellationEvaluationEntrypointName() const
+const std::string& VulkanShaderModule::getTessellationEvaluationEntrypointName() const
 {
 	return mTessellationEvaluationEntrypointName;
 }
 
-const std::string& ShaderModule::getGeometryEntrypointName() const
+const std::string& VulkanShaderModule::getGeometryEntrypointName() const
 {
 	return mGeometryEntrypointName;
 }
 
-const std::string& ShaderModule::getFragmentEntrypointName() const
+const std::string& VulkanShaderModule::getFragmentEntrypointName() const
 {
 	return mFragmentEntrypointName;
 }
 
-const std::string& ShaderModule::getComputeEntrypointName() const
+const std::string& VulkanShaderModule::getComputeEntrypointName() const
 {
 	return mComputeEntrypointName;
 }
 
-const std::vector<unsigned char>& ShaderModule::getSpirvBlob() const
+const std::vector<unsigned char>& VulkanShaderModule::getSpirvBlob() const
 {
 	return mSpirvBlob;
 }
 
-const ShaderModule::ShaderStageFlags& ShaderModule::getStages() const
+const VulkanShaderModule::ShaderStageFlags& VulkanShaderModule::getStages() const
 {
 	return mStages;
 }
 
-ShaderModule::ShaderModule(Device& device)
-	: mDevice(device)
-	, mShaderModule(VK_NULL_HANDLE)
+VulkanShaderModule::VulkanShaderModule()
+	: mShaderModule(VK_NULL_HANDLE)
 	, mStages(ShaderStageFlags::None)
 	, mSpirvBlob()
 	, mSpecializationInfo(nullptr)
@@ -192,10 +190,10 @@ ShaderModule::ShaderModule(Device& device)
 	, mComputeEntrypointName()
 	, mShaderStageCreateInfos()
 {
-	ObjectTracker::registerObject(ObjectType_ShaderModule);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-void ShaderModule::addShaderStages(std::vector<VkPipelineShaderStageCreateInfo>& shaders)
+void VulkanShaderModule::addShaderStages(std::vector<VkPipelineShaderStageCreateInfo>& shaders)
 {
 	// TODO : Use Numea Assert System
 	assert(isCreated());
@@ -211,7 +209,7 @@ void ShaderModule::addShaderStages(std::vector<VkPipelineShaderStageCreateInfo>&
 	}
 }
 
-const VkPipelineShaderStageCreateInfo& ShaderModule::getShaderStage()
+const VkPipelineShaderStageCreateInfo& VulkanShaderModule::getShaderStage()
 {
 	assert(isCreated());
 
@@ -225,7 +223,7 @@ const VkPipelineShaderStageCreateInfo& ShaderModule::getShaderStage()
 	return mShaderStageCreateInfos[0];
 }
 
-void ShaderModule::generateShaderStages() const
+void VulkanShaderModule::generateShaderStages() const
 {
 	VkPipelineShaderStageCreateInfo ci;
 	ci.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO; // VkStructureType sType
@@ -278,5 +276,4 @@ void ShaderModule::generateShaderStages() const
 	}
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

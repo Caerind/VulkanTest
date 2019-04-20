@@ -2,41 +2,23 @@
 
 #include "VulkanDevice.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-Semaphore::~Semaphore()
+VulkanSemaphore::~VulkanSemaphore()
 {
 	release();
 
-	ObjectTracker::unregisterObject(ObjectType_Semaphore);
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-Device& Semaphore::getDevice()
-{
-	return mDevice;
-}
-
-const Device& Semaphore::getDevice() const
-{
-	return mDevice;
-}
-
-const VkSemaphore& Semaphore::getHandle() const
+const VkSemaphore& VulkanSemaphore::getHandle() const
 {
 	return mSemaphore;
 }
 
-const VkDevice& Semaphore::getDeviceHandle() const
+VulkanSemaphorePtr VulkanSemaphore::createSemaphore()
 {
-	return mDevice.getHandle();
-}
-
-Semaphore::Ptr Semaphore::createSemaphore(Device& device)
-{
-	Semaphore::Ptr semaphore(new Semaphore(device));
+	VulkanSemaphorePtr semaphore(new VulkanSemaphore());
 	if (semaphore != nullptr)
 	{
 		if (!semaphore->init())
@@ -47,14 +29,13 @@ Semaphore::Ptr Semaphore::createSemaphore(Device& device)
 	return semaphore;
 }
 
-Semaphore::Semaphore(Device& device)
-	: mDevice(device)
-	, mSemaphore(VK_NULL_HANDLE)
+VulkanSemaphore::VulkanSemaphore()
+	: mSemaphore(VK_NULL_HANDLE)
 {
-	ObjectTracker::registerObject(ObjectType_Semaphore);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-bool Semaphore::init()
+bool VulkanSemaphore::init()
 {
 	VkSemaphoreCreateInfo semaphoreCreateInfo = {
 		VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,    // VkStructureType            sType
@@ -62,7 +43,7 @@ bool Semaphore::init()
 		0                                           // VkSemaphoreCreateFlags     flags
 	};
 
-	VkResult result = vkCreateSemaphore(mDevice.getHandle(), &semaphoreCreateInfo, nullptr, &mSemaphore);
+	VkResult result = vkCreateSemaphore(getDeviceHandle(), &semaphoreCreateInfo, nullptr, &mSemaphore);
 	if (result != VK_SUCCESS || mSemaphore == VK_NULL_HANDLE)
 	{
 		// TODO : Use Numea System Log
@@ -73,14 +54,13 @@ bool Semaphore::init()
 	return true;
 }
 
-void Semaphore::release()
+void VulkanSemaphore::release()
 {
 	if (mSemaphore!= VK_NULL_HANDLE)
 	{
-		vkDestroySemaphore(mDevice.getHandle(), mSemaphore, nullptr);
+		vkDestroySemaphore(getDeviceHandle(), mSemaphore, nullptr);
 		mSemaphore = VK_NULL_HANDLE;
 	}
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

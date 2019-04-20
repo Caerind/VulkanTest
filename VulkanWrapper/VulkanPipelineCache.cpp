@@ -2,14 +2,11 @@
 
 #include "VulkanDevice.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-PipelineCache::Ptr PipelineCache::createPipelineCache(Device& device, const std::vector<unsigned char>& cacheData)
+VulkanPipelineCachePtr VulkanPipelineCache::createPipelineCache(const std::vector<unsigned char>& cacheData)
 {
-	PipelineCache::Ptr pipelineCache(new PipelineCache(device, cacheData));
+	VulkanPipelineCachePtr pipelineCache(new VulkanPipelineCache(cacheData));
 	if (pipelineCache != nullptr)
 	{
 		if (!pipelineCache->init())
@@ -20,21 +17,21 @@ PipelineCache::Ptr PipelineCache::createPipelineCache(Device& device, const std:
 	return pipelineCache;
 }
 
-PipelineCache::~PipelineCache()
+VulkanPipelineCache::~VulkanPipelineCache()
 {
-	ObjectTracker::unregisterObject(ObjectType_PipelineCache);
-
 	release();
+
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-bool PipelineCache::retrieveData()
+bool VulkanPipelineCache::retrieveData()
 {
 	mCacheData.clear();
 
 	size_t dataSize = 0;
 	VkResult result = VK_SUCCESS;
 
-	result = vkGetPipelineCacheData(mDevice.getHandle(), mPipelineCache, &dataSize, nullptr);
+	result = vkGetPipelineCacheData(getDeviceHandle(), mPipelineCache, &dataSize, nullptr);
 	if (result != VK_SUCCESS || dataSize == 0)
 	{
 		// TODO : Use Numea Log System
@@ -43,7 +40,7 @@ bool PipelineCache::retrieveData()
 	}
 	mCacheData.resize(dataSize);
 
-	result = vkGetPipelineCacheData(mDevice.getHandle(), mPipelineCache, &dataSize, mCacheData.data());
+	result = vkGetPipelineCacheData(getDeviceHandle(), mPipelineCache, &dataSize, mCacheData.data());
 	if (result != VK_SUCCESS || dataSize == 0)
 	{
 		// TODO : Use Numea Log System
@@ -54,12 +51,12 @@ bool PipelineCache::retrieveData()
 	return true;
 }
 
-const std::vector<unsigned char>& PipelineCache::getCacheData() const
+const std::vector<unsigned char>& VulkanPipelineCache::getCacheData() const
 {
 	return mCacheData;
 }
 
-bool PipelineCache::merge(const std::vector<PipelineCache*>& sourcePipelineCaches)
+bool VulkanPipelineCache::merge(const std::vector<VulkanPipelineCache*>& sourcePipelineCaches)
 {
 	if (sourcePipelineCaches.size() > 0) 
 	{
@@ -70,7 +67,7 @@ bool PipelineCache::merge(const std::vector<PipelineCache*>& sourcePipelineCache
 			sourceCaches.push_back(cache->getHandle());
 		}
 
-		VkResult result = vkMergePipelineCaches(mDevice.getHandle(), mPipelineCache, static_cast<uint32_t>(sourceCaches.size()), sourceCaches.data());
+		VkResult result = vkMergePipelineCaches(getDeviceHandle(), mPipelineCache, static_cast<uint32_t>(sourceCaches.size()), sourceCaches.data());
 		if (result != VK_SUCCESS) 
 		{
 			printf("Could not merge pipeline cache objects\n");
@@ -81,30 +78,24 @@ bool PipelineCache::merge(const std::vector<PipelineCache*>& sourcePipelineCache
 	return false;
 }
 
-bool PipelineCache::isInitialized() const
+bool VulkanPipelineCache::isInitialized() const
 {
 	return mPipelineCache != VK_NULL_HANDLE;
 }
 
-const VkPipelineCache& PipelineCache::getHandle() const
+const VkPipelineCache& VulkanPipelineCache::getHandle() const
 {
 	return mPipelineCache;
 }
 
-const VkDevice& PipelineCache::getDeviceHandle() const
-{
-	return mDevice.getHandle();
-}
-
-PipelineCache::PipelineCache(Device& device, const std::vector<unsigned char>& cacheData)
-	: mDevice(device)
-	, mPipelineCache(VK_NULL_HANDLE)
+VulkanPipelineCache::VulkanPipelineCache(const std::vector<unsigned char>& cacheData)
+	: mPipelineCache(VK_NULL_HANDLE)
 	, mCacheData(cacheData)
 {
-	ObjectTracker::registerObject(ObjectType_PipelineCache);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-bool PipelineCache::init()
+bool VulkanPipelineCache::init()
 {
 	VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {
 		VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO,     // VkStructureType                sType
@@ -114,7 +105,7 @@ bool PipelineCache::init()
 		mCacheData.data()                                 // const void                   * pInitialData
 	};
 
-	VkResult result = vkCreatePipelineCache(mDevice.getHandle(), &pipelineCacheCreateInfo, nullptr, &mPipelineCache);
+	VkResult result = vkCreatePipelineCache(getDeviceHandle(), &pipelineCacheCreateInfo, nullptr, &mPipelineCache);
 	if (result != VK_SUCCESS || mPipelineCache == VK_NULL_HANDLE)
 	{
 		// TODO : Use Numea System Log
@@ -125,16 +116,15 @@ bool PipelineCache::init()
 	return true;
 }
 
-bool PipelineCache::release()
+bool VulkanPipelineCache::release()
 {
 	if (mPipelineCache != VK_NULL_HANDLE)
 	{
-		vkDestroyPipelineCache(mDevice.getHandle(), mPipelineCache, nullptr);
+		vkDestroyPipelineCache(getDeviceHandle(), mPipelineCache, nullptr);
 		mPipelineCache = VK_NULL_HANDLE;
 		return true;
 	}
 	return false;
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

@@ -1,15 +1,14 @@
 #include "VulkanDescriptorPool.hpp"
 
+#include "VulkanDescriptorSet.hpp"
+#include "VulkanDescriptorSetLayout.hpp"
 #include "VulkanDevice.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-DescriptorPool::Ptr DescriptorPool::createDescriptorPool(Device& device, bool freeIndividualSets, uint32_t maxSetsCount, const std::vector<VkDescriptorPoolSize>& descriptorTypes)
+VulkanDescriptorPoolPtr VulkanDescriptorPool::createDescriptorPool(bool freeIndividualSets, VulkanU32 maxSetsCount, const std::vector<VkDescriptorPoolSize>& descriptorTypes)
 {
-	DescriptorPool::Ptr descriptorPool(new DescriptorPool(device, freeIndividualSets, maxSetsCount, descriptorTypes));
+	VulkanDescriptorPoolPtr descriptorPool(new VulkanDescriptorPool(freeIndividualSets, maxSetsCount, descriptorTypes));
 	if (descriptorPool != nullptr)
 	{
 		if (!descriptorPool->init())
@@ -20,16 +19,16 @@ DescriptorPool::Ptr DescriptorPool::createDescriptorPool(Device& device, bool fr
 	return descriptorPool;
 }
 
-DescriptorPool::~DescriptorPool()
+VulkanDescriptorPool::~VulkanDescriptorPool()
 {
-	ObjectTracker::unregisterObject(ObjectType_DescriptorPool);
-
 	release();
+	
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-DescriptorSet::Ptr DescriptorPool::allocateDescriptorSet(DescriptorSetLayout* descriptorSetLayout)
+VulkanDescriptorSetPtr VulkanDescriptorPool::allocateDescriptorSet(VulkanDescriptorSetLayout* descriptorSetLayout)
 {
-	DescriptorSet::Ptr descriptorSet(new DescriptorSet(*this, descriptorSetLayout));
+	VulkanDescriptorSetPtr descriptorSet(new VulkanDescriptorSet(*this, descriptorSetLayout));
 	if (descriptorSet != nullptr)
 	{
 		if (!descriptorSet->init())
@@ -40,55 +39,50 @@ DescriptorSet::Ptr DescriptorPool::allocateDescriptorSet(DescriptorSetLayout* de
 	return descriptorSet;
 }
 
-bool DescriptorPool::allocateDescriptorSets(const std::vector<DescriptorSetLayout*> descriptorSetLayouts, std::vector<DescriptorSet::Ptr>& descriptorSets)
+bool VulkanDescriptorPool::allocateDescriptorSets(const std::vector<VulkanDescriptorSetLayout*> descriptorSetLayouts, std::vector<VulkanDescriptorSetPtr>& descriptorSets)
 {
 	// TODO : Allocate more than one at once
 	return false;
 }
 
-bool DescriptorPool::freeIndividualSets() const
+bool VulkanDescriptorPool::freeIndividualSets() const
 {
 	return mFreeIndividualSets;
 }
 
-bool DescriptorPool::reset()
+bool VulkanDescriptorPool::reset()
 {
-	VkResult result = vkResetDescriptorPool(mDevice.getHandle(), mDescriptorPool, 0);
+	// TODO : What is the 0 parameters ?
+	VkResult result = vkResetDescriptorPool(getDeviceHandle(), mDescriptorPool, 0);
 	if (result != VK_SUCCESS)
 	{
-		// TODO : Use Numea System Log
-		printf("Error occurred during descriptor pool reset\n");
+		// TODO : Log more
+		VULKAN_LOG_ERROR("Error occurred during descriptor pool reset");
 		return false;
 	}
 	return true;
 }
 
-bool DescriptorPool::isInitialized() const
+bool VulkanDescriptorPool::isInitialized() const
 {
 	return mDescriptorPool != VK_NULL_HANDLE;
 }
 
-const VkDescriptorPool& DescriptorPool::getHandle() const
+const VkDescriptorPool& VulkanDescriptorPool::getHandle() const
 {
 	return mDescriptorPool;
 }
 
-const VkDevice& DescriptorPool::getDeviceHandle() const
-{
-	return mDevice.getHandle();
-}
-
-DescriptorPool::DescriptorPool(Device& device, bool freeIndividualSets, uint32_t maxSetsCount, const std::vector<VkDescriptorPoolSize>& descriptorTypes)
-	: mDevice(device)
-	, mDescriptorPool(VK_NULL_HANDLE)
+VulkanDescriptorPool::VulkanDescriptorPool(bool freeIndividualSets, VulkanU32 maxSetsCount, const std::vector<VkDescriptorPoolSize>& descriptorTypes)
+	: mDescriptorPool(VK_NULL_HANDLE)
 	, mFreeIndividualSets(freeIndividualSets)
 	, mMaxSetsCount(maxSetsCount)
 	, mDescriptorTypes(descriptorTypes)
 {
-	ObjectTracker::registerObject(ObjectType_DescriptorPool);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-bool DescriptorPool::init()
+bool VulkanDescriptorPool::init()
 {
 	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
 		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,                // VkStructureType                sType
@@ -96,31 +90,29 @@ bool DescriptorPool::init()
 		mFreeIndividualSets ?                                         // VkDescriptorPoolCreateFlags    flags
 		VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT : 0u,
 		mMaxSetsCount,                                                // uint32_t                       maxSets
-		static_cast<uint32_t>(mDescriptorTypes.size()),               // uint32_t                       poolSizeCount
+		static_cast<VulkanU32>(mDescriptorTypes.size()),               // uint32_t                       poolSizeCount
 		mDescriptorTypes.data()                                       // const VkDescriptorPoolSize   * pPoolSizes
 	};
 
-	VkResult result = vkCreateDescriptorPool(mDevice.getHandle(), &descriptorPoolCreateInfo, nullptr, &mDescriptorPool);
+	VkResult result = vkCreateDescriptorPool(getDeviceHandle(), &descriptorPoolCreateInfo, nullptr, &mDescriptorPool);
 	if (result != VK_SUCCESS || mDescriptorPool == VK_NULL_HANDLE)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not create a descriptor pool\n");
+		VULKAN_LOG_ERROR("Could not create a descriptor pool");
 		return false;
 	}
 
 	return true;
 }
 
-bool DescriptorPool::release()
+bool VulkanDescriptorPool::release()
 {
 	if (mDescriptorPool != VK_NULL_HANDLE)
 	{
-		vkDestroyDescriptorPool(mDevice.getHandle(), mDescriptorPool, nullptr);
+		vkDestroyDescriptorPool(getDeviceHandle(), mDescriptorPool, nullptr);
 		mDescriptorPool = VK_NULL_HANDLE;
 		return true;
 	}
 	return false;
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

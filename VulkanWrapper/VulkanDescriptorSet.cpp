@@ -2,43 +2,41 @@
 
 #include "VulkanDescriptorPool.hpp"
 #include "VulkanDescriptorSetLayout.hpp"
+#include "VulkanDevice.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-DescriptorSet::~DescriptorSet()
+VulkanDescriptorSet::~VulkanDescriptorSet()
 {
-	ObjectTracker::unregisterObject(ObjectType_DescriptorSet);
-
 	release();
+	
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-bool DescriptorSet::isInitialized() const
+bool VulkanDescriptorSet::isInitialized() const
 {
 	return mDescriptorSet != VK_NULL_HANDLE;
 }
 
-const VkDescriptorSet& DescriptorSet::getHandle() const
+const VkDescriptorSet& VulkanDescriptorSet::getHandle() const
 {
 	return mDescriptorSet;
 }
 
-const DescriptorPool& DescriptorSet::getDescriptorPool() const
+const VulkanDescriptorPool& VulkanDescriptorSet::getDescriptorPool() const
 {
 	return mDescriptorPool;
 }
 
-DescriptorSet::DescriptorSet(DescriptorPool& descriptorPool, DescriptorSetLayout* descriptorSetLayout)
+VulkanDescriptorSet::VulkanDescriptorSet(VulkanDescriptorPool& descriptorPool, VulkanDescriptorSetLayout* descriptorSetLayout)
 	: mDescriptorPool(descriptorPool)
 	, mDescriptorSetLayout(descriptorSetLayout)
 	, mDescriptorSet(VK_NULL_HANDLE)
 {
-	ObjectTracker::registerObject(ObjectType_DescriptorSet);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-bool DescriptorSet::init()
+bool VulkanDescriptorSet::init()
 {
 	VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {
 		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,         // VkStructureType                  sType
@@ -51,15 +49,14 @@ bool DescriptorSet::init()
 	VkResult result = vkAllocateDescriptorSets(mDescriptorPool.getDeviceHandle(), &descriptorSetAllocateInfo, &mDescriptorSet);
 	if (result != VK_SUCCESS)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not allocate descriptor set\n");
+		VULKAN_LOG_ERROR("Could not allocate descriptor set");
 		return false;
 	}
 
 	return true;
 }
 
-bool DescriptorSet::release()
+bool VulkanDescriptorSet::release()
 {
 	if (mDescriptorSet != VK_NULL_HANDLE)
 	{
@@ -68,8 +65,8 @@ bool DescriptorSet::release()
 			VkResult result = vkFreeDescriptorSets(mDescriptorPool.getDeviceHandle(), mDescriptorPool.getHandle(), 1, &mDescriptorSet);
 			if (result != VK_SUCCESS)
 			{
-				// TODO : Use Numea System Log
-				printf("Error occurred during freeing descriptor set\n");
+				// TODO : Log more
+				VULKAN_LOG_ERROR("Error occurred during freeing descriptor set");
 				return false;
 			}
 		}
@@ -79,5 +76,4 @@ bool DescriptorSet::release()
 	return false;
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

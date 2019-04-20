@@ -1,5 +1,4 @@
-#ifndef COMMON
-#define COMMON
+#pragma once
 
 #ifdef _WIN32
 	#include <Windows.h>
@@ -28,19 +27,19 @@
 
 struct FrameResources 
 {
-	nu::Vulkan::CommandBuffer::Ptr mCommandBuffer;
-	nu::Vulkan::Semaphore::Ptr mImageAcquiredSemaphore;
-	nu::Vulkan::Semaphore::Ptr mReadyToPresentSemaphore;
-	nu::Vulkan::Fence::Ptr mDrawingFinishedFence;
-	nu::Vulkan::ImageView* mDepthAttachment;
-	nu::Vulkan::Framebuffer::Ptr mFramebuffer;
+	VulkanCommandBufferPtr mCommandBuffer;
+	VulkanSemaphorePtr mImageAcquiredSemaphore;
+	VulkanSemaphorePtr mReadyToPresentSemaphore;
+	VulkanFencePtr mDrawingFinishedFence;
+	VulkanImageView* mDepthAttachment;
+	VulkanFramebufferPtr mFramebuffer;
 
-	FrameResources(nu::Vulkan::CommandBuffer::Ptr command_buffer,
-		nu::Vulkan::Semaphore::Ptr image_acquired_semaphore,
-		nu::Vulkan::Semaphore::Ptr ready_to_present_semaphore,
-		nu::Vulkan::Fence::Ptr drawing_finished_fence,
-		nu::Vulkan::ImageView* depth_attachment,
-		nu::Vulkan::Framebuffer::Ptr framebuffer) :
+	FrameResources(VulkanCommandBufferPtr command_buffer,
+		VulkanSemaphorePtr image_acquired_semaphore,
+		VulkanSemaphorePtr ready_to_present_semaphore,
+		VulkanFencePtr drawing_finished_fence,
+		VulkanImageView* depth_attachment,
+		VulkanFramebufferPtr framebuffer) :
 		mCommandBuffer(std::move(command_buffer)),
 		mImageAcquiredSemaphore(std::move(image_acquired_semaphore)),
 		mReadyToPresentSemaphore(std::move(ready_to_present_semaphore)),
@@ -97,4 +96,3 @@ struct PresentInfo
 // TODO : Move this somewhere else
 bool loadTextureDataFromFile(const std::string& filename, int numRequestedComponents, std::vector<unsigned char>& data, int* width = nullptr, int* height = nullptr, int* numComponents = nullptr, int* dataSize = nullptr);
 
-#endif // COMMON

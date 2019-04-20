@@ -2,25 +2,22 @@
 
 #include "VulkanDevice.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-Fence::~Fence()
+VulkanFence::~VulkanFence()
 {
 	release();
 
-	ObjectTracker::unregisterObject(ObjectType_Fence);
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-bool Fence::wait(uint64_t timeout)
+bool VulkanFence::wait(VulkanU64 timeout)
 {
-	VkResult result = vkWaitForFences(mDevice.getHandle(), 1, &mFence, VK_FALSE, timeout);
+	VkResult result = vkWaitForFences(getDeviceHandle(), 1, &mFence, VK_FALSE, timeout);
 	if (result != VK_SUCCESS)
 	{
-		// TODO : Use Numea System Log
-		printf("Waiting on fence failed\n");
+		// TODO : Log more
+		VULKAN_LOG_ERROR("Waiting on fence failed");
 		return false;
 	}
 
@@ -29,13 +26,13 @@ bool Fence::wait(uint64_t timeout)
 	return true;
 }
 
-bool Fence::reset()
+bool VulkanFence::reset()
 {
-	VkResult result = vkResetFences(mDevice.getHandle(), 1, &mFence);
+	VkResult result = vkResetFences(getDeviceHandle(), 1, &mFence);
 	if (result != VK_SUCCESS)
 	{
-		// TODO : Use Numea System Log
-		printf("Error occurred when tried to reset fence\n");
+		// TODO : Log more
+		VULKAN_LOG_ERROR("Error occurred when tried to reset fence");
 		return false;
 	}
 
@@ -44,34 +41,14 @@ bool Fence::reset()
 	return true;
 }
 
-bool Fence::isSignaled() const
-{
-	return mSignaled;
-}
-
-Device& Fence::getDevice()
-{
-	return mDevice;
-}
-
-const Device& Fence::getDevice() const
-{
-	return mDevice;
-}
-
-const VkFence& Fence::getHandle() const
+const VkFence& VulkanFence::getHandle() const
 {
 	return mFence;
 }
 
-const VkDevice& Fence::getDeviceHandle() const
+VulkanFencePtr VulkanFence::createFence(bool signaled)
 {
-	return mDevice.getHandle();
-}
-
-Fence::Ptr Fence::createFence(Device& device, bool signaled)
-{
-	Fence::Ptr fence(new Fence(device, signaled));
+	VulkanFencePtr fence(new VulkanFence(signaled));
 	if (fence != nullptr)
 	{
 		if (!fence->init())
@@ -82,15 +59,14 @@ Fence::Ptr Fence::createFence(Device& device, bool signaled)
 	return fence;
 }
 
-Fence::Fence(Device& device, bool signaled)
-	: mDevice(device)
-	, mFence(VK_NULL_HANDLE)
+VulkanFence::VulkanFence(bool signaled)
+	: mFence(VK_NULL_HANDLE)
 	, mSignaled(signaled)
 {
-	ObjectTracker::registerObject(ObjectType_Fence);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-bool Fence::init()
+bool VulkanFence::init()
 {
 	VkFenceCreateInfo fenceCreateInfo = {
 		VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,          // VkStructureType        sType
@@ -98,25 +74,21 @@ bool Fence::init()
 		mSignaled ? VK_FENCE_CREATE_SIGNALED_BIT : 0u,// VkFenceCreateFlags     flags
 	};
 
-	VkResult result = vkCreateFence(mDevice.getHandle(), &fenceCreateInfo, nullptr, &mFence);
+	VkResult result = vkCreateFence(getDeviceHandle(), &fenceCreateInfo, nullptr, &mFence);
 	if (result != VK_SUCCESS || mFence == VK_NULL_HANDLE)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not create a fence\n");
+		VULKAN_LOG_ERROR("Could not create a fence\n");
 		return false;
 	}
 
 	return true;
 }
 
-void Fence::release()
+void VulkanFence::release()
 {
 	if (mFence != VK_NULL_HANDLE)
 	{
-		vkDestroyFence(mDevice.getHandle(), mFence, nullptr);
+		vkDestroyFence(getDeviceHandle(), mFence, nullptr);
 		mFence = VK_NULL_HANDLE;
 	}
 }
-
-} // namespace Vulkan
-} // namespace nu

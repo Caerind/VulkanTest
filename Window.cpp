@@ -79,7 +79,7 @@ Window::Window()
 		LoadCursor(nullptr, IDC_ARROW),    // HCURSOR      hCursor
 		(HBRUSH)(COLOR_WINDOW + 1),        // HBRUSH       hbrBackground
 		nullptr,                           // LPCSTR       lpszMenuName
-		L"NumeaEngine",                    // LPCSTR       lpszClassName
+		"NumeaEngine",                     // LPCSTR       lpszClassName
 
 		/* Win 4.0 */
 		nullptr                            // HICON        hIconSm
@@ -102,16 +102,13 @@ Window::~Window()
 	close();
 	if (mParameters.platformConnection)
 	{
-		UnregisterClass(L"NumeaEngine", mParameters.platformConnection);
+		UnregisterClass("NumeaEngine", mParameters.platformConnection);
 	}
 }
 
 bool Window::create(const std::string& windowTitle, int x, int y, int width, int height)
 {
-	std::wstring wideWindowTitle;
-	toWideString(windowTitle, wideWindowTitle);
-
-	mParameters.platformWindow = CreateWindow(L"NumeaEngine", wideWindowTitle.c_str(), WS_OVERLAPPEDWINDOW, x, y, width, height, nullptr, nullptr, mParameters.platformConnection, nullptr);
+	mParameters.platformWindow = CreateWindow("NumeaEngine", windowTitle.c_str(), WS_OVERLAPPEDWINDOW, x, y, width, height, nullptr, nullptr, mParameters.platformConnection, nullptr);
 	if (!mParameters.platformWindow)
 	{
 		return false;
@@ -183,7 +180,7 @@ bool Window::pollEvent(Event& event)
 	return false;
 }
 
-const Vulkan::WindowParameters& Window::getParameters() const
+const VulkanWindowParameters& Window::getParameters() const
 {
 	return mParameters;
 }

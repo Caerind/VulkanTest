@@ -2,116 +2,98 @@
 
 #include "VulkanDevice.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-Sampler::~Sampler()
+VulkanSampler::~VulkanSampler()
 {
 	release();
 
-	ObjectTracker::unregisterObject(ObjectType_Sampler);
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-VkFilter Sampler::getMagFilter() const
+VkFilter VulkanSampler::getMagFilter() const
 {
 	return mMagFilter;
 }
 
-VkFilter Sampler::getMinFilter() const
+VkFilter VulkanSampler::getMinFilter() const
 {
 	return mMinFilter;
 }
 
-VkSamplerMipmapMode Sampler::getMipmapMode() const
+VkSamplerMipmapMode VulkanSampler::getMipmapMode() const
 {
 	return mMipmapMode;
 }
 
-VkSamplerAddressMode Sampler::getAddressModeU() const
+VkSamplerAddressMode VulkanSampler::getAddressModeU() const
 {
 	return mAddressModeU;
 }
 
-VkSamplerAddressMode Sampler::getAddressModeV() const
+VkSamplerAddressMode VulkanSampler::getAddressModeV() const
 {
 	return mAddressModeV;
 }
 
-VkSamplerAddressMode Sampler::getAddressModeW() const
+VkSamplerAddressMode VulkanSampler::getAddressModeW() const
 {
 	return mAddressModeW;
 }
 
-float Sampler::getLodBias() const
+float VulkanSampler::getLodBias() const
 {
 	return mLodBias;
 }
 
-float Sampler::getMinLod() const
+float VulkanSampler::getMinLod() const
 {
 	return mMinLod;
 }
 
-float Sampler::getMaxLod() const
+float VulkanSampler::getMaxLod() const
 {
 	return mMaxLod;
 }
 
-bool Sampler::isAnisotropyEnabled() const
+bool VulkanSampler::isAnisotropyEnabled() const
 {
 	return mAnisotropyEnabled;
 }
 
-float Sampler::getMaxAnisotropy() const
+float VulkanSampler::getMaxAnisotropy() const
 {
 	return mMaxAnisotropy;
 }
 
-bool Sampler::isCompareEnabled() const
+bool VulkanSampler::isCompareEnabled() const
 {
 	return mCompareEnabled;
 }
 
-VkCompareOp Sampler::getCompareOperator() const
+VkCompareOp VulkanSampler::getCompareOperator() const
 {
 	return mCompareOperator;
 }
 
-VkBorderColor Sampler::getBorderColor() const
+VkBorderColor VulkanSampler::getBorderColor() const
 {
 	return mBorderColor;
 }
 
-bool Sampler::isUnnormalizedCoords() const
+bool VulkanSampler::isUnnormalizedCoords() const
 {
 	return mUnnormalizedCoords;
 }
 
-Device& Sampler::getDevice()
-{
-	return mDevice;
-}
-
-const Device& Sampler::getDevice() const
-{
-	return mDevice;
-}
-
-const VkSampler& Sampler::getHandle() const
+const VkSampler& VulkanSampler::getHandle() const
 {
 	return mSampler;
 }
 
-const VkDevice& Sampler::getDeviceHandle() const
+VulkanSamplerPtr VulkanSampler::createSampler(VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, float lodBias, float minLod, float maxLod, bool anisotropyEnable, float maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, VkBorderColor borderColor, bool unnormalizedCoords)
 {
-	return mDevice.getHandle();
-}
-
-Sampler::Ptr Sampler::createSampler(Device& device, VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, float lodBias, float minLod, float maxLod, bool anisotropyEnable, float maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, VkBorderColor borderColor, bool unnormalizedCoords)
-{
-	Sampler::Ptr sampler(new Sampler(device, magFilter, minFilter, mipmapMode, uAddressMode, vAddressMode, wAddressMode, lodBias, minLod, maxLod, anisotropyEnable, maxAnisotropy, compareEnable, compareOperator, borderColor, unnormalizedCoords));
+	VulkanSamplerPtr sampler(new VulkanSampler(magFilter, minFilter, mipmapMode, uAddressMode, vAddressMode, wAddressMode, lodBias, minLod, maxLod, anisotropyEnable, maxAnisotropy, compareEnable, compareOperator, borderColor, unnormalizedCoords));
 	if (sampler != nullptr)
 	{
 		if (!sampler->init())
@@ -122,9 +104,8 @@ Sampler::Ptr Sampler::createSampler(Device& device, VkFilter magFilter, VkFilter
 	return sampler;
 }
 
-Sampler::Sampler(Device& device, VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, float lodBias, float minLod, float maxLod, bool anisotropyEnable, float maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, VkBorderColor borderColor, bool unnormalizedCoords)
-	: mDevice(device)
-	, mSampler(VK_NULL_HANDLE)
+VulkanSampler::VulkanSampler(VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, float lodBias, float minLod, float maxLod, bool anisotropyEnable, float maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, VkBorderColor borderColor, bool unnormalizedCoords)
+	: mSampler(VK_NULL_HANDLE)
 	, mMagFilter(magFilter)
 	, mMinFilter(minFilter)
 	, mMipmapMode(mipmapMode)
@@ -141,10 +122,10 @@ Sampler::Sampler(Device& device, VkFilter magFilter, VkFilter minFilter, VkSampl
 	, mBorderColor(borderColor)
 	, mUnnormalizedCoords(unnormalizedCoords)
 {
-	ObjectTracker::registerObject(ObjectType_Sampler);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-bool Sampler::init()
+bool VulkanSampler::init()
 {
 	VkSamplerCreateInfo samplerCreateInfo = {
 		VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,    // VkStructureType          sType
@@ -167,7 +148,7 @@ bool Sampler::init()
 		mUnnormalizedCoords                       // VkBool32                 unnormalizedCoordinates
 	};
 
-	VkResult result = vkCreateSampler(mDevice.getHandle(), &samplerCreateInfo, nullptr, &mSampler);
+	VkResult result = vkCreateSampler(getDeviceHandle(), &samplerCreateInfo, nullptr, &mSampler);
 	if (result != VK_SUCCESS || mSampler == VK_NULL_HANDLE)
 	{
 		// TODO : Use Numea System Log
@@ -177,14 +158,13 @@ bool Sampler::init()
 	return true;
 }
 
-void Sampler::release()
+void VulkanSampler::release()
 {
 	if (mSampler != VK_NULL_HANDLE)
 	{
-		vkDestroySampler(mDevice.getHandle(), mSampler, nullptr);
+		vkDestroySampler(getDeviceHandle(), mSampler, nullptr);
 		mSampler = VK_NULL_HANDLE;
 	}
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

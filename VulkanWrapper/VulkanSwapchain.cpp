@@ -3,48 +3,48 @@
 #include "../System/CallOnExit.hpp"
 
 #include "VulkanDevice.hpp"
+#include "VulkanImage.hpp"
+#include "VulkanImageView.hpp"
 #include "VulkanSurface.hpp"
+#include "VulkanSampler.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-Swapchain::~Swapchain()
+VulkanSwapchain::~VulkanSwapchain()
 {
 	release();
 
-	ObjectTracker::unregisterObject(ObjectType_Swapchain);
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-bool Swapchain::recreate(std::vector<FrameResources>& framesResources)
+bool VulkanSwapchain::recreate(std::vector<FrameResources>& framesResources)
 {
 	// TODO : Check if re-init is find
 	// TODO : No need to re-select every parameter if already choosen and valid
 	return init(framesResources);
 }
 
-const VkFormat& Swapchain::getFormat() const
+const VkFormat& VulkanSwapchain::getFormat() const
 {
 	return mFormat;
 }
 
-const VkColorSpaceKHR& Swapchain::getColorSpace() const
+const VkColorSpaceKHR& VulkanSwapchain::getColorSpace() const
 {
 	return mColorSpace;
 }
 
-const VkExtent2D& Swapchain::getSize() const
+const VkExtent2D& VulkanSwapchain::getSize() const
 {
 	return mSize;
 }
 
-const VkFormat& Swapchain::getDepthFormat() const
+const VkFormat& VulkanSwapchain::getDepthFormat() const
 {
 	return mDepthFormat;
 }
 
-bool Swapchain::acquireImageIndex(uint64_t timeout, VkSemaphore semaphore, VkFence fence, uint32_t& imageIndex)
+bool VulkanSwapchain::acquireImageIndex(uint64_t timeout, VkSemaphore semaphore, VkFence fence, uint32_t& imageIndex)
 {
 	VkResult result = vkAcquireNextImageKHR(mDevice.getHandle(), mSwapchain, timeout, semaphore, fence, &imageIndex);
 	switch (result)
@@ -57,7 +57,7 @@ bool Swapchain::acquireImageIndex(uint64_t timeout, VkSemaphore semaphore, VkFen
 	}
 }
 
-VkImage Swapchain::getImageHandle(uint32_t index) const
+VkImage VulkanSwapchain::getImageHandle(uint32_t index) const
 {
 	uint32_t size = (uint32_t)mSwapchainImages.size();
 	if (index < size && mSwapchainImages[index] != nullptr)
@@ -67,7 +67,7 @@ VkImage Swapchain::getImageHandle(uint32_t index) const
 	return VK_NULL_HANDLE;
 }
 
-VkImageView Swapchain::getImageViewHandle(uint32_t index) const
+VkImageView VulkanSwapchain::getImageViewHandle(uint32_t index) const
 {
 	uint32_t size = (uint32_t)mSwapchainImages.size();
 	if (index < size && mSwapchainImages[index] != nullptr && mSwapchainImages[index]->getImageViewCount() == 1)
@@ -77,44 +77,44 @@ VkImageView Swapchain::getImageViewHandle(uint32_t index) const
 	return VK_NULL_HANDLE;
 }
 
-Surface& Swapchain::getSurface()
+VulkanSurface& VulkanSwapchain::getSurface()
 {
 	return mSurface;
 }
 
-const Surface& Swapchain::getSurface() const
+const VulkanSurface& VulkanSwapchain::getSurface() const
 {
 	return mSurface;
 }
 
-Device& Swapchain::getDevice()
+VulkanDevice& VulkanSwapchain::getDevice()
 {
 	return mDevice;
 }
 
-const Device& Swapchain::getDevice() const
+const VulkanDevice& VulkanSwapchain::getDevice() const
 {
 	return mDevice;
 }
 
-const VkSwapchainKHR& Swapchain::getHandle() const
+const VkSwapchainKHR& VulkanSwapchain::getHandle() const
 {
 	return mSwapchain;
 }
 
-const VkSurfaceKHR& Swapchain::getSurfaceHandle() const
+const VkSurfaceKHR& VulkanSwapchain::getSurfaceHandle() const
 {
 	return mSurface.getHandle();
 }
 
-const VkDevice& Swapchain::getDeviceHandle() const
+const VkDevice& VulkanSwapchain::getDeviceHandle() const
 {
 	return mDevice.getHandle();
 }
 
-Swapchain::Ptr Swapchain::createSwapchain(Device& device, Surface& surface, std::vector<FrameResources>& framesResources)
+VulkanSwapchainPtr VulkanSwapchain::createSwapchain(VulkanDevice& device, VulkanSurface& surface, std::vector<FrameResources>& framesResources)
 {
-	Swapchain::Ptr swapchain(new Swapchain(device, surface));
+	VulkanSwapchainPtr swapchain(new VulkanSwapchain(device, surface));
 	if (swapchain != nullptr)
 	{
 		if (!swapchain->init(framesResources))
@@ -125,7 +125,7 @@ Swapchain::Ptr Swapchain::createSwapchain(Device& device, Surface& surface, std:
 	return swapchain;
 }
 
-Swapchain::Swapchain(Device& device, Surface& surface)
+VulkanSwapchain::VulkanSwapchain(VulkanDevice& device, VulkanSurface& surface)
 	: mDevice(device)
 	, mSurface(surface)
 	, mSwapchain(VK_NULL_HANDLE)
@@ -135,10 +135,10 @@ Swapchain::Swapchain(Device& device, Surface& surface)
 
 	mDepthFormat = VK_FORMAT_D16_UNORM; // TODO : Unhardcode
 
-	ObjectTracker::registerObject(ObjectType_Swapchain);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-bool Swapchain::init(std::vector<FrameResources>& framesResources)
+bool VulkanSwapchain::init(std::vector<FrameResources>& framesResources)
 {
 	// TODO : Do we really need to wait ?
 	// TODO : Maybe only for recreate ?
@@ -154,7 +154,8 @@ bool Swapchain::init(std::vector<FrameResources>& framesResources)
 
 	// We will need to destroy the old swapchain
 	// This is used to avoid forgetting about it and duplication of code
-	CallOnExit oldSwapchainDestroyer([&]()
+	// TODO : VulkanCallOnExit
+	nu::CallOnExit oldSwapchainDestroyer([&]()
 	{
 		if (oldSwapchain != VK_NULL_HANDLE)
 		{
@@ -256,14 +257,14 @@ bool Swapchain::init(std::vector<FrameResources>& framesResources)
 		// TODO : And maybe the initial layout, which might not be (isn't?) undefined
 
 		// Create an image from swapchain image
-		mSwapchainImages.emplace_back(Image::createImageFromSwapchain(mDevice, swapchainImageHandles[i], imageType, imageFormat, imageSize, imageNumMipmaps, imageNumLayers, imageSamples, imageUsage, imageCubemap));
+		mSwapchainImages.emplace_back(VulkanImage::createImageFromSwapchain(mDevice, swapchainImageHandles[i], imageType, imageFormat, imageSize, imageNumMipmaps, imageNumLayers, imageSamples, imageUsage, imageCubemap));
 		if (mSwapchainImages.back() == nullptr)
 		{
 			return false;
 		}
 
 		// Create an image view which will be used later by getImageViewHandle(...)
-		ImageView* imageView = mSwapchainImages.back()->createImageView(VK_IMAGE_VIEW_TYPE_2D, mFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+		VulkanImageView* imageView = mSwapchainImages.back()->createImageView(VK_IMAGE_VIEW_TYPE_2D, mFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 		if (imageView == nullptr)
 		{
 			return false;
@@ -280,7 +281,7 @@ bool Swapchain::init(std::vector<FrameResources>& framesResources)
 		const uint32_t framesCount = 3; // TODO : Unhardcode
 		for (uint32_t i = 0; i < framesCount; i++)
 		{
-			ImageHelper::Ptr depthImage = ImageHelper::createImage2DAndView(mDevice, mDepthFormat, mSize, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT);
+			VulkanImageHelperPtr depthImage = VulkanImageHelper::createImage2DAndView(mDevice, mDepthFormat, mSize, 1, 1, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT);
 			if (depthImage == nullptr || depthImage->getImage() == nullptr || depthImage->getMemoryBlock() == nullptr || depthImage->getImageView() == nullptr)
 			{
 				return false;
@@ -297,7 +298,7 @@ bool Swapchain::init(std::vector<FrameResources>& framesResources)
 	return true;
 }
 
-void Swapchain::release()
+void VulkanSwapchain::release()
 {
 	if (mSwapchain != VK_NULL_HANDLE)
 	{
@@ -306,12 +307,12 @@ void Swapchain::release()
 	}
 }
 
-bool Swapchain::selectPresentMode(VkPresentModeKHR desiredPresentMode)
+bool VulkanSwapchain::selectPresentMode(VkPresentModeKHR desiredPresentMode)
 {
 	uint32_t presentModesCount = 0;
 	VkResult result;
 
-	result = vkGetPhysicalDeviceSurfacePresentModesKHR(mDevice.getPhysicalHandle(), mSurface.getHandle(), &presentModesCount, nullptr);
+	result = vkGetPhysicalDeviceSurfacePresentModesKHR(mDevice.getPhysicalDeviceHandle(), mSurface.getHandle(), &presentModesCount, nullptr);
 	if (result != VK_SUCCESS || presentModesCount == 0)
 	{
 		// TODO : Use Numea System Log
@@ -320,7 +321,7 @@ bool Swapchain::selectPresentMode(VkPresentModeKHR desiredPresentMode)
 	}
 
 	std::vector<VkPresentModeKHR> presentModes(presentModesCount);
-	result = vkGetPhysicalDeviceSurfacePresentModesKHR(mDevice.getPhysicalHandle(), mSurface.getHandle(), &presentModesCount, presentModes.data());
+	result = vkGetPhysicalDeviceSurfacePresentModesKHR(mDevice.getPhysicalDeviceHandle(), mSurface.getHandle(), &presentModesCount, presentModes.data());
 	if (result != VK_SUCCESS || presentModesCount == 0)
 	{
 		// TODO : Use Numea System Log
@@ -356,9 +357,9 @@ bool Swapchain::selectPresentMode(VkPresentModeKHR desiredPresentMode)
 	return false;
 }
 
-bool Swapchain::queryCapabilities()
+bool VulkanSwapchain::queryCapabilities()
 {
-	VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mDevice.getPhysicalHandle(), mSurface.getHandle(), &mSurfaceCapabilities);
+	VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mDevice.getPhysicalDeviceHandle(), mSurface.getHandle(), &mSurfaceCapabilities);
 	if (result != VK_SUCCESS)
 	{
 		// TODO : Use Numea System Log
@@ -368,7 +369,7 @@ bool Swapchain::queryCapabilities()
 	return true;
 }
 
-bool Swapchain::selectImageCount(uint32_t desiredImageCount)
+bool VulkanSwapchain::selectImageCount(uint32_t desiredImageCount)
 {
 	// TODO : Use desired image count
 	// TODO : Improve selection of number of images
@@ -380,7 +381,7 @@ bool Swapchain::selectImageCount(uint32_t desiredImageCount)
 	return true;
 }
 
-bool Swapchain::querySize()
+bool VulkanSwapchain::querySize()
 {
 	// On some platform extent works weird // TODO : Improve that comment
 	if (mSurfaceCapabilities.currentExtent.width == 0xFFFFFFFF)
@@ -416,7 +417,7 @@ bool Swapchain::querySize()
 	return true;
 }
 
-bool Swapchain::selectImageUsage(VkImageUsageFlags desiredImageUsage)
+bool VulkanSwapchain::selectImageUsage(VkImageUsageFlags desiredImageUsage)
 {
 	mImageUsage = desiredImageUsage & mSurfaceCapabilities.supportedUsageFlags;
 	if (mImageUsage != desiredImageUsage)
@@ -428,7 +429,7 @@ bool Swapchain::selectImageUsage(VkImageUsageFlags desiredImageUsage)
 	return true;
 }
 
-bool Swapchain::selectSurfaceTransform(VkSurfaceTransformFlagBitsKHR desiredSurfaceTransform)
+bool VulkanSwapchain::selectSurfaceTransform(VkSurfaceTransformFlagBitsKHR desiredSurfaceTransform)
 {
 	if (mSurfaceCapabilities.supportedTransforms & desiredSurfaceTransform)
 	{
@@ -441,11 +442,11 @@ bool Swapchain::selectSurfaceTransform(VkSurfaceTransformFlagBitsKHR desiredSurf
 	return true;
 }
 
-bool Swapchain::selectSurfaceFormat(VkSurfaceFormatKHR desiredSurfaceFormat)
+bool VulkanSwapchain::selectSurfaceFormat(VkSurfaceFormatKHR desiredSurfaceFormat)
 {
 	uint32_t formatsCount = 0;
 
-	VkResult result = vkGetPhysicalDeviceSurfaceFormatsKHR(mDevice.getPhysicalHandle(), mSurface.getHandle(), &formatsCount, nullptr);
+	VkResult result = vkGetPhysicalDeviceSurfaceFormatsKHR(mDevice.getPhysicalDeviceHandle(), mSurface.getHandle(), &formatsCount, nullptr);
 	if (result != VK_SUCCESS || formatsCount == 0)
 	{
 		// TODO : Use Numea System Log
@@ -454,7 +455,7 @@ bool Swapchain::selectSurfaceFormat(VkSurfaceFormatKHR desiredSurfaceFormat)
 	}
 
 	std::vector<VkSurfaceFormatKHR> surfaceFormats(formatsCount);
-	result = vkGetPhysicalDeviceSurfaceFormatsKHR(mDevice.getPhysicalHandle(), mSurface.getHandle(), &formatsCount, surfaceFormats.data());
+	result = vkGetPhysicalDeviceSurfaceFormatsKHR(mDevice.getPhysicalDeviceHandle(), mSurface.getHandle(), &formatsCount, surfaceFormats.data());
 	if (result != VK_SUCCESS || formatsCount == 0 || surfaceFormats.size() == 0)
 	{
 		// TODO : Use Numea System Log
@@ -511,7 +512,7 @@ bool Swapchain::selectSurfaceFormat(VkSurfaceFormatKHR desiredSurfaceFormat)
 	return true;
 }
 
-bool Swapchain::queryImageHandles(std::vector<VkImage>& swapchainImageHandles)
+bool VulkanSwapchain::queryImageHandles(std::vector<VkImage>& swapchainImageHandles)
 {
 	uint32_t imagesCount = 0;
 
@@ -536,5 +537,4 @@ bool Swapchain::queryImageHandles(std::vector<VkImage>& swapchainImageHandles)
 	return true;
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

@@ -1,59 +1,167 @@
 #include "VulkanDevice.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+#include "VulkanInstance.hpp"
+#include "VulkanPhysicalDevice.hpp"
+#include "VulkanLoader.hpp"
 
-Device::Ptr Device::createDevice(PhysicalDevice& physicalDevice, const std::vector<uint32_t>& queueFamilyIndexes, VkPhysicalDeviceFeatures* desiredFeatures)
+#include "VulkanBuffer.hpp"
+#include "VulkanCommandPool.hpp"
+#include "VulkanComputePipeline.hpp"
+#include "VulkanDescriptorSetLayout.hpp"
+#include "VulkanDescriptorPool.hpp"
+#include "VulkanFence.hpp"
+#include "VulkanGraphicsPipeline.hpp"
+#include "VulkanImage.hpp"
+#include "VulkanMemoryBlock.hpp"
+#include "VulkanPipelineCache.hpp"
+#include "VulkanPipelineLayout.hpp"
+#include "VulkanQueue.hpp"
+#include "VulkanRenderPass.hpp"
+#include "VulkanSampler.hpp"
+#include "VulkanSemaphore.hpp"
+#include "VulkanShaderModule.hpp"
+#include "VulkanSwapchain.hpp"
+
+VULKAN_NAMESPACE_BEGIN
+
+#if (defined VULKAN_MONO_DEVICE)
+
+VulkanDevice& VulkanDevice::get()
 {
-	Device::Ptr device(new Device(physicalDevice));
-	if (device != nullptr)
+	VULKAN_ASSERT(sDevice != nullptr);
+	return *sDevice;
+}
+
+bool VulkanDevice::initialize(VulkanPhysicalDevice& physicalDevice, VkPhysicalDeviceFeatures* desiredFeatures, const VulkanQueueParameters& queueParameters, VulkanSurface* surface)
+{
+	if (sDevice != nullptr)
 	{
-		if (!device->init(queueFamilyIndexes, desiredFeatures))
+		VULKAN_LOG_WARNING("Device already initialized. If you want to use many device, do not define VULKAN_MONO_DEVICE in VulkanConfig.hpp");
+		return true;
+	}
+	sDevice = new VulkanDevice(physicalDevice);
+	if (sDevice != nullptr)
+	{
+		if (!sDevice->initializeInternal(desiredFeatures, queueParameters, surface))
 		{
-			device.reset();
+			uninitialize();
 		}
 	}
-	return device;
+	return sDevice != nullptr;
 }
 
-Device::~Device()
+bool VulkanDevice::uninitialize()
 {
-	ObjectTracker::unregisterObject(ObjectType_Device);
-
-	release();
+	if (sDevice == nullptr)
+	{
+		VULKAN_LOG_WARNING("Device not initialized");
+		return true;
+	}
+	
+	sDevice->uninitializeInternal();
+	
+	delete sDevice;
+	sDevice = nullptr;
+	
+	return true;
 }
 
-Queue::Ptr Device::getQueue(uint32_t queueFamilyIndex, uint32_t queueIndex)
+bool VulkanDevice::initialized()
 {
-	return Queue::Ptr(new Queue(*this, queueFamilyIndex, queueIndex));
+	return sDevice != nullptr;
 }
 
-Buffer::Ptr Device::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage)
+#else // (defined VULKAN_MONO_DEVICE)
+
+VulkanDevice& VulkanDevice::get(VulkanDeviceId id)
 {
-	return Buffer::createBuffer(*this, size, usage);
+	VULKAN_ASSERT(sDevices.find(id) != sDevices.end());
+	VULKAN_ASSERT(sDevices[id] != nullptr);
+	return *sDevices[id];
 }
 
-CommandPool::Ptr Device::createCommandPool(VkCommandPoolCreateFlags parameters, uint32_t queueFamily)
+bool VulkanDevice::initialize(VulkanDeviceId id, VulkanPhysicalDevice& physicalDevice, VkPhysicalDeviceFeatures* desiredFeatures, const VulkanQueueParameters& queueParameters, VulkanSurface* surface)
 {
-	return CommandPool::createCommandPool(*this, parameters, queueFamily);
+	if (sDevices.find(id) != sDevices.end())
+	{
+		VULKAN_LOG_WARNING("Device[%d] already initialized", id);
+		return true;
+	}
+	VulkanDevice* device = new VulkanDevice(physicalDevice);
+	if (device != nullptr)
+	{
+		if (device->initializeInternal(desiredFeatures, queueParameters, surface))
+		{
+			sDevices[id] = device;
+		}
+		else
+		{
+			device->uninitializeInternal();
+			delete device;
+			device = nullptr;
+		}
+	}
+	return device != nullptr;
 }
 
-DescriptorPool::Ptr Device::createDescriptorPool(bool freeIndividualSets, uint32_t maxSetsCount, const std::vector<VkDescriptorPoolSize>& descriptorTypes)
+bool VulkanDevice::uninitialize(VulkanDeviceId id)
 {
-	return DescriptorPool::createDescriptorPool(*this, freeIndividualSets, maxSetsCount, descriptorTypes);
+	auto itr = sDevices.find(id);
+	if (itr == sDevices.end() || itr->second == nullptr)
+	{
+		if (itr != sDevices.end() && itr->second == nullptr)
+		{
+			sDevices.erase(itr);
+		}
+		VULKAN_LOG_WARNING("Device[%d] not initialized", id);
+		return true;
+	}
+	
+	VulkanDevice* device = itr->second;
+	
+	device->uninitializeInternal();
+	delete device;
+	device = nullptr;
+	
+	sDevices.erase(itr);
+	
+	return true;
 }
 
-DescriptorSetLayout::Ptr Device::createDescriptorSetLayout(const std::vector<VkDescriptorSetLayoutBinding>& bindings)
+bool VulkanDevice::initialized(VulkanDeviceId id)
 {
-	return DescriptorSetLayout::createDescriptorSetLayout(*this, bindings);
+	auto itr = sDevices.find(id);
+	return itr != sDevices.end() && itr->second != nullptr;
 }
 
-void Device::updateDescriptorSets(const std::vector<ImageDescriptorInfo>& imageDescriptorInfos, const std::vector<BufferDescriptorInfo>& bufferDescriptorInfos, const std::vector<TexelBufferDescriptorInfo>& texelBufferDescriptorInfos, const std::vector<CopyDescriptorInfo>& copyDescriptorInfos)
+#endif // (defined VULKAN_MONO_DEVICE)
+
+VulkanBufferPtr VulkanDevice::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage)
+{
+	return VulkanBuffer::createBuffer(size, usage);
+}
+
+VulkanCommandPoolPtr VulkanDevice::createCommandPool(VkCommandPoolCreateFlags parameters, VulkanU32 queueFamily)
+{
+	return VulkanCommandPool::createCommandPool(parameters, queueFamily);
+}
+
+VulkanDescriptorPoolPtr VulkanDevice::createDescriptorPool(bool freeIndividualSets, VulkanU32 maxSetsCount, const std::vector<VkDescriptorPoolSize>& descriptorTypes)
+{
+	return VulkanDescriptorPool::createDescriptorPool(freeIndividualSets, maxSetsCount, descriptorTypes);
+}
+
+VulkanDescriptorSetLayoutPtr VulkanDevice::createDescriptorSetLayout(const std::vector<VkDescriptorSetLayoutBinding>& bindings)
+{
+	return VulkanDescriptorSetLayout::createDescriptorSetLayout(bindings);
+}
+
+void VulkanDevice::updateDescriptorSets(const std::vector<VulkanImageDescriptorInfo>& imageDescriptorInfos, const std::vector<VulkanBufferDescriptorInfo>& bufferDescriptorInfos, const std::vector<VulkanTexelBufferDescriptorInfo>& texelBufferDescriptorInfos, const std::vector<VulkanCopyDescriptorInfo>& copyDescriptorInfos)
 {
 	std::vector<VkWriteDescriptorSet> writeDescriptors;
+	writeDescriptors.reserve(imageDescriptorInfos.size() + bufferDescriptorInfos.size() + texelBufferDescriptorInfos.size());
 	std::vector<VkCopyDescriptorSet> copyDescriptors;
+	copyDescriptors.reserve(copyDescriptorInfos.size());
 
 	// Image descriptors
 	for (auto& imageDescriptor : imageDescriptorInfos) 
@@ -64,7 +172,7 @@ void Device::updateDescriptorSets(const std::vector<ImageDescriptorInfo>& imageD
 			imageDescriptor.targetDescriptorSet,                                    // VkDescriptorSet                  dstSet
 			imageDescriptor.targetDescriptorBinding,                                // uint32_t                         dstBinding
 			imageDescriptor.targetArrayElement,                                     // uint32_t                         dstArrayElement
-			static_cast<uint32_t>(imageDescriptor.imageInfos.size()),               // uint32_t                         descriptorCount
+			static_cast<VulkanU32>(imageDescriptor.imageInfos.size()),               // uint32_t                         descriptorCount
 			imageDescriptor.targetDescriptorType,                                   // VkDescriptorType                 descriptorType
 			imageDescriptor.imageInfos.data(),                                      // const VkDescriptorImageInfo    * pImageInfo
 			nullptr,                                                                // const VkDescriptorBufferInfo   * pBufferInfo
@@ -81,7 +189,7 @@ void Device::updateDescriptorSets(const std::vector<ImageDescriptorInfo>& imageD
 			bufferDescriptor.targetDescriptorSet,                                   // VkDescriptorSet                  dstSet
 			bufferDescriptor.targetDescriptorBinding,                               // uint32_t                         dstBinding
 			bufferDescriptor.targetArrayElement,                                    // uint32_t                         dstArrayElement
-			static_cast<uint32_t>(bufferDescriptor.bufferInfos.size()),             // uint32_t                         descriptorCount
+			static_cast<VulkanU32>(bufferDescriptor.bufferInfos.size()),             // uint32_t                         descriptorCount
 			bufferDescriptor.targetDescriptorType,                                  // VkDescriptorType                 descriptorType
 			nullptr,                                                                // const VkDescriptorImageInfo    * pImageInfo
 			bufferDescriptor.bufferInfos.data(),                                    // const VkDescriptorBufferInfo   * pBufferInfo
@@ -98,7 +206,7 @@ void Device::updateDescriptorSets(const std::vector<ImageDescriptorInfo>& imageD
 			texelBufferDescriptor.targetDescriptorSet,                              // VkDescriptorSet                  dstSet
 			texelBufferDescriptor.targetDescriptorBinding,                          // uint32_t                         dstBinding
 			texelBufferDescriptor.targetArrayElement,                               // uint32_t                         dstArrayElement
-			static_cast<uint32_t>(texelBufferDescriptor.texelBufferViews.size()),   // uint32_t                         descriptorCount
+			static_cast<VulkanU32>(texelBufferDescriptor.texelBufferViews.size()),   // uint32_t                         descriptorCount
 			texelBufferDescriptor.targetDescriptorType,                             // VkDescriptorType                 descriptorType
 			nullptr,                                                                // const VkDescriptorImageInfo    * pImageInfo
 			nullptr,                                                                // const VkDescriptorBufferInfo   * pBufferInfo
@@ -122,15 +230,16 @@ void Device::updateDescriptorSets(const std::vector<ImageDescriptorInfo>& imageD
 		});
 	}
 
-	vkUpdateDescriptorSets(mDevice, static_cast<uint32_t>(writeDescriptors.size()), writeDescriptors.data(), static_cast<uint32_t>(copyDescriptors.size()), copyDescriptors.data());
+	vkUpdateDescriptorSets(mDevice, static_cast<VulkanU32>(writeDescriptors.size()), writeDescriptors.data(), static_cast<VulkanU32>(copyDescriptors.size()), copyDescriptors.data());
 }
 
-Fence::Ptr Device::createFence(bool signaled)
+VulkanFencePtr VulkanDevice::createFence(bool signaled)
 {
-	return Fence::createFence(*this, signaled);
+	return VulkanFence::createFence(signaled);
 }
 
-bool Device::waitFences(const std::vector<Fence*>& fences, bool waitForAll, uint64_t timeout)
+// TODO : Move implementation on static method in fence, but still allow call from here too
+bool VulkanDevice::waitFences(const std::vector<VulkanFence*>& fences, bool waitForAll, VulkanU64 timeout)
 {
 	if (fences.size() > 0)
 	{
@@ -141,19 +250,21 @@ bool Device::waitFences(const std::vector<Fence*>& fences, bool waitForAll, uint
 			fenceHandles.push_back(fences[i]->getHandle());
 		}
 
-		VkResult result = vkWaitForFences(mDevice, static_cast<uint32_t>(fenceHandles.size()), fenceHandles.data(), waitForAll, timeout);
+		VkResult result = vkWaitForFences(mDevice, static_cast<VulkanU32>(fenceHandles.size()), fenceHandles.data(), waitForAll, timeout);
 		if (result != VK_SUCCESS)
 		{
-			// TODO : Use Numea System Log
-			printf("Waiting on fence failed\n");
+			// TODO : Log more
+			VULKAN_LOG_ERROR("Waiting on fence failed");
 			return false;
 		}
 		return true;
 	}
+	// TODO : Warning ?
 	return false;
 }
 
-bool Device::resetFences(const std::vector<Fence*>& fences)
+// TODO : Move implementation on static method in fence, but still keep it here too
+bool VulkanDevice::resetFences(const std::vector<VulkanFence*>& fences)
 {
 	if (fences.size() > 0)
 	{
@@ -167,166 +278,215 @@ bool Device::resetFences(const std::vector<Fence*>& fences)
 			}
 		}
 
-		VkResult result = vkResetFences(mDevice, static_cast<uint32_t>(fenceHandles.size()), fenceHandles.data());
+		VkResult result = vkResetFences(mDevice, static_cast<VulkanU32>(fenceHandles.size()), fenceHandles.data());
 		if (result != VK_SUCCESS)
 		{
-			// TODO : Use Numea System Log
-			printf("Error occurred when tried to reset fences\n");
+			// TODO : Log more
+			VULKAN_LOG_ERROR("Error occurred when tried to reset fences");
 			return false;
 		}
 		return true;
 	}
+	// TODO : Warning ?
 	return false;
 }
 
-Image::Ptr Device::createImage(VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usageScenarios, bool cubemap)
+VulkanImagePtr VulkanDevice::createImage(VkImageType type, VkFormat format, VkExtent3D size, VulkanU32 numMipmaps, VulkanU32 numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usageScenarios, bool cubemap)
 {
-	return Image::createImage(*this, type, format, size, numMipmaps, numLayers, samples, usageScenarios, cubemap);
+	return VulkanImage::createImage(type, format, size, numMipmaps, numLayers, samples, usageScenarios, cubemap);
 }
 
-MemoryBlock::Ptr Device::createMemoryBlock(VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags memoryProperties)
+VulkanMemoryBlockPtr VulkanDevice::createMemoryBlock(VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags memoryProperties)
 {
-	return MemoryBlock::createMemoryBlock(*this, memoryRequirements, memoryProperties);
+	return VulkanMemoryBlock::createMemoryBlock(memoryRequirements, memoryProperties);
 }
 
-PipelineCache::Ptr Device::createPipelineCache(const std::vector<unsigned char>& cacheData)
+VulkanPipelineCachePtr VulkanDevice::createPipelineCache(const std::vector<VulkanU8>& cacheData)
 {
-	return PipelineCache::createPipelineCache(*this, cacheData);
+	return VulkanPipelineCache::createPipelineCache(cacheData);
 }
 
-PipelineLayout::Ptr Device::createPipelineLayout(const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, const std::vector<VkPushConstantRange> pushConstantRanges)
+VulkanPipelineLayoutPtr VulkanDevice::createPipelineLayout(const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, const std::vector<VkPushConstantRange> pushConstantRanges)
 {
-	return PipelineLayout::createPipelineLayout(*this, descriptorSetLayouts, pushConstantRanges);
+	return VulkanPipelineLayout::createPipelineLayout(descriptorSetLayouts, pushConstantRanges);
 }
 
-ComputePipeline::Ptr Device::createComputePipeline(ShaderModule* computeShader, PipelineLayout* layout, PipelineCache* cache, VkPipelineCreateFlags additionalOptions)
+VulkanComputePipelinePtr VulkanDevice::createComputePipeline(VulkanShaderModule* computeShader, VulkanPipelineLayout* layout, VulkanPipelineCache* cache, VkPipelineCreateFlags additionalOptions)
 {
-	return ComputePipeline::createComputePipeline(*this, computeShader, layout, cache, additionalOptions);
+	return VulkanComputePipeline::createComputePipeline(computeShader, layout, cache, additionalOptions);
 }
 
-GraphicsPipeline::Ptr Device::initGraphicsPipeline(PipelineLayout& layout, RenderPass& renderPass, PipelineCache* cache)
+VulkanGraphicsPipelinePtr VulkanDevice::initGraphicsPipeline(VulkanPipelineLayout& layout, VulkanRenderPass& renderPass, VulkanPipelineCache* cache)
 {
-	return GraphicsPipeline::Ptr(new GraphicsPipeline(*this, layout, renderPass, cache));
+	return VulkanGraphicsPipelinePtr(new VulkanGraphicsPipeline(*this, layout, renderPass, cache));
 }
 
-RenderPass::Ptr Device::initRenderPass()
+VulkanRenderPassPtr VulkanDevice::initRenderPass()
 {
-	return RenderPass::Ptr(new RenderPass(*this));
+	return VulkanRenderPassPtr(new VulkanRenderPass());
 }
 
-Sampler::Ptr Device::createSampler(VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, float lodBias, float minLod, float maxLod, bool anisotropyEnable, float maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, VkBorderColor borderColor, bool unnormalizedCoords)
+VulkanSamplerPtr VulkanDevice::createSampler(VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, VulkanF32 lodBias, VulkanF32 minLod, VulkanF32 maxLod, bool anisotropyEnable, VulkanF32 maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, VkBorderColor borderColor, bool unnormalizedCoords)
 {
-	return Sampler::createSampler(*this, magFilter, minFilter, mipmapMode, uAddressMode, vAddressMode, wAddressMode, lodBias, minLod, maxLod, anisotropyEnable, maxAnisotropy, compareEnable, compareOperator, borderColor, unnormalizedCoords);
+	return VulkanSampler::createSampler(magFilter, minFilter, mipmapMode, uAddressMode, vAddressMode, wAddressMode, lodBias, minLod, maxLod, anisotropyEnable, maxAnisotropy, compareEnable, compareOperator, borderColor, unnormalizedCoords);
 }
 
-Semaphore::Ptr Device::createSemaphore()
+VulkanSemaphorePtr VulkanDevice::createSemaphore()
 {
-	return Semaphore::createSemaphore(*this);
+	return VulkanSemaphore::createSemaphore();
 }
 
-ShaderModule::Ptr Device::initShaderModule()
+VulkanShaderModulePtr VulkanDevice::initShaderModule()
 {
-	return ShaderModule::Ptr(new ShaderModule(*this));
+	return VulkanShaderModulePtr(new VulkanShaderModule());
 }
 
-Swapchain::Ptr Device::createSwapchain(Surface& surface, std::vector<FrameResources>& framesResources)
+VulkanSwapchainPtr VulkanDevice::createSwapchain(VulkanSurface& surface, std::vector<FrameResources>& framesResources)
 {
-	return Swapchain::createSwapchain(*this, surface, framesResources);
+	return VulkanSwapchain::createSwapchain(*this, surface, framesResources);
 }
 
-bool Device::waitForAllSubmittedCommands()
+bool VulkanDevice::waitForAllSubmittedCommands()
 {
 	VkResult result = vkDeviceWaitIdle(mDevice);
 	if (result != VK_SUCCESS)
 	{
-		// TODO : Use Numea System Log
-		printf("Waiting on a device failed\n");
+		// TODO : Log more
+		VULKAN_LOG_ERROR("Waiting on a device failed");
 		return false;
 	}
 	return true;
 }
 
-bool Device::isInitialized() const
+bool VulkanDevice::isInitialized() const
 {
 	return mDevice != VK_NULL_HANDLE;
 }
 
-const VkDevice& Device::getHandle() const
+const VkDevice& VulkanDevice::getHandle() const
 {
 	return mDevice;
 }
 
-const VkPhysicalDevice& Device::getPhysicalHandle() const
+const VulkanPhysicalDevice& VulkanDevice::getPhysicalDevice() const
+{
+	return mPhysicalDevice;
+}
+
+const VkPhysicalDevice& VulkanDevice::getPhysicalDeviceHandle() const
 {
 	return mPhysicalDevice.getHandle();
 }
 
-PhysicalDevice& Device::getPhysicalDevice()
+const std::vector<VkExtensionProperties>& VulkanDevice::getAvailableExtensions() const
 {
-	return mPhysicalDevice;
+	return mPhysicalDevice.getAvailableExtensions();	
 }
 
-const PhysicalDevice& Device::getPhysicalDevice() const
+const VkPhysicalDeviceFeatures& VulkanDevice::getSupportedFeatures() const
 {
-	return mPhysicalDevice;
+	return mPhysicalDevice.getSupportedFeatures();
 }
 
-Device::Device(PhysicalDevice& physicalDevice)
+const VkPhysicalDeviceProperties& VulkanDevice::getProperties() const
+{
+	return mPhysicalDevice.getProperties();	
+}
+
+const std::vector<VkQueueFamilyProperties>& VulkanDevice::getQueueFamiliesProperties() const
+{
+	return mPhysicalDevice.getQueueFamiliesProperties();
+}
+
+const VkPhysicalDeviceMemoryProperties& VulkanDevice::getMemoryProperties() const
+{
+	return mPhysicalDevice.getMemoryProperties();	
+}
+
+const VkFormatProperties& VulkanDevice::getFormatProperties(VkFormat format) const
+{
+	return mPhysicalDevice.getFormatProperties(format);	
+}
+
+bool VulkanDevice::isExtensionSupported(const char* extensionName) const
+{
+	return mPhysicalDevice.isExtensionSupported(extensionName);	
+}
+
+VulkanQueue* VulkanDevice::getQueue(VulkanU32 index)
+{
+	return mQueueManager.getQueue(index);
+}
+
+const VulkanQueue* VulkanDevice::getQueue(VulkanU32 index) const
+{
+	return mQueueManager.getQueue(index);
+}
+
+VulkanU32 VulkanDevice::getQueueCount() const
+{
+	return mQueueManager.getQueueCount();
+}
+
+VulkanDevice::VulkanDevice(VulkanPhysicalDevice& physicalDevice)
 	: mDevice(VK_NULL_HANDLE)
 	, mPhysicalDevice(physicalDevice)
+	, mQueueManager(*this)
 {
-	ObjectTracker::registerObject(ObjectType_Device);
+	if (!physicalDevice.areAllPropertiesQueried())
+	{
+		if (!physicalDevice.queryAllProperties())
+		{
+			VULKAN_LOG_WARNING("Could not query all the properties of a physical device (PhysicalDevice: %d)", physicalDevice.getHandle());
+		}
+	}
 }
 
-bool Device::init(const std::vector<uint32_t>& queueFamilyIndexes, VkPhysicalDeviceFeatures* desiredFeatures)
+VulkanDevice::~VulkanDevice()
 {
+	uninitializeInternal();
+}
+
+bool VulkanDevice::initializeInternal(VkPhysicalDeviceFeatures* desiredFeatures, const VulkanQueueParameters& queueParameters, VulkanSurface* surface)
+{
+	// Extensions
 	std::vector<const char*> desiredExtensions;
-	// TODO : Only if wanted
-	if (true)
+	#if (defined VULKAN_KHR)
 	{
 		desiredExtensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 	}
-
-	// TODO : Only on Debug
-	if (true)
+	#endif
 	{
+		bool missingExtension = false;
 		for (auto& desiredExtension : desiredExtensions)
 		{
 			if (!mPhysicalDevice.isExtensionSupported(desiredExtension))
 			{
-				// TODO : Numea Log System
-				printf("Could not find a desired device extension : %s\n", desiredExtension);
-				return false;
+				VULKAN_LOG_ERROR("Could not find a desired device extension : %s", desiredExtension);
 			}
+		}
+		if (missingExtension)
+		{
+			return false;
 		}
 	}
 
-	// TODO : Queue Priorities
-	std::vector<float> priorities = { 1.0f };
-
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-	for (auto& queueFamilyIndex : queueFamilyIndexes)
+	if (!mQueueManager.initialize(queueParameters, surface, queueCreateInfos))
 	{
+		return false;
+	}
 
-		queueCreateInfos.push_back({
-			VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,       // VkStructureType                  sType
-			nullptr,                                          // const void                     * pNext
-			0,                                                // VkDeviceQueueCreateFlags         flags
-			queueFamilyIndex,                                 // uint32_t                         queueFamilyIndex
-			static_cast<uint32_t>(priorities.size()),         // uint32_t                         queueCount
-			priorities.data()                                 // const float                    * pQueuePriorities
-		});
-	};
-
+	// TODO : Layers ?
 	VkDeviceCreateInfo deviceCreateInfo = {
 		VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,               // VkStructureType                  sType
 		nullptr,                                            // const void                     * pNext
 		0,                                                  // VkDeviceCreateFlags              flags
-		static_cast<uint32_t>(queueCreateInfos.size()),     // uint32_t                         queueCreateInfoCount
+		static_cast<VulkanU32>(queueCreateInfos.size()),    // uint32_t                         queueCreateInfoCount
 		queueCreateInfos.data(),                            // const VkDeviceQueueCreateInfo  * pQueueCreateInfos
 		0,                                                  // uint32_t                         enabledLayerCount
 		nullptr,                                            // const char * const             * ppEnabledLayerNames
-		static_cast<uint32_t>(desiredExtensions.size()),    // uint32_t                         enabledExtensionCount
+		static_cast<VulkanU32>(desiredExtensions.size()),   // uint32_t                         enabledExtensionCount
 		desiredExtensions.data(),                           // const char * const             * ppEnabledExtensionNames
 		desiredFeatures                                     // const VkPhysicalDeviceFeatures * pEnabledFeatures
 	};
@@ -334,12 +494,16 @@ bool Device::init(const std::vector<uint32_t>& queueFamilyIndexes, VkPhysicalDev
 	VkResult result = vkCreateDevice(mPhysicalDevice.getHandle(), &deviceCreateInfo, nullptr, &mDevice);
 	if (result != VK_SUCCESS || mDevice == VK_NULL_HANDLE)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not create logical device\n");
+		VULKAN_LOG_ERROR("Could not create device (PhysicalDevice: %d)", mPhysicalDevice.getHandle());
 		return false;
 	}
 
-	if (!Loader::ensureDeviceLevelFunctionsLoaded(mDevice, desiredExtensions))
+	if (!VulkanLoader::ensureDeviceLevelFunctionsLoaded(mDevice, desiredExtensions))
+	{
+		return false;
+	}
+
+	if (!mQueueManager.initializeQueues())
 	{
 		return false;
 	}
@@ -347,16 +511,21 @@ bool Device::init(const std::vector<uint32_t>& queueFamilyIndexes, VkPhysicalDev
 	return true;
 }
 
-bool Device::release()
+bool VulkanDevice::uninitializeInternal()
 {
 	if (mDevice != VK_NULL_HANDLE)
 	{
+		mQueueManager.release();
 		vkDestroyDevice(mDevice, nullptr);
 		mDevice = VK_NULL_HANDLE;
-		return true;
 	}
-	return false;
+	return true;
 }
 
-} // namespace Vulkan
-} // namespace nu
+#if (defined VULKAN_MONO_DEVICE)
+VulkanDevice* VulkanDevice::sDevice = nullptr;
+#else
+std::unordered_map<VulkanDeviceId, VulkanDevice*> VulkanDevice::sDevices;
+#endif
+
+VULKAN_NAMESPACE_END

@@ -1,29 +1,20 @@
-#ifndef NU_VULKAN_COMMAND_POOL_HPP
-#define NU_VULKAN_COMMAND_POOL_HPP
+#pragma once
 
 #include "VulkanFunctions.hpp"
-#include "VulkanCommandBuffer.hpp"
 
-#include <memory>
+VULKAN_NAMESPACE_BEGIN
 
-namespace nu
-{
-namespace Vulkan
-{
-
-class Device;
-class CommandPool
+class VulkanCommandPool : public VulkanDeviceObject<VulkanObjectType_CommandPool>
 {
 	public:
-		typedef std::unique_ptr<CommandPool> Ptr;
+		// TODO : Store settings as attributes ?
+		static VulkanCommandPoolPtr createCommandPool(VkCommandPoolCreateFlags parameters, VulkanU32 queueFamily);
 
-		// TODO : Store settings as attributes
-		static CommandPool::Ptr createCommandPool(Device& device, VkCommandPoolCreateFlags parameters, uint32_t queueFamily);
+		~VulkanCommandPool();
 
-		~CommandPool();
-
-		CommandBuffer::Ptr allocatePrimaryCommandBuffer();
-		CommandBuffer::Ptr allocateSecondaryCommandBuffer();
+        // TODO : Store the unique ptr inside pool ?
+		VulkanCommandBufferPtr allocatePrimaryCommandBuffer();
+		VulkanCommandBufferPtr allocateSecondaryCommandBuffer();
 		// TODO : Allocate n at once
 		
 		bool reset(); // TODO : Add release resources parameter ?
@@ -32,19 +23,14 @@ class CommandPool
 
 		bool isInitialized() const;
 		const VkCommandPool& getHandle() const;
-		const VkDevice& getDeviceHandle() const;
 
 	private:
-		CommandPool(Device& device);
+		VulkanCommandPool();
 
-		bool init(VkCommandPoolCreateFlags parameters, uint32_t queueFamily);
+		bool init(VkCommandPoolCreateFlags parameters, VulkanU32 queueFamily);
 		bool release();
 
 		VkCommandPool mCommandPool;
-		Device& mDevice;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_COMMAND_POOL_HPP
+VULKAN_NAMESPACE_END

@@ -1,26 +1,13 @@
-#ifndef NU_VULKAN_RENDER_PASS_HPP
-#define NU_VULKAN_RENDER_PASS_HPP
+#pragma once
 
 #include "VulkanFunctions.hpp"
 
-#include <array>
-#include <memory>
-#include <vector>
+VULKAN_NAMESPACE_BEGIN
 
-#include "VulkanFramebuffer.hpp"
-
-namespace nu
-{
-namespace Vulkan
-{
-
-class Device;
-class RenderPass
+class VulkanRenderPass : public VulkanDeviceObject<VulkanObjectType_RenderPass>
 {
 	public:
-		typedef std::unique_ptr<RenderPass> Ptr;
-
-		~RenderPass();
+		~VulkanRenderPass();
 
 		void addAttachment(VkFormat format);
 		void addAttachment(VkAttachmentDescriptionFlags flags, VkFormat format, VkSampleCountFlagBits samples, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp, VkAttachmentLoadOp stencilLoadOp, VkAttachmentStoreOp stencilStoreOp, VkImageLayout initialLayout, VkImageLayout finalLayout);
@@ -59,13 +46,12 @@ class RenderPass
 		bool isCreated() const;
 		const VkRenderPass& getHandle() const;
 
-		Framebuffer::Ptr createFramebuffer(const std::vector<VkImageView>& attachments, uint32_t width, uint32_t height, uint32_t layers);
+		VulkanFramebufferPtr createFramebuffer(const std::vector<VkImageView>& attachments, uint32_t width, uint32_t height, uint32_t layers);
 
 	private:
-		friend class Device;
-		RenderPass(Device& device);
+		friend class VulkanDevice;
+		VulkanRenderPass();
 
-		Device& mDevice;
 		VkRenderPass mRenderPass;
 
 		static const int MaxColorAttachmentReferences = 20;
@@ -74,14 +60,11 @@ class RenderPass
 		std::vector<VkAttachmentDescription> mAttachmentDescriptions;
 		std::vector<VkSubpassDescription> mSubpassDescriptions;
 	    std::vector<VkSubpassDependency> mSubpassDependencies;
-		std::array<VkAttachmentReference, MaxColorAttachmentReferences> mColorAttachmentReferences;
+		VkAttachmentReference mColorAttachmentReferences[MaxColorAttachmentReferences];
 		int mNumColorAttachmentReferences;
-		std::array<VkAttachmentReference, MaxInputAttachmentReferences> mInputAttachmentReferences;
+		VkAttachmentReference mInputAttachmentReferences[MaxInputAttachmentReferences];
 		int mNumInputAttachmentReferences;
 		std::unique_ptr<VkAttachmentReference> mDepthStencilAttachmentReference;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_RENDER_PASS_HPP
+VULKAN_NAMESPACE_END

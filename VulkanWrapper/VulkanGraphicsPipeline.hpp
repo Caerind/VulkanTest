@@ -1,41 +1,25 @@
-#ifndef NU_VULKAN_GRAPHICS_PIPELINE_HPP
-#define NU_VULKAN_GRAPHICS_PIPELINE_HPP
+#pragma once
 
 #include "VulkanFunctions.hpp"
-
-#include <memory>
-
-#include "VulkanPipelineLayout.hpp"
-#include "VulkanPipelineCache.hpp"
-#include "VulkanRenderPass.hpp"
-
-#include "VulkanShaderModule.hpp"
 
 // TODO : Move the current pipeline creation process to another class.
 //		  The current approach is very repetitive and not optimized for creating similar pipelines
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-
-class Device;
-class GraphicsPipeline
+class VulkanGraphicsPipeline : public VulkanObject<VulkanObjectType_GraphicsPipeline>
 {
 	public:
-		typedef std::unique_ptr<GraphicsPipeline> Ptr;
+		~VulkanGraphicsPipeline();
 
-		~GraphicsPipeline();
+		void setSubpass(VulkanU32 subpass);
 
-		void setSubpass(uint32_t subpass);
+		void addShaderModule(VulkanShaderModule* shaderModule);
 
-		void addShaderModule(ShaderModule* shaderModule);
-
-		void addVertexBinding(uint32_t binding, uint32_t stride, VkVertexInputRate inputRate = VK_VERTEX_INPUT_RATE_VERTEX);
+		void addVertexBinding(VulkanU32 binding, VulkanU32 stride, VkVertexInputRate inputRate = VK_VERTEX_INPUT_RATE_VERTEX);
 		void addVertexBinding(const VkVertexInputBindingDescription& description);
 
-		void addVertexAttribute(uint32_t location, uint32_t binding, VkFormat format, uint32_t offset);
+		void addVertexAttribute(VulkanU32 location, VulkanU32 binding, VkFormat format, VulkanU32 offset);
 		void addVertexAttribute(const VkVertexInputAttributeDescription& description);
 
 		void setInputAssemblyState(VkPrimitiveTopology topology, bool primitiveRestartEnable);
@@ -44,15 +28,15 @@ class GraphicsPipeline
 		void setPrimitiveRestart(bool primitiveRestartEnable);
 
 		void setTessellationState(const VkPipelineTessellationStateCreateInfo& tessellationState);
-		void setPatchControlPoints(uint32_t patchControlPoints);
+		void setPatchControlPoints(VulkanU32 patchControlPoints);
 
 		// TODO : Multiple Viewports/Scissors
-		void setViewport(float x, float y, float width, float height, float minDepth, float maxDepth);
+		void setViewport(VulkanF32 x, VulkanF32 y, VulkanF32 width, VulkanF32 height, VulkanF32 minDepth, VulkanF32 maxDepth);
 		void setViewport(const VkViewport& viewport);
-		void setScissor(int32_t x, int32_t y, uint32_t width, uint32_t height);
+		void setScissor(VulkanI32 x, VulkanI32 y, VulkanU32 width, VulkanU32 height);
 		void setScissor(const VkRect2D& scissor);
 
-		void setRasterizationState(bool depthClampEnable, bool rasterizerDiscardEnable, VkPolygonMode polygonMode, VkCullModeFlags cullMode, VkFrontFace frontFace, bool depthBiasEnable, float depthBiasConstantFactor, float depthBiasClamp, float depthBiasSlopeFactor, float lineWidth);
+		void setRasterizationState(bool depthClampEnable, bool rasterizerDiscardEnable, VkPolygonMode polygonMode, VkCullModeFlags cullMode, VkFrontFace frontFace, bool depthBiasEnable, VulkanF32 depthBiasConstantFactor, VulkanF32 depthBiasClamp, VulkanF32 depthBiasSlopeFactor, VulkanF32 lineWidth);
 		void setRasterizationState(const VkPipelineRasterizationStateCreateInfo& rasterizationState);
 		void setDepthClampEnable(bool depthClampEnable);
 		void setRasterizerDiscardEnable(bool rasterizerDiscardEnable);
@@ -60,21 +44,21 @@ class GraphicsPipeline
 		void setCullMode(VkCullModeFlags cullMode);
 		void setFrontFace(VkFrontFace frontFace);
 		void setDepthBiasEnable(bool depthBiasEnable);
-		void setDepthBiasConstantFactor(float depthBiasConstantFactor);
-		void setDepthBiasClamp(float depthBiasClamp);
-		void setDepthBiasSlopeFactor(float depthBiasSlopeFactor);
-		void setLineWidth(float lineWidth);
+		void setDepthBiasConstantFactor(VulkanF32 depthBiasConstantFactor);
+		void setDepthBiasClamp(VulkanF32 depthBiasClamp);
+		void setDepthBiasSlopeFactor(VulkanF32 depthBiasSlopeFactor);
+		void setLineWidth(VulkanF32 lineWidth);
 
-		void setMultisampleState(VkSampleCountFlagBits rasterizationSamples, bool sampleShadingEnable, float minSampleShading, const VkSampleMask* sampleMask, bool alphaToCoverageEnable, bool alphaToOneEnable);
+		void setMultisampleState(VkSampleCountFlagBits rasterizationSamples, bool sampleShadingEnable, VulkanF32 minSampleShading, const VkSampleMask* sampleMask, bool alphaToCoverageEnable, bool alphaToOneEnable);
 		void setMultisampleState(const VkPipelineMultisampleStateCreateInfo& multisampleState);
 		void setRasterizationSamples(VkSampleCountFlagBits rasterizationSamples);
 		void setSampleShadingEnable(bool sampleShadingEnable);
-		void setMinSampleShading(float minSampleShading);
+		void setMinSampleShading(VulkanF32 minSampleShading);
 		void setSampleMask(const VkSampleMask* sampleMask);
 		void setAlphaToCoverageEnable(bool alphaToCoverageEnable);
 		void setAlphaToOneEnable(bool alphaToOneEnable);
 
-		void setDepthStencilState(bool depthTestEnable, bool depthWriteEnable, VkCompareOp depthCompareOp, bool depthBoundsTestEnable, bool stencilTestEnable, VkStencilOpState stencilFront, VkStencilOpState stencilBack, float minDepthBounds, float maxDepthBounds);
+		void setDepthStencilState(bool depthTestEnable, bool depthWriteEnable, VkCompareOp depthCompareOp, bool depthBoundsTestEnable, bool stencilTestEnable, VkStencilOpState stencilFront, VkStencilOpState stencilBack, VulkanF32 minDepthBounds, VulkanF32 maxDepthBounds);
 		void setDepthStencilState(const VkPipelineDepthStencilStateCreateInfo& depthStencilState);
 		void setDepthTestEnable(bool depthTestEnable);
 		void setDepthWriteEnable(bool depthWriteEnable);
@@ -83,8 +67,8 @@ class GraphicsPipeline
 		void setStencilTestEnable(bool stencilTestEnable);
 		void setStencilFront(VkStencilOpState stencilFront);
 		void setStencilBack(VkStencilOpState stencilBack);
-		void setMinDepthBounds(float minDepthBounds);
-		void setMaxDepthBounds(float maxDepthBounds);
+		void setMinDepthBounds(VulkanF32 minDepthBounds);
+		void setMaxDepthBounds(VulkanF32 maxDepthBounds);
 
 		void addBlend(bool blendEnable, VkBlendFactor srcColorBlendFactor, VkBlendFactor dstColorBlendFactor, VkBlendOp colorBlendOp, VkBlendFactor srcAlphaBlendFactor, VkBlendFactor dstAlphaBlendFactor, VkBlendOp alphaBlendOp, VkColorComponentFlags colorWriteMask);
 		void addBlend(const VkPipelineColorBlendAttachmentState& blendAttachment);
@@ -98,11 +82,11 @@ class GraphicsPipeline
 		void setBlendAlphaBlendOp(VkBlendOp alphaBlendOp);
 		void setBlendColorWriteMask(VkColorComponentFlags colorWriteMask);
 
-		void setBlendState(bool logicOpEnable, VkLogicOp logicOp, float r, float g, float b, float a);
+		void setBlendState(bool logicOpEnable, VkLogicOp logicOp, VulkanF32 r, VulkanF32 g, VulkanF32 b, VulkanF32 a);
 		void setBlendState(const VkPipelineColorBlendStateCreateInfo& blendState);
 		void setBlendLogicOpEnable(bool logicOpEnable);
 		void setBlendLogicOp(VkLogicOp logicOp);
-		void setBlendConstants(float r, float g, float b, float a);
+		void setBlendConstants(VulkanF32 r, VulkanF32 g, VulkanF32 b, VulkanF32 a);
 
 		void addDynamicState(VkDynamicState dynamicState);
 
@@ -114,16 +98,16 @@ class GraphicsPipeline
 		const VkPipeline& getHandle() const;
 
 	private:
-		friend class Device;
-		GraphicsPipeline(Device& device, PipelineLayout& layout, RenderPass& renderPass, PipelineCache* cache = nullptr);
+		friend class VulkanDevice;
+		VulkanGraphicsPipeline(VulkanDevice& device, VulkanPipelineLayout& layout, VulkanRenderPass& renderPass, VulkanPipelineCache* cache = nullptr);
 
 	private:
-		Device& mDevice;
-		PipelineLayout& mLayout;
-		RenderPass& mRenderPass;
-		PipelineCache* mCache;
+		VulkanDevice& mDevice;
+		VulkanPipelineLayout& mLayout;
+		VulkanRenderPass& mRenderPass;
+		VulkanPipelineCache* mCache;
 		VkPipeline mGraphicsPipeline;
-		uint32_t mSubpass;
+		VulkanU32 mSubpass;
 
 		std::vector<VkPipelineShaderStageCreateInfo> mShaderStages;
 		std::vector<VkVertexInputBindingDescription> mVertexBindingDescriptions;
@@ -152,7 +136,4 @@ class GraphicsPipeline
 		static const VkPipelineDepthStencilStateCreateInfo sDefaultDepthStencilState;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_GRAPHICS_PIPELINE_HPP
+VULKAN_NAMESPACE_END

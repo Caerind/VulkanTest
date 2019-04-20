@@ -2,56 +2,38 @@
 
 #include "VulkanInstance.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-Surface::~Surface()
+VulkanSurface::~VulkanSurface()
 {
 	release();
 
-	ObjectTracker::unregisterObject(ObjectType_Surface);
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-const WindowParameters& Surface::getWindowParameters() const
+const VulkanWindowParameters& VulkanSurface::getWindowParameters() const
 {
 	return mWindowParameters;
 }
 
-PlatformConnectionType Surface::getPlatformConnection() const
+VulkanPlatformConnectionType VulkanSurface::getPlatformConnection() const
 {
 	return mWindowParameters.platformConnection;
 }
 
-PlatformWindowType Surface::getPlatformWindow() const
+VulkanPlatformWindowType VulkanSurface::getPlatformWindow() const
 {
 	return mWindowParameters.platformWindow;
 }
 
-Instance& Surface::getInstance()
-{
-	return mInstance;
-}
-
-const Instance& Surface::getInstance() const
-{
-	return mInstance;
-}
-
-const VkSurfaceKHR& Surface::getHandle() const
+const VkSurfaceKHR& VulkanSurface::getHandle() const
 {
 	return mSurface;
 }
 
-const VkInstance& Surface::getInstanceHandle() const
+VulkanSurfacePtr VulkanSurface::createSurface(const VulkanWindowParameters& windowParameters)
 {
-	return mInstance.getHandle();
-}
-
-Surface::Ptr Surface::createSurface(Instance& instance, const WindowParameters& windowParameters)
-{
-	Surface::Ptr surface(new Surface(instance, windowParameters));
+	VulkanSurfacePtr surface(new VulkanSurface(windowParameters));
 	if (surface != nullptr)
 	{
 		if (!surface->init())
@@ -62,15 +44,14 @@ Surface::Ptr Surface::createSurface(Instance& instance, const WindowParameters& 
 	return surface;
 }
 
-Surface::Surface(Instance& instance, const WindowParameters& windowParameters)
-	: mInstance(instance)
-	, mSurface(VK_NULL_HANDLE)
+VulkanSurface::VulkanSurface(const VulkanWindowParameters& windowParameters)
+	: mSurface(VK_NULL_HANDLE)
 	, mWindowParameters(windowParameters)
 {
-	ObjectTracker::registerObject(ObjectType_Surface);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-bool Surface::init()
+bool VulkanSurface::init()
 {
 	VkResult result;
 
@@ -83,7 +64,7 @@ bool Surface::init()
 			mWindowParameters.platformWindow                  // HWND                            hwnd
 		};
 
-		result = vkCreateWin32SurfaceKHR(mInstance.getHandle(), &surfaceCreateInfo, nullptr, &mSurface);
+		result = vkCreateWin32SurfaceKHR(getInstanceHandle(), &surfaceCreateInfo, nullptr, &mSurface);
 
 	#elif defined(VK_USE_PLATFORM_XLIB_KHR)
 		VkXlibSurfaceCreateInfoKHR surfaceCreateInfo = {
@@ -94,7 +75,7 @@ bool Surface::init()
 			mWindowParameters.platformWindow                  // Window                          window
 		};
 
-		result = vkCreateXlibSurfaceKHR(mInstance.getHandle(), &surfaceCreateInfo, nullptr, &mSurface);
+		result = vkCreateXlibSurfaceKHR(getInstanceHandle(), &surfaceCreateInfo, nullptr, &mSurface);
 
 	#elif defined(VK_USE_PLATFORM_XCB_KHR)
 		VkXcbSurfaceCreateInfoKHR surfaceCreateInfo = {
@@ -105,31 +86,28 @@ bool Surface::init()
 			mWindowParameters.platformWindow                  // xcb_window_t                    window
 		};
 
-		result = vkCreateXcbSurfaceKHR(mInstance.getHandle(), &surfaceCreateInfo, nullptr, &mSurface);
+		result = vkCreateXcbSurfaceKHR(getInstanceHandle(), &surfaceCreateInfo, nullptr, &mSurface);
 	#else
-		// TODO : Use Numea System Log
-		printf("Unsupported platform for presentation surface\n");
+		VULKAN_LOG_ERROR("Unsupported platform for presentation surface");
 		return false;
 	#endif
 
 	if (result != VK_SUCCESS || mSurface == VK_NULL_HANDLE)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not create presentation surface\n");
+		VULKAN_LOG_ERROR("Could not create presentation surface");
 		return false;
 	}
 
 	return true;
 }
 
-void Surface::release()
+void VulkanSurface::release()
 {
 	if (mSurface != VK_NULL_HANDLE)
 	{
-		vkDestroySurfaceKHR(mInstance.getHandle(), mSurface, nullptr);
+		vkDestroySurfaceKHR(getInstanceHandle(), mSurface, nullptr);
 		mSurface = VK_NULL_HANDLE;
 	}
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

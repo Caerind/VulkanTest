@@ -1,42 +1,27 @@
-#ifndef NU_VULKAN_DESCRIPTOR_SET_LAYOUT_HPP
-#define NU_VULKAN_DESCRIPTOR_SET_LAYOUT_HPP
+#pragma once
 
 #include "VulkanFunctions.hpp"
 
-#include <memory>
-#include <vector>
+VULKAN_NAMESPACE_BEGIN
 
-namespace nu
-{
-namespace Vulkan
-{
-
-class Device;
-class DescriptorSetLayout
+class VulkanDescriptorSetLayout : public VulkanDeviceObject<VulkanObjectType_DescriptorSetLayout>
 {
 	public:
-		typedef std::unique_ptr<DescriptorSetLayout> Ptr;
+		static VulkanDescriptorSetLayoutPtr createDescriptorSetLayout(const std::vector<VkDescriptorSetLayoutBinding>& bindings);
 
-		static DescriptorSetLayout::Ptr createDescriptorSetLayout(Device& device, const std::vector<VkDescriptorSetLayoutBinding>& bindings);
-
-		~DescriptorSetLayout();
+		~VulkanDescriptorSetLayout();
 
 		bool isInitialized() const;
 		const VkDescriptorSetLayout& getHandle() const;
-		const VkDevice& getDeviceHandle() const;
 
 	private:
-		DescriptorSetLayout(Device& device, const std::vector<VkDescriptorSetLayoutBinding>& bindings);
+		VulkanDescriptorSetLayout(const std::vector<VkDescriptorSetLayoutBinding>& bindings);
 
 		bool init();
 		bool release();
 
-		Device& mDevice;
 		VkDescriptorSetLayout mDescriptorSetLayout;
 		std::vector<VkDescriptorSetLayoutBinding> mBindings;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_DESCRIPTOR_SET_LAYOUT_HPP
+VULKAN_NAMESPACE_END

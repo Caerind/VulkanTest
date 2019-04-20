@@ -1,9 +1,11 @@
 #include "VertexBuffer.hpp"
 
+#include "VulkanWrapper/VulkanQueue.hpp"
+
 namespace nu
 {
 
-VertexBuffer::Ptr VertexBuffer::createVertexBuffer(Vulkan::Device& device, uint32_t size)
+VertexBuffer::Ptr VertexBuffer::createVertexBuffer(VulkanDevice& device, uint32_t size)
 {
 	VertexBuffer::Ptr vertexBuffer = VertexBuffer::Ptr(new VertexBuffer());
 	if (vertexBuffer != nullptr)
@@ -20,12 +22,12 @@ VertexBuffer::~VertexBuffer()
 {
 }
 
-bool VertexBuffer::updateAndWait(uint32_t size, void* data, uint32_t offset, VkAccessFlags currentAccess, VkAccessFlags newAccess, VkPipelineStageFlags generatingStages, VkPipelineStageFlags consumingStages, Vulkan::CommandBuffer* commandBuffer, Vulkan::Queue* queue, std::vector<VkSemaphore> signalSemaphores, uint64_t timeout)
+bool VertexBuffer::updateAndWait(uint32_t size, void* data, uint32_t offset, VkAccessFlags currentAccess, VkAccessFlags newAccess, VkPipelineStageFlags generatingStages, VkPipelineStageFlags consumingStages, VulkanCommandBuffer* commandBuffer, VulkanQueue* queue, std::vector<VkSemaphore> signalSemaphores, uint64_t timeout)
 {
 	return queue->useStagingBufferToUpdateBufferAndWait(size, data, mBuffer.get(), offset, currentAccess, newAccess, generatingStages, consumingStages, commandBuffer, signalSemaphores, timeout);
 }
 
-void VertexBuffer::bindTo(Vulkan::CommandBuffer* commandBuffer, uint32_t firstBinding, uint32_t memoryOffset)
+void VertexBuffer::bindTo(VulkanCommandBuffer* commandBuffer, uint32_t firstBinding, uint32_t memoryOffset)
 {
 	commandBuffer->bindVertexBuffers(0, { { mBuffer.get(), memoryOffset } });
 }
@@ -35,7 +37,7 @@ VertexBuffer::VertexBuffer()
 {
 }
 
-bool VertexBuffer::init(Vulkan::Device& device, uint32_t size)
+bool VertexBuffer::init(VulkanDevice& device, uint32_t size)
 {
 	mBuffer = device.createBuffer(size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 	if (!mBuffer || !mBuffer->allocateMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))

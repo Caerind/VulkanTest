@@ -513,7 +513,7 @@ template<typename T>
 inline T Matrix3<T>::getDeterminant() const
 {
 	const T det11 = data[4] * data[8] - data[5] * data[7];
-	const T det12 = -data[1] * data[8] + datam[2] * data[7];
+	const T det12 = -data[1] * data[8] + data[2] * data[7];
 	const T det13 = data[1] * data[5] - data[2] * data[4];
 	return data[0] * det11 + data[3] * det12 + data[6] * det13;
 }

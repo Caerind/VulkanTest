@@ -2,12 +2,9 @@
 
 #include "VulkanSurface.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-PhysicalDevice::PhysicalDevice(const VkPhysicalDevice& physicalDevice)
+VulkanPhysicalDevice::VulkanPhysicalDevice(const VkPhysicalDevice& physicalDevice)
 	: mPhysicalDevice(physicalDevice)
 	, mAvailableExtensions()
 	, mSupportedFeaturesQueried(false)
@@ -21,80 +18,179 @@ PhysicalDevice::PhysicalDevice(const VkPhysicalDevice& physicalDevice)
 {
 }
 
-const std::vector<VkExtensionProperties>& PhysicalDevice::getAvailableExtensions() const
+const std::vector<VkExtensionProperties>& VulkanPhysicalDevice::getAvailableExtensions() const
 {
-	if (mAvailableExtensions.size() == 0)
-	{
-		queryAvailableExtensions();
-	}
-
+	VULKAN_ASSERT(areAvailableExtensionsQueried());
 	return mAvailableExtensions;
 }
 
-const VkPhysicalDeviceFeatures& PhysicalDevice::getSupportedFeatures() const
+const VkPhysicalDeviceFeatures& VulkanPhysicalDevice::getSupportedFeatures() const
 {
-	if (!mSupportedFeaturesQueried)
-	{
-		mSupportedFeaturesQueried = true;
-		vkGetPhysicalDeviceFeatures(mPhysicalDevice, &mSupportedFeatures);
-	}
-
+	VULKAN_ASSERT(areSupportedFeaturesQueried());
 	return mSupportedFeatures;
 }
 
-const VkPhysicalDeviceProperties& PhysicalDevice::getProperties() const
+const VkPhysicalDeviceProperties& VulkanPhysicalDevice::getProperties() const
 {
-	if (!mPropertiesQueried)
-	{
-		mPropertiesQueried = true;
-		vkGetPhysicalDeviceProperties(mPhysicalDevice, &mProperties);
-	}
-
+	VULKAN_ASSERT(arePropertiesQueried());
 	return mProperties;
 }
 
-const std::vector<VkQueueFamilyProperties>& PhysicalDevice::getQueueFamiliesProperties() const
+const std::vector<VkQueueFamilyProperties>& VulkanPhysicalDevice::getQueueFamiliesProperties() const
 {
-	if (mQueueFamiliesProperties.size() == 0)
-	{
-		queryQueueFamiliesProperties();
-	}
-
+	VULKAN_ASSERT(areQueueFamiliesPropertiesQueried());
 	return mQueueFamiliesProperties;
 }
 
-const VkPhysicalDeviceMemoryProperties& PhysicalDevice::getMemoryProperties() const
+const VkPhysicalDeviceMemoryProperties& VulkanPhysicalDevice::getMemoryProperties() const
 {
-	if (!mMemoryPropertiesQueried)
-	{
-		mMemoryPropertiesQueried = true;
-		vkGetPhysicalDeviceMemoryProperties(mPhysicalDevice, &mMemoryProperties);
-	}
-
+	VULKAN_ASSERT(areMemoryPropertiesQueried());
 	return mMemoryProperties;
 }
 
-const VkFormatProperties& PhysicalDevice::getFormatProperties(VkFormat format) const
+const VkFormatProperties& VulkanPhysicalDevice::getFormatProperties(VkFormat format) const
 {
-	auto itr = mFormatProperties.find(format);
-	if (itr == mFormatProperties.end())
+	if (!areFormatPropertiesQueried(format))
 	{
+		// TODO : Can this fail ?
 		vkGetPhysicalDeviceFormatProperties(mPhysicalDevice, format, &mFormatProperties[format]);
-		return mFormatProperties[format];
 	}
-	else
-	{
-		return itr->second;
-	}
+	auto itr = mFormatProperties.find(format);
+	VULKAN_ASSERT(itr != mFormatProperties.end(), "Format has not been queried before : %d", format);
+	return itr->second;
 }
 
-bool PhysicalDevice::isExtensionSupported(const char* extensionName) const
+bool VulkanPhysicalDevice::queryAvailableExtensions()
 {
-	if (mAvailableExtensions.size() == 0)
+	mAvailableExtensions.clear();
+	
+	VulkanU32 extensionsCount = 0;
+	VkResult result = vkEnumerateDeviceExtensionProperties(mPhysicalDevice, nullptr, &extensionsCount, nullptr);
+	if (result != VK_SUCCESS || extensionsCount == 0)
 	{
-		queryAvailableExtensions();
+		VULKAN_LOG_ERROR("Could not get the number of device extensions (PhysicalDevice: %d)", mPhysicalDevice);
+		return false;
 	}
 
+	mAvailableExtensions.resize(extensionsCount);
+	result = vkEnumerateDeviceExtensionProperties(mPhysicalDevice, nullptr, &extensionsCount, mAvailableExtensions.data());
+	if (result != VK_SUCCESS || extensionsCount == 0)
+	{
+		VULKAN_LOG_ERROR("Could not enumerate device extensions (PhysicalDevice: %d)", mPhysicalDevice);
+		return false;
+	}
+
+	return areAvailableExtensionsQueried();
+}
+
+bool VulkanPhysicalDevice::querySupportedFeatures()
+{
+	// TODO : Can this fail ?
+	vkGetPhysicalDeviceFeatures(mPhysicalDevice, &mSupportedFeatures);
+	mSupportedFeaturesQueried = true;
+	return areSupportedFeaturesQueried();
+}
+
+bool VulkanPhysicalDevice::queryProperties()
+{
+	// TODO : Can this fail ?
+	vkGetPhysicalDeviceProperties(mPhysicalDevice, &mProperties);
+	mPropertiesQueried = true;	
+	return arePropertiesQueried();
+}
+
+bool VulkanPhysicalDevice::queryQueueFamiliesProperties()
+{
+	mQueueFamiliesProperties.clear();
+
+	VulkanU32 queueFamiliesCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(mPhysicalDevice, &queueFamiliesCount, nullptr);
+	if (queueFamiliesCount == 0)
+	{
+		VULKAN_LOG_ERROR("Could not get the number of queue families (PhysicalDevice: %d)", mPhysicalDevice);
+		return false;
+	}
+
+	mQueueFamiliesProperties.resize(queueFamiliesCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(mPhysicalDevice, &queueFamiliesCount, mQueueFamiliesProperties.data());
+	if (queueFamiliesCount == 0)
+	{
+		VULKAN_LOG_ERROR("Could not acquire properties of queue families (PhysicalDevice: %d)", mPhysicalDevice);
+		return false;
+	}
+
+	return areQueueFamiliesPropertiesQueried();
+}
+
+bool VulkanPhysicalDevice::queryMemoryProperties()
+{
+	// TODO : Can this fail ?
+	vkGetPhysicalDeviceMemoryProperties(mPhysicalDevice, &mMemoryProperties);
+	mMemoryPropertiesQueried = true;
+	return areMemoryPropertiesQueried();
+}
+
+bool VulkanPhysicalDevice::queryFormatProperties(VkFormat format)
+{
+	// TODO : Can this fail ?
+	vkGetPhysicalDeviceFormatProperties(mPhysicalDevice, format, &mFormatProperties[format]);
+	return areFormatPropertiesQueried(format);
+}
+
+bool VulkanPhysicalDevice::queryAllProperties()
+{
+	bool everythingWentWell = true;
+	everythingWentWell &= queryAvailableExtensions();
+	everythingWentWell &= querySupportedFeatures();
+	everythingWentWell &= queryProperties();
+	everythingWentWell &= queryQueueFamiliesProperties();
+	everythingWentWell &= queryMemoryProperties();
+	// TODO : Query some/all VkFormat ?
+	return everythingWentWell;
+}
+
+bool VulkanPhysicalDevice::areAvailableExtensionsQueried() const
+{
+	return mAvailableExtensions.size() > 0;
+}
+
+bool VulkanPhysicalDevice::areSupportedFeaturesQueried() const
+{
+	return mSupportedFeaturesQueried;
+}
+
+bool VulkanPhysicalDevice::arePropertiesQueried() const
+{
+	return mPropertiesQueried;
+}
+
+bool VulkanPhysicalDevice::areQueueFamiliesPropertiesQueried() const
+{
+	return mQueueFamiliesProperties.size();
+}
+
+bool VulkanPhysicalDevice::areMemoryPropertiesQueried() const
+{
+	return mMemoryPropertiesQueried;
+}
+
+bool VulkanPhysicalDevice::areFormatPropertiesQueried(VkFormat format) const
+{
+	return mFormatProperties.find(format) != mFormatProperties.end();
+}
+
+bool VulkanPhysicalDevice::areAllPropertiesQueried() const
+{
+	return areAvailableExtensionsQueried()
+		&& areSupportedFeaturesQueried()
+		&& arePropertiesQueried()
+		&& areQueueFamiliesPropertiesQueried()
+		&& areMemoryPropertiesQueried();
+	// TODO : Query some/all VkFormat ?
+}
+
+bool VulkanPhysicalDevice::isExtensionSupported(const char* extensionName) const
+{
 	for (const VkExtensionProperties& extension : mAvailableExtensions)
 	{
 		if (strcmp(extension.extensionName, extensionName) == 0)
@@ -105,111 +201,9 @@ bool PhysicalDevice::isExtensionSupported(const char* extensionName) const
 	return false;
 }
 
-uint32_t PhysicalDevice::getQueueFamilyIndexWithDesiredCapabilities(VkQueueFlags desiredCapabilities) const
-{
-	if (mQueueFamiliesProperties.size() == 0)
-	{
-		queryQueueFamiliesProperties();
-	}
-
-	uint32_t size = static_cast<uint32_t>(mQueueFamiliesProperties.size());
-	for (uint32_t index = 0; index < size; index++)
-	{
-		if (mQueueFamiliesProperties[index].queueCount > 0 && (mQueueFamiliesProperties[index].queueFlags & desiredCapabilities) == desiredCapabilities)
-		{
-			return index;
-		}
-	}
-	return InvalidQueueFamilyIndex;
-}
-
-uint32_t PhysicalDevice::getGraphicsQueueFamilyIndex() const
-{
-	return getQueueFamilyIndexWithDesiredCapabilities(VK_QUEUE_GRAPHICS_BIT);
-}
-
-uint32_t PhysicalDevice::getComputeQueueFamilyIndex() const
-{
-	return getQueueFamilyIndexWithDesiredCapabilities(VK_QUEUE_COMPUTE_BIT);
-}
-
-uint32_t PhysicalDevice::getPresentQueueFamilyIndex(Surface* presentationSurface) const
-{
-	if (mQueueFamiliesProperties.size() == 0)
-	{
-		queryQueueFamiliesProperties();
-	}
-
-	for (uint32_t index = 0; index < static_cast<uint32_t>(mQueueFamiliesProperties.size()); index++)
-	{
-		VkBool32 presentationSupported = VK_FALSE;
-		VkResult result = vkGetPhysicalDeviceSurfaceSupportKHR(mPhysicalDevice, index, presentationSurface->getHandle(), &presentationSupported);
-		if ((result == VK_SUCCESS) && (presentationSupported == VK_TRUE))
-		{
-			return index;
-		}
-	}
-
-	return InvalidQueueFamilyIndex;
-}
-
-const VkPhysicalDevice& PhysicalDevice::getHandle() const
+const VkPhysicalDevice& VulkanPhysicalDevice::getHandle() const
 {
 	return mPhysicalDevice;
 }
 
-bool PhysicalDevice::queryAvailableExtensions() const
-{
-	mAvailableExtensions.clear();
-
-	uint32_t extensionsCount = 0;
-	VkResult result = VK_SUCCESS;
-
-	result = vkEnumerateDeviceExtensionProperties(mPhysicalDevice, nullptr, &extensionsCount, nullptr);
-	if (result != VK_SUCCESS || extensionsCount == 0)
-	{
-		// TODO : Use Numea System Log
-		printf("Could not get the number of device extensions\n");
-		return false;
-	}
-
-	mAvailableExtensions.resize(extensionsCount);
-	result = vkEnumerateDeviceExtensionProperties(mPhysicalDevice, nullptr, &extensionsCount, mAvailableExtensions.data());
-	if ((result != VK_SUCCESS) || (extensionsCount == 0))
-	{
-		// TODO : Use Numea System Log
-		printf("Could not enumerate device extensions\n");
-		return false;
-	}
-
-	return true;
-}
-
-bool PhysicalDevice::queryQueueFamiliesProperties() const
-{
-	mQueueFamiliesProperties.clear();
-
-	uint32_t queueFamiliesCount = 0;
-
-	vkGetPhysicalDeviceQueueFamilyProperties(mPhysicalDevice, &queueFamiliesCount, nullptr);
-	if (queueFamiliesCount == 0)
-	{
-		// TODO : Use Numea System Log
-		printf("Could not get the number of queue families\n");
-		return false;
-	}
-
-	mQueueFamiliesProperties.resize(queueFamiliesCount);
-	vkGetPhysicalDeviceQueueFamilyProperties(mPhysicalDevice, &queueFamiliesCount, mQueueFamiliesProperties.data());
-	if (queueFamiliesCount == 0)
-	{
-		// TODO : Use Numea System Log
-		printf("Could not acquire properties of queue families\n");
-		return false;
-	}
-
-	return true;
-}
-
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

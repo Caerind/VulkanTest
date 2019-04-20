@@ -1,57 +1,42 @@
-#ifndef NU_VULKAN_DESCRIPTOR_POOL_HPP
-#define NU_VULKAN_DESCRIPTOR_POOL_HPP
+#pragma once
 
 #include "VulkanFunctions.hpp"
 
-#include <memory>
-#include <vector>
+VULKAN_NAMESPACE_BEGIN
 
-#include "VulkanDescriptorSet.hpp"
-#include "VulkanDescriptorSetLayout.hpp"
-
-namespace nu
-{
-namespace Vulkan
-{
-
-class Device;
-class DescriptorPool
+class VulkanDescriptorPool : public VulkanDeviceObject<VulkanObjectType_DescriptorPool>
 {
 	public:
-		typedef std::unique_ptr<DescriptorPool> Ptr;
+		static VulkanDescriptorPoolPtr createDescriptorPool(bool freeIndividualSets, VulkanU32 maxSetsCount, const std::vector<VkDescriptorPoolSize>& descriptorTypes);
 
-		static DescriptorPool::Ptr createDescriptorPool(Device& device, bool freeIndividualSets, uint32_t maxSetsCount, const std::vector<VkDescriptorPoolSize>& descriptorTypes);
+		~VulkanDescriptorPool();
 
-		~DescriptorPool();
-
-		DescriptorSet::Ptr allocateDescriptorSet(DescriptorSetLayout* descriptorSetLayout);
-		bool allocateDescriptorSets(const std::vector<DescriptorSetLayout*> descriptorSetLayouts, std::vector<DescriptorSet::Ptr>& descriptorSets);
+		// TODO : Should Pool manage the unique ptr ?
+		VulkanDescriptorSetPtr allocateDescriptorSet(VulkanDescriptorSetLayout* descriptorSetLayout);
+		bool allocateDescriptorSets(const std::vector<VulkanDescriptorSetLayout*> descriptorSetLayouts, std::vector<VulkanDescriptorSetPtr>& descriptorSets);
 
 		// TODO : Free more than one at once
 
 		bool freeIndividualSets() const;
+		// TODO : Get maxSetsCount ?
+		// TODO : Get descriptorTypes ?
 
 		bool reset();
 
 		bool isInitialized() const;
 		const VkDescriptorPool& getHandle() const;
-		const VkDevice& getDeviceHandle() const;
 
 	private:
-		DescriptorPool(Device& device, bool freeIndividualSets, uint32_t maxSetsCount, const std::vector<VkDescriptorPoolSize>& descriptorTypes);
+		VulkanDescriptorPool(bool freeIndividualSets, VulkanU32 maxSetsCount, const std::vector<VkDescriptorPoolSize>& descriptorTypes);
 
 		bool init();
 		bool release();
 
-		Device& mDevice;
 		VkDescriptorPool mDescriptorPool;
 
 		bool mFreeIndividualSets;
-		uint32_t mMaxSetsCount;
+		VulkanU32 mMaxSetsCount;
 		std::vector<VkDescriptorPoolSize> mDescriptorTypes;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_DESCRIPTOR_POOL_HPP
+VULKAN_NAMESPACE_END

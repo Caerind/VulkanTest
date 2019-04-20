@@ -1,51 +1,37 @@
-#ifndef NU_VULKAN_FENCE_HPP
-#define NU_VULKAN_FENCE_HPP
-
-#include <memory>
+#pragma once
 
 #include "VulkanFunctions.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-class Device;
-class Fence
+class VulkanFence : public VulkanDeviceObject<VulkanObjectType_Fence>
 {
 	public:
-		typedef std::unique_ptr<Fence> Ptr;
+		~VulkanFence();
 
-		~Fence();
-
-		bool wait(uint64_t timeout);
+		// TODO : Friendlier Time for U64 ?
+		bool wait(VulkanU64 timeout);
 
 		bool reset();
 
+		// TODO : Really precise ? If not : remove or improve
 		bool isSignaled() const;
 
-		Device& getDevice();
-		const Device& getDevice() const;
 		const VkFence& getHandle() const;
-		const VkDevice& getDeviceHandle() const;
 
 	private:
-		friend class Device;
-		static Fence::Ptr createFence(Device& device, bool signaled);
+		friend class VulkanDevice;
+		static VulkanFencePtr createFence(bool signaled);
 
-		Fence(Device& device, bool signaled);
+		VulkanFence(bool signaled);
 
 		bool init();
 		void release();
 
 	private:
-		Device& mDevice;
 		VkFence mFence;
 
 		bool mSignaled;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_FENCE_HPP
+VULKAN_NAMESPACE_END

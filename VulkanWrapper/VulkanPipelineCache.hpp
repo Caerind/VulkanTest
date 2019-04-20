@@ -1,10 +1,6 @@
-#ifndef NU_VULKAN_PIPELINE_CACHE_HPP
-#define NU_VULKAN_PIPELINE_CACHE_HPP
+#pragma once
 
 #include "VulkanFunctions.hpp"
-
-#include <memory>
-#include <vector>
 
 /*
 
@@ -28,20 +24,14 @@ https://www.khronos.org/registry/vulkan/specs/1.0/xhtml/vkspec.html#id-1.11.16.2
 
 */
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-class Device;
-class PipelineCache
+class VulkanPipelineCache : public VulkanDeviceObject<VulkanObjectType_PipelineCache>
 {
 	public:
-		typedef std::unique_ptr<PipelineCache> Ptr;
+		static VulkanPipelineCachePtr createPipelineCache(const std::vector<unsigned char>& cacheData = {});
 
-		static PipelineCache::Ptr createPipelineCache(Device& device, const std::vector<unsigned char>& cacheData = {});
-
-		~PipelineCache();
+		~VulkanPipelineCache();
 
 		// TODO : Load From File
 		// TODO : Save To File
@@ -49,25 +39,20 @@ class PipelineCache
 		bool retrieveData();
 		const std::vector<unsigned char>& getCacheData() const;
 
-		bool merge(const std::vector<PipelineCache*>& sourcePipelineCaches);
+		bool merge(const std::vector<VulkanPipelineCache*>& sourcePipelineCaches);
 
 		bool isInitialized() const;
 		const VkPipelineCache& getHandle() const;
-		const VkDevice& getDeviceHandle() const;
 
 	private:
-		PipelineCache(Device& device, const std::vector<unsigned char>& cacheData = {});
+		VulkanPipelineCache(const std::vector<unsigned char>& cacheData = {});
 
 		bool init();
 		bool release();
 
-		Device& mDevice;
 		VkPipelineCache mPipelineCache; 
 		
 		std::vector<unsigned char> mCacheData;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_PIPELINE_CACHE_HPP
+VULKAN_NAMESPACE_END

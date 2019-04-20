@@ -1,21 +1,28 @@
 #include "VulkanCommandBuffer.hpp"
 
+#include "VulkanBuffer.hpp"
 #include "VulkanCommandPool.hpp"
+#include "VulkanDescriptorSet.hpp"
+#include "VulkanImage.hpp"
+#include "VulkanGraphicsPipeline.hpp"
+#include "VulkanComputePipeline.hpp"
+#include "VulkanDevice.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-CommandBuffer::~CommandBuffer()
+VulkanCommandBuffer::~VulkanCommandBuffer()
 {
-	ObjectTracker::unregisterObject(ObjectType_CommandBuffer);
-
 	release();
+	
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-bool CommandBuffer::beginRecording(VkCommandBufferUsageFlags usage, VkCommandBufferInheritanceInfo* secondaryCommandBufferInfo)
+bool VulkanCommandBuffer::beginRecording(VkCommandBufferUsageFlags usage, VkCommandBufferInheritanceInfo* secondaryCommandBufferInfo)
 {
+	// TODO : Check parameters ?
+	
+	// TODO : Do something if already recording ?
+	
 	VkCommandBufferBeginInfo commandBufferBeginInfo = {
 		VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,    // VkStructureType                        sType
 		nullptr,                                        // const void                           * pNext
@@ -26,8 +33,8 @@ bool CommandBuffer::beginRecording(VkCommandBufferUsageFlags usage, VkCommandBuf
 	VkResult result = vkBeginCommandBuffer(mCommandBuffer, &commandBufferBeginInfo);
 	if (result != VK_SUCCESS)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not begin command buffer recording operation\n");
+		// TODO : Log more
+		VULKAN_LOG_ERROR("Could not begin command buffer recording operation");
 		return false;
 	}
 
@@ -35,13 +42,15 @@ bool CommandBuffer::beginRecording(VkCommandBufferUsageFlags usage, VkCommandBuf
 	return true;
 }
 
-bool CommandBuffer::endRecording()
+bool VulkanCommandBuffer::endRecording()
 {
+	// TODO : Do something if not recording ?
+	
 	VkResult result = vkEndCommandBuffer(mCommandBuffer);
 	if (VK_SUCCESS != result)
 	{
-		// TODO : Use Numea System Log
-		printf("Error occurred during command buffer recording\n");
+		// TODO : Log more
+		VULKAN_LOG_ERROR("Error occurred during command buffer recording");
 		return false;
 	}
 
@@ -49,68 +58,80 @@ bool CommandBuffer::endRecording()
 	return true;
 }
 
-void CommandBuffer::beginRenderPass(VkRenderPass renderPass, VkFramebuffer framebuffer, VkRect2D renderArea, const std::vector<VkClearValue>& clearValues, VkSubpassContents subpassContents)
+void VulkanCommandBuffer::beginRenderPass(VkRenderPass renderPass, VkFramebuffer framebuffer, VkRect2D renderArea, const std::vector<VkClearValue>& clearValues, VkSubpassContents subpassContents)
 {
+	// TODO : Check parameters ?
+	
 	VkRenderPassBeginInfo renderPassBeginInfo = {
 		VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,     // VkStructureType        sType
 		nullptr,                                      // const void           * pNext
 		renderPass,                                   // VkRenderPass           renderPass
 		framebuffer,                                  // VkFramebuffer          framebuffer
 		renderArea,                                   // VkRect2D               renderArea
-		static_cast<uint32_t>(clearValues.size()),    // uint32_t               clearValueCount
+		static_cast<VulkanU32>(clearValues.size()),    // uint32_t               clearValueCount
 		clearValues.data()                            // const VkClearValue   * pClearValues
 	};
 
 	vkCmdBeginRenderPass(mCommandBuffer, &renderPassBeginInfo, subpassContents);
 }
 
-void CommandBuffer::progressToTheNextSubpass(VkSubpassContents subpassContents)
+void VulkanCommandBuffer::progressToTheNextSubpass(VkSubpassContents subpassContents)
 {
+	// TODO : Check parameters ?
 	vkCmdNextSubpass(mCommandBuffer, subpassContents);
 }
 
-void CommandBuffer::endRenderPass()
+void VulkanCommandBuffer::endRenderPass()
 {
+	// TODO : Check parameters ?
 	vkCmdEndRenderPass(mCommandBuffer);
 }
 
-void CommandBuffer::clearColorImage(VkImage image, VkImageLayout imageLayout, const std::vector<VkImageSubresourceRange>& imageSubresourceRanges, VkClearColorValue& clearColor)
+void VulkanCommandBuffer::clearColorImage(VkImage image, VkImageLayout imageLayout, const std::vector<VkImageSubresourceRange>& imageSubresourceRanges, VkClearColorValue& clearColor)
 {
-	vkCmdClearColorImage(mCommandBuffer, image, imageLayout, &clearColor, static_cast<uint32_t>(imageSubresourceRanges.size()), imageSubresourceRanges.data());
+	// TODO : Check parameters ?
+	vkCmdClearColorImage(mCommandBuffer, image, imageLayout, &clearColor, static_cast<VulkanU32>(imageSubresourceRanges.size()), imageSubresourceRanges.data());
 }
 
-void CommandBuffer::clearDepthStencilImage(VkImage image, VkImageLayout imageLayout, const std::vector<VkImageSubresourceRange>& imageSubresourceRanges, VkClearDepthStencilValue& clearValue)
+void VulkanCommandBuffer::clearDepthStencilImage(VkImage image, VkImageLayout imageLayout, const std::vector<VkImageSubresourceRange>& imageSubresourceRanges, VkClearDepthStencilValue& clearValue)
 {
-	vkCmdClearDepthStencilImage(mCommandBuffer, image, imageLayout, &clearValue, static_cast<uint32_t>(imageSubresourceRanges.size()), imageSubresourceRanges.data());
+	// TODO : Check parameters ?
+	vkCmdClearDepthStencilImage(mCommandBuffer, image, imageLayout, &clearValue, static_cast<VulkanU32>(imageSubresourceRanges.size()), imageSubresourceRanges.data());
 }
 
-void CommandBuffer::clearRenderPassAttachments(const std::vector<VkClearAttachment>& attachments, const std::vector<VkClearRect>& rects)
+void VulkanCommandBuffer::clearRenderPassAttachments(const std::vector<VkClearAttachment>& attachments, const std::vector<VkClearRect>& rects)
 {
-	vkCmdClearAttachments(mCommandBuffer, static_cast<uint32_t>(attachments.size()), attachments.data(), static_cast<uint32_t>(rects.size()), rects.data());
+	// TODO : Check parameters ?
+	vkCmdClearAttachments(mCommandBuffer, static_cast<VulkanU32>(attachments.size()), attachments.data(), static_cast<VulkanU32>(rects.size()), rects.data());
 }
 
-void CommandBuffer::bindVertexBuffers(uint32_t firstBinding, const std::vector<VertexBufferParameters>& buffersParameters)
+void VulkanCommandBuffer::bindVertexBuffers(VulkanU32 firstBinding, const std::vector<VulkanVertexBufferParameters>& buffersParameters)
 {
+	// TODO : Improve parameters checking ?
 	if (buffersParameters.size() > 0)
 	{
 		std::vector<VkBuffer> buffers;
 		std::vector<VkDeviceSize> offsets;
+		buffers.reserve(buffersParameters.size());
+		offsets.reserve(buffersParameters.size());
 		for (auto& bufferParameters : buffersParameters)
 		{
 			buffers.push_back(bufferParameters.buffer->getHandle());
 			offsets.push_back(bufferParameters.memoryOffset);
 		}
-		vkCmdBindVertexBuffers(mCommandBuffer, firstBinding, static_cast<uint32_t>(buffersParameters.size()), buffers.data(), offsets.data());
+		vkCmdBindVertexBuffers(mCommandBuffer, firstBinding, static_cast<VulkanU32>(buffersParameters.size()), buffers.data(), offsets.data());
 	}
 }
 
-void CommandBuffer::bindIndexBuffer(Buffer* buffer, VkDeviceSize memoryOffset, VkIndexType indexType)
+void VulkanCommandBuffer::bindIndexBuffer(VulkanBuffer* buffer, VkDeviceSize memoryOffset, VkIndexType indexType)
 {
+	// TODO : Check parameters ?
 	vkCmdBindIndexBuffer(mCommandBuffer, buffer->getHandle(), memoryOffset, indexType);
 }
 
-void CommandBuffer::bindDescriptorSets(VkPipelineBindPoint pipelineType, VkPipelineLayout pipelineLayout, uint32_t indexForFirstSet, const std::vector<DescriptorSet*>& descriptorSets, const std::vector<uint32_t>& dynamicOffsets)
+void VulkanCommandBuffer::bindDescriptorSets(VkPipelineBindPoint pipelineType, VkPipelineLayout pipelineLayout, VulkanU32 indexForFirstSet, const std::vector<VulkanDescriptorSet*>& descriptorSets, const std::vector<VulkanU32>& dynamicOffsets)
 {
+	// TODO : Improve parameters checking ?
 	if (descriptorSets.size() > 0)
 	{
 		std::vector<VkDescriptorSet> descriptorSetHandles;
@@ -120,121 +141,137 @@ void CommandBuffer::bindDescriptorSets(VkPipelineBindPoint pipelineType, VkPipel
 			descriptorSetHandles.push_back(descriptorSet->getHandle());
 		}
 
-		vkCmdBindDescriptorSets(mCommandBuffer, pipelineType, pipelineLayout, indexForFirstSet, static_cast<uint32_t>(descriptorSetHandles.size()), descriptorSetHandles.data(), static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.data());
+		vkCmdBindDescriptorSets(mCommandBuffer, pipelineType, pipelineLayout, indexForFirstSet, static_cast<VulkanU32>(descriptorSetHandles.size()), descriptorSetHandles.data(), static_cast<VulkanU32>(dynamicOffsets.size()), dynamicOffsets.data());
 	}
 }
 
-void CommandBuffer::bindPipeline(GraphicsPipeline* pipeline)
+void VulkanCommandBuffer::bindPipeline(VulkanGraphicsPipeline* pipeline)
 {
+	// TODO : Improve parameters checking ?
 	if (pipeline != nullptr && pipeline->isCreated())
 	{
 		vkCmdBindPipeline(mCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->getHandle());
 	}
 	else if (pipeline == nullptr)
 	{
-		// TODO : Use Numea Log System
-		printf("Null pipeline given to command buffer\n");
+		// TODO : Log more
+		VULKAN_LOG_ERROR("Null pipeline given to command buffer");
 	}
 	else
 	{
-		// TODO : Use Numea Log System
-		printf("Non-created pipeline given to command buffer\n");
+		// TODO : Log more
+		VULKAN_LOG_ERROR("Non-created pipeline given to command buffer");
 	}
 }
 
-void CommandBuffer::bindPipeline(ComputePipeline* pipeline)
+void VulkanCommandBuffer::bindPipeline(VulkanComputePipeline* pipeline)
 {
-	// TODO : Handle nullptr
+	// TODO : Check parameters ?
 	vkCmdBindPipeline(mCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->getHandle());
 }
 
-void CommandBuffer::provideDataToShadersThroughPushConstants(VkPipelineLayout pipelineLayout, VkShaderStageFlags pipelineStages, uint32_t offset, uint32_t size, void* data)
+void VulkanCommandBuffer::provideDataToShadersThroughPushConstants(VkPipelineLayout pipelineLayout, VkShaderStageFlags pipelineStages, VulkanU32 offset, VulkanU32 size, void* data)
 {
+	// TODO : Check parameters ?
 	vkCmdPushConstants(mCommandBuffer, pipelineLayout, pipelineStages, offset, size, data);
 }
 
-void CommandBuffer::setViewportStateDynamically(uint32_t firstViewport, const std::vector<VkViewport>& viewports)
+void VulkanCommandBuffer::setViewportStateDynamically(VulkanU32 firstViewport, const std::vector<VkViewport>& viewports)
 {
-	vkCmdSetViewport(mCommandBuffer, firstViewport, static_cast<uint32_t>(viewports.size()), viewports.data());
+	// TODO : Check parameters ?
+	vkCmdSetViewport(mCommandBuffer, firstViewport, static_cast<VulkanU32>(viewports.size()), viewports.data());
 }
 
-void CommandBuffer::setScissorStateDynamically(uint32_t firstScissor, const std::vector<VkRect2D>& scissors)
+void VulkanCommandBuffer::setScissorStateDynamically(VulkanU32 firstScissor, const std::vector<VkRect2D>& scissors)
 {
-	vkCmdSetScissor(mCommandBuffer, firstScissor, static_cast<uint32_t>(scissors.size()), scissors.data());
+	// TODO : Check parameters ?
+	vkCmdSetScissor(mCommandBuffer, firstScissor, static_cast<VulkanU32>(scissors.size()), scissors.data());
 }
 
-void CommandBuffer::setLineWidthStateDynamically(float lineWidth)
+void VulkanCommandBuffer::setLineWidthStateDynamically(float lineWidth)
 {
+	// TODO : Check parameters ?
 	vkCmdSetLineWidth(mCommandBuffer, lineWidth);
 }
 
-void CommandBuffer::setDepthBiasStateDynamically(float constantFactor, float clampValue, float slopeFactor)
+void VulkanCommandBuffer::setDepthBiasStateDynamically(float constantFactor, float clampValue, float slopeFactor)
 {
+	// TODO : Check parameters ?
 	vkCmdSetDepthBias(mCommandBuffer, constantFactor, clampValue, slopeFactor);
 }
 
-void CommandBuffer::setBlendConstantsStateDynamically(const std::array<float, 4>& blendConstants)
+void VulkanCommandBuffer::setBlendConstantsStateDynamically(const float (&blendConstants)[4])
 {
-	vkCmdSetBlendConstants(mCommandBuffer, blendConstants.data());
+	// TODO : Check parameters ?
+	vkCmdSetBlendConstants(mCommandBuffer, blendConstants);
 }
 
-void CommandBuffer::drawGeometry(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
+void VulkanCommandBuffer::drawGeometry(VulkanU32 vertexCount, VulkanU32 instanceCount, VulkanU32 firstVertex,VulkanU32 firstInstance)
 {
+	// TODO : Check parameters ?
 	vkCmdDraw(mCommandBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
 }
 
-void CommandBuffer::drawIndexedGeometry(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset, uint32_t firstInstance)
+void VulkanCommandBuffer::drawIndexedGeometry(VulkanU32 indexCount, VulkanU32 instanceCount, VulkanU32 firstIndex, VulkanU32 vertexOffset, VulkanU32 firstInstance)
 {
+	// TODO : Check parameters ?
 	vkCmdDrawIndexed(mCommandBuffer, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
 }
 
-void CommandBuffer::dispatchComputeWork(uint32_t xSize, uint32_t ySize, uint32_t zSize)
+void VulkanCommandBuffer::dispatchComputeWork(VulkanU32 xSize, VulkanU32 ySize, VulkanU32 zSize)
 {
+	// TODO : Check parameters ?
 	vkCmdDispatch(mCommandBuffer, xSize, ySize, zSize);
 }
 
-void CommandBuffer::executeSecondaryCommandBuffer(const std::vector<CommandBuffer*>& secondaryCommandBuffers)
+void VulkanCommandBuffer::executeSecondaryCommandBuffer(const std::vector<VulkanCommandBuffer*>& secondaryCommandBuffers)
 {
+	// TODO : Improve parameters checking ?
 	if (secondaryCommandBuffers.size() > 0)
 	{
 		std::vector<VkCommandBuffer> commandBuffers;
+		commandBuffers.reserve(secondaryCommandBuffers.size());
 		for (auto& commandBuffer : secondaryCommandBuffers)
 		{
 			commandBuffers.push_back(commandBuffer->getHandle());
 		}
 
-		vkCmdExecuteCommands(mCommandBuffer, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+		vkCmdExecuteCommands(mCommandBuffer, static_cast<VulkanU32>(commandBuffers.size()), commandBuffers.data());
 	}
 }
 
-void CommandBuffer::copyDataBetweenBuffers(Buffer* sourceBuffer, Buffer* destinationBuffer, std::vector<VkBufferCopy> regions)
+void VulkanCommandBuffer::copyDataBetweenBuffers(VulkanBuffer* sourceBuffer, VulkanBuffer* destinationBuffer, std::vector<VkBufferCopy> regions)
 {
+	// TODO : Improve parameters checking ?
 	if (regions.size() > 0)
 	{
-		vkCmdCopyBuffer(mCommandBuffer, sourceBuffer->getHandle(), destinationBuffer->getHandle(), static_cast<uint32_t>(regions.size()), regions.data());
+		vkCmdCopyBuffer(mCommandBuffer, sourceBuffer->getHandle(), destinationBuffer->getHandle(), static_cast<VulkanU32>(regions.size()), regions.data());
 	}
 }
 
-void CommandBuffer::copyDataFromBufferToImage(Buffer* sourceBuffer, Image* destinationImage, VkImageLayout imageLayout, std::vector<VkBufferImageCopy> regions)
+void VulkanCommandBuffer::copyDataFromBufferToImage(VulkanBuffer* sourceBuffer, VulkanImage* destinationImage, VkImageLayout imageLayout, std::vector<VkBufferImageCopy> regions)
 {
+	// TODO : Improve parameters checking ?
 	if (regions.size() > 0)
 	{
-		vkCmdCopyBufferToImage(mCommandBuffer, sourceBuffer->getHandle(), destinationImage->getHandle(), imageLayout, static_cast<uint32_t>(regions.size()), regions.data());
+		vkCmdCopyBufferToImage(mCommandBuffer, sourceBuffer->getHandle(), destinationImage->getHandle(), imageLayout, static_cast<VulkanU32>(regions.size()), regions.data());
 	}
 }
 
-void CommandBuffer::copyDataFromImageToBuffer(Image* sourceImage, VkImageLayout imageLayout, Buffer* destinationBuffer, std::vector<VkBufferImageCopy> regions)
+void VulkanCommandBuffer::copyDataFromImageToBuffer(VulkanImage* sourceImage, VkImageLayout imageLayout, VulkanBuffer* destinationBuffer, std::vector<VkBufferImageCopy> regions)
 {
+	// TODO : Improve parameters checking ?
 	if (regions.size() > 0)
 	{
-		vkCmdCopyImageToBuffer(mCommandBuffer, sourceImage->getHandle(), imageLayout, destinationBuffer->getHandle(), static_cast<uint32_t>(regions.size()), regions.data());
+		vkCmdCopyImageToBuffer(mCommandBuffer, sourceImage->getHandle(), imageLayout, destinationBuffer->getHandle(), static_cast<VulkanU32>(regions.size()), regions.data());
 	}
 }
 
-void CommandBuffer::setBufferMemoryBarrier(VkPipelineStageFlags generatingStages, VkPipelineStageFlags consumingStages, std::vector<BufferTransition> bufferTransitions)
+void VulkanCommandBuffer::setBufferMemoryBarrier(VkPipelineStageFlags generatingStages, VkPipelineStageFlags consumingStages, const std::vector<VulkanBufferTransition>& bufferTransitions)
 {
+	// TODO : Improve parameters checking ?
 	std::vector<VkBufferMemoryBarrier> bufferMemoryBarriers;
-
+	bufferMemoryBarriers.reserve(bufferTransitions.size());
 	for (auto& bufferTransition : bufferTransitions) 
 	{
 		bufferMemoryBarriers.push_back({
@@ -248,18 +285,20 @@ void CommandBuffer::setBufferMemoryBarrier(VkPipelineStageFlags generatingStages
 			0,                                          // VkDeviceSize       offset
 			VK_WHOLE_SIZE                               // VkDeviceSize       size
 		});
+		// TODO : Use offset and size ?
 	}
 
 	if (bufferMemoryBarriers.size() > 0) 
 	{
-		vkCmdPipelineBarrier(mCommandBuffer, generatingStages, consumingStages, 0, 0, nullptr, static_cast<uint32_t>(bufferMemoryBarriers.size()), bufferMemoryBarriers.data(), 0, nullptr);
+		// TODO : What are those 0 parameters ?
+		vkCmdPipelineBarrier(mCommandBuffer, generatingStages, consumingStages, 0, 0, nullptr, static_cast<VulkanU32>(bufferMemoryBarriers.size()), bufferMemoryBarriers.data(), 0, nullptr);
 	}
 }
 
-void CommandBuffer::setImageMemoryBarrier(VkPipelineStageFlags generatingStages, VkPipelineStageFlags consumingStages, std::vector<ImageTransition> imageTransitions)
+void VulkanCommandBuffer::setImageMemoryBarrier(VkPipelineStageFlags generatingStages, VkPipelineStageFlags consumingStages, const std::vector<VulkanImageTransition>& imageTransitions)
 {
 	std::vector<VkImageMemoryBarrier> imageMemoryBarriers;
-
+	imageMemoryBarriers.reserve(imageTransitions.size());
 	for (auto& imageTransition : imageTransitions) 
 	{
 		imageMemoryBarriers.push_back({
@@ -280,67 +319,70 @@ void CommandBuffer::setImageMemoryBarrier(VkPipelineStageFlags generatingStages,
 				VK_REMAINING_ARRAY_LAYERS                 // uint32_t                   layerCount
 			}
 			});
+			// TODO : Use those 0 parameters ?
 	}
 
 	if (imageMemoryBarriers.size() > 0) 
 	{
-		vkCmdPipelineBarrier(mCommandBuffer, generatingStages, consumingStages, 0, 0, nullptr, 0, nullptr, static_cast<uint32_t>(imageMemoryBarriers.size()), imageMemoryBarriers.data());
+		// TODO : What are those 0 parameters ?
+		vkCmdPipelineBarrier(mCommandBuffer, generatingStages, consumingStages, 0, 0, nullptr, 0, nullptr, static_cast<VulkanU32>(imageMemoryBarriers.size()), imageMemoryBarriers.data());
 	}
 }
 
-bool CommandBuffer::reset()
+bool VulkanCommandBuffer::reset()
 {
+	// TODO : Release or not ?
 	//VkResult result = vkResetCommandBuffer(command_buffer, release_resources ? VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT : 0);
 	VkResult result = vkResetCommandBuffer(mCommandBuffer, 0);
 	if (VK_SUCCESS != result)
 	{
-		// TODO : Use Numea System Log
-		printf("Error occurred during command buffer reset\n");
+		// TODO : Log more
+		VULKAN_LOG_ERROR("Error occurred during command buffer reset\n");
 		return false;
 	}
 	return true;
 }
 
-bool CommandBuffer::isRecording() const
+bool VulkanCommandBuffer::isRecording() const
 {
 	return mRecording;
 }
 
-const CommandPool& CommandBuffer::getCommandPool() const
+const VulkanCommandPool& VulkanCommandBuffer::getCommandPool() const
 {
 	return mCommandPool;
 }
 
-const CommandBufferType& CommandBuffer::getType() const
+const VulkanCommandBufferType& VulkanCommandBuffer::getType() const
 {
 	return mType;
 }
 
-bool CommandBuffer::isInitialized() const
+bool VulkanCommandBuffer::isInitialized() const
 {
 	return mCommandBuffer != VK_NULL_HANDLE;
 }
 
-const VkCommandBuffer& CommandBuffer::getHandle() const
+const VkCommandBuffer& VulkanCommandBuffer::getHandle() const
 {
 	return mCommandBuffer;
 }
 
-const VkCommandPool& CommandBuffer::getCommandPoolHandle() const
+const VkCommandPool& VulkanCommandBuffer::getCommandPoolHandle() const
 {
 	return mCommandPool.getHandle();
 }
 
-CommandBuffer::CommandBuffer(CommandPool& commandPool, CommandBufferType type)
+VulkanCommandBuffer::VulkanCommandBuffer(VulkanCommandPool& commandPool, VulkanCommandBufferType type)
 	: mCommandBuffer(VK_NULL_HANDLE)
 	, mCommandPool(commandPool)
 	, mType(type)
 	, mRecording(false)
 {
-	ObjectTracker::registerObject(ObjectType_CommandBuffer);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-bool CommandBuffer::init()
+bool VulkanCommandBuffer::init()
 {
 	VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
 		VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,   // VkStructureType          sType
@@ -349,18 +391,18 @@ bool CommandBuffer::init()
 		(VkCommandBufferLevel)mType,                      // VkCommandBufferLevel     level
 		1                                                 // uint32_t                 commandBufferCount
 	};
+	// TODO : Init more than one a once ?
 
 	VkResult result = vkAllocateCommandBuffers(mCommandPool.getDeviceHandle(), &commandBufferAllocateInfo, &mCommandBuffer);
 	if (result != VK_SUCCESS || mCommandBuffer == VK_NULL_HANDLE)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not allocate command buffers\n");
+		VULKAN_LOG_ERROR("Could not allocate command buffers\n");
 		return false;
 	}
 	return true;
 }
 
-bool CommandBuffer::release()
+bool VulkanCommandBuffer::release()
 {
 	if (mCommandBuffer != VK_NULL_HANDLE)
 	{
@@ -371,5 +413,4 @@ bool CommandBuffer::release()
 	return false;
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

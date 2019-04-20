@@ -3,71 +3,53 @@
 #include "VulkanDevice.hpp"
 #include "VulkanImageView.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-ImageView::~ImageView()
+VulkanImageView::~VulkanImageView()
 {
 	release();
 
-	ObjectTracker::unregisterObject(ObjectType_ImageView);
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-VkImageViewType ImageView::getViewType() const
+VkImageViewType VulkanImageView::getViewType() const
 {
 	return mViewType;
 }
 
-VkFormat ImageView::getFormat() const
+VkFormat VulkanImageView::getFormat() const
 {
 	return mFormat;
 }
 
-VkImageAspectFlags ImageView::getAspect() const
+VkImageAspectFlags VulkanImageView::getAspect() const
 {
 	return mAspect;
 }
 
-Image& ImageView::getImage()
+VulkanImage& VulkanImageView::getImage()
 {
 	return mImage;
 }
 
-const Image& ImageView::getImage() const
+const VulkanImage& VulkanImageView::getImage() const
 {
 	return mImage;
 }
 
-Device& ImageView::getDevice()
-{
-	return mDevice;
-}
-
-const Device& ImageView::getDevice() const
-{
-	return mDevice;
-}
-
-const VkImageView& ImageView::getHandle() const
+const VkImageView& VulkanImageView::getHandle() const
 {
 	return mImageView;
 }
 
-const VkImage& ImageView::getImageHandle() const
+const VkImage& VulkanImageView::getImageHandle() const
 {
 	return mImage.getHandle();
 }
 
-const VkDevice& ImageView::getDeviceHandle() const
+VulkanImageViewPtr VulkanImageView::createImageView(VulkanImage& image, VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspect)
 {
-	return mDevice.getHandle();
-}
-
-ImageView::Ptr ImageView::createImageView(Image& image, VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspect)
-{
-	ImageView::Ptr imageView(new ImageView(image, VK_NULL_HANDLE, viewType, format, aspect));
+	VulkanImageViewPtr imageView(new VulkanImageView(image, VK_NULL_HANDLE, viewType, format, aspect));
 	if (imageView != nullptr)
 	{
 		if (!imageView->init())
@@ -78,18 +60,17 @@ ImageView::Ptr ImageView::createImageView(Image& image, VkImageViewType viewType
 	return imageView;
 }
 
-ImageView::ImageView(Image& image, VkImage imageHandleFromSwapchain, VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspect)
-	: mDevice(image.getDevice())
-	, mImage(image)
+VulkanImageView::VulkanImageView(VulkanImage& image, VkImage imageHandleFromSwapchain, VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspect)
+	: mImage(image)
 	, mImageView(VK_NULL_HANDLE)
 	, mViewType(viewType)
 	, mFormat(format)
 	, mAspect(aspect)
 {
-	ObjectTracker::registerObject(ObjectType_ImageView);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-bool ImageView::init()
+bool VulkanImageView::init()
 {
 	VkImageViewCreateInfo imageViewCreateInfo = {
 		VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,   // VkStructureType            sType
@@ -118,7 +99,7 @@ bool ImageView::init()
 	// TODO : baseArrayLayer ?
 	// TODO : layerCount ?
 
-	VkResult result = vkCreateImageView(mDevice.getHandle(), &imageViewCreateInfo, nullptr, &mImageView);
+	VkResult result = vkCreateImageView(mImage.getDeviceHandle(), &imageViewCreateInfo, nullptr, &mImageView);
 	if (result != VK_SUCCESS || mImageView == VK_NULL_HANDLE) 
 	{
 		// TODO : Use Numea Log System
@@ -128,14 +109,13 @@ bool ImageView::init()
 	return true;
 }
 
-void ImageView::release()
+void VulkanImageView::release()
 {
 	if (mImageView != VK_NULL_HANDLE)
 	{
-		vkDestroyImageView(mDevice.getHandle(), mImageView, nullptr);
+		vkDestroyImageView(mImage.getDeviceHandle(), mImageView, nullptr);
 		mImageView = VK_NULL_HANDLE;
 	}
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

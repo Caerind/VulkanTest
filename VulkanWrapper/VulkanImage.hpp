@@ -1,88 +1,72 @@
-#ifndef NU_VULKAN_IMAGE_HPP
-#define NU_VULKAN_IMAGE_HPP
-
-#include <memory>
-#include <vector>
+#pragma once
 
 #include "VulkanFunctions.hpp"
 
-#include "VulkanMemoryBlock.hpp"
-#include "VulkanImageView.hpp"
-
 // TODO : Binding on MemoryBlock side or Image/Buffer side ?
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-class Device;
-class Image
+class VulkanImage : public VulkanDeviceObject<VulkanObjectType_Image>
 {
 	public:
-		typedef std::unique_ptr<Image> Ptr;
-
-		~Image();
+		~VulkanImage();
 
 		const VkMemoryRequirements& getMemoryRequirements() const;
 
-		MemoryBlock* allocateMemoryBlock(VkMemoryPropertyFlagBits memoryProperties);
+		VulkanMemoryBlock* allocateMemoryBlock(VkMemoryPropertyFlagBits memoryProperties);
 		bool ownMemoryBlock() const;
 		bool isBoundToMemoryBlock() const;
-		MemoryBlock* getMemoryBlock();
+		VulkanMemoryBlock* getMemoryBlock();
 		VkDeviceSize getOffsetInMemoryBlock() const;
 
-		ImageView* createImageView(VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspect);
-		ImageView* getImageView(uint32_t index);
-		const ImageView* getImageView(uint32_t index) const;
-		uint32_t getImageViewCount() const;
+		VulkanImageView* createImageView(VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspect);
+		VulkanImageView* getImageView(VulkanU32 index);
+		const VulkanImageView* getImageView(VulkanU32 index) const;
+		VulkanU32 getImageViewCount() const;
 		void clearImageViews();
 
 		VkImageType getType() const;
 		VkFormat getFormat() const;
 		VkExtent3D getSize() const;
-		uint32_t getNumMipmaps() const;
-		uint32_t getNumLayers() const;
+		VulkanU32 getNumMipmaps() const;
+		VulkanU32 getNumLayers() const;
 		VkSampleCountFlagBits getSamples() const;
 		VkImageUsageFlags getUsage() const;
 		bool isCubemap() const;
 
 		bool isSwapchainImage() const;
 
-		Device& getDevice();
-		const Device& getDevice() const;
 		const VkImage& getHandle() const;
-		const VkDevice& getDeviceHandle() const;
 
 	private:
-		friend class Device;
-		static Image::Ptr createImage(Device& device, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usage, bool cubemap);
+		friend class VulkanDevice;
+		static VulkanImagePtr createImage(VkImageType type, VkFormat format, VkExtent3D size, VulkanU32 numMipmaps, VulkanU32 numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usage, bool cubemap);
 
-		friend class Swapchain;
-		static Image::Ptr createImageFromSwapchain(Device& device, VkImage swapchainImageHandle, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usage, bool cubemap);
+		friend class VulkanSwapchain;
+		static VulkanImagePtr createImageFromSwapchain(VulkanDevice& device, VkImage swapchainImageHandle, VkImageType type, VkFormat format, VkExtent3D size, VulkanU32 numMipmaps, VulkanU32 numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usage, bool cubemap);
 
-		Image(Device& device, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usage, bool cubemap);
+		VulkanImage(VkImageType type, VkFormat format, VkExtent3D size, VulkanU32 numMipmaps, VulkanU32 numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usage, bool cubemap);
 
 		bool init();
 		void release(); 
 
-		friend class MemoryBlock;
-		void bindToMemoryBlock(MemoryBlock* memoryBlock, VkDeviceSize offsetInMemoryBlock);
+		friend class VulkanMemoryBlock;
+		void bindToMemoryBlock(VulkanMemoryBlock* memoryBlock, VkDeviceSize offsetInMemoryBlock);
 
-		Device& mDevice;
+	private:
 		VkImage mImage;
 
-		MemoryBlock::Ptr mOwnedMemoryBlock;
-		MemoryBlock* mMemoryBlock;
+		VulkanMemoryBlockPtr mOwnedMemoryBlock;
+		VulkanMemoryBlock* mMemoryBlock;
 		VkDeviceSize mOffsetInMemoryBlock;
 
-		std::vector<ImageView::Ptr> mImageViews;
+		std::vector<VulkanImageViewPtr> mImageViews;
 
 		VkImageType mType;
 		VkFormat mFormat;
 		VkExtent3D mSize;
-		uint32_t mNumMipmaps;
-		uint32_t mNumLayers;
+		VulkanU32 mNumMipmaps;
+		VulkanU32 mNumLayers;
 		VkSampleCountFlagBits mSamples;
 		VkImageUsageFlags mUsage;
 		bool mCubemap;
@@ -93,7 +77,4 @@ class Image
 		mutable VkMemoryRequirements mMemoryRequirements;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_IMAGE_HPP
+VULKAN_NAMESPACE_END

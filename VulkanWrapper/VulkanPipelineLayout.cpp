@@ -2,14 +2,11 @@
 
 #include "VulkanDevice.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-PipelineLayout::Ptr PipelineLayout::createPipelineLayout(Device& device, const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, const std::vector<VkPushConstantRange> pushConstantRanges)
+VulkanPipelineLayoutPtr VulkanPipelineLayout::createPipelineLayout(const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, const std::vector<VkPushConstantRange> pushConstantRanges)
 {
-	PipelineLayout::Ptr pipelineLayout(new PipelineLayout(device, descriptorSetLayouts, pushConstantRanges));
+	VulkanPipelineLayoutPtr pipelineLayout(new VulkanPipelineLayout(descriptorSetLayouts, pushConstantRanges));
 	if (pipelineLayout != nullptr)
 	{
 		if (!pipelineLayout->init())
@@ -20,38 +17,32 @@ PipelineLayout::Ptr PipelineLayout::createPipelineLayout(Device& device, const s
 	return pipelineLayout;
 }
 
-PipelineLayout::~PipelineLayout()
+VulkanPipelineLayout::~VulkanPipelineLayout()
 {
-	ObjectTracker::unregisterObject(ObjectType_PipelineLayout);
-
 	release();
+
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-bool PipelineLayout::isInitialized() const
+bool VulkanPipelineLayout::isInitialized() const
 {
 	return mPipelineLayout != VK_NULL_HANDLE;
 }
 
-const VkPipelineLayout& PipelineLayout::getHandle() const
+const VkPipelineLayout& VulkanPipelineLayout::getHandle() const
 {
 	return mPipelineLayout;
 }
 
-const VkDevice& PipelineLayout::getDeviceHandle() const
-{
-	return mDevice.getHandle();
-}
-
-PipelineLayout::PipelineLayout(Device& device, const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, const std::vector<VkPushConstantRange> pushConstantRanges)
-	: mDevice(device)
-	, mPipelineLayout(VK_NULL_HANDLE)
+VulkanPipelineLayout::VulkanPipelineLayout(const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, const std::vector<VkPushConstantRange> pushConstantRanges)
+	: mPipelineLayout(VK_NULL_HANDLE)
 	, mDescriptorSetLayouts(descriptorSetLayouts)
 	, mPushConstantRanges(pushConstantRanges)
 {
-	ObjectTracker::registerObject(ObjectType_PipelineLayout);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-bool PipelineLayout::init()
+bool VulkanPipelineLayout::init()
 {
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {
 		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,          // VkStructureType                  sType
@@ -63,7 +54,7 @@ bool PipelineLayout::init()
 		mPushConstantRanges.data()                              // const VkPushConstantRange      * pPushConstantRanges
 	};
 
-	VkResult result = vkCreatePipelineLayout(mDevice.getHandle(), &pipelineLayoutCreateInfo, nullptr, &mPipelineLayout);
+	VkResult result = vkCreatePipelineLayout(getDeviceHandle(), &pipelineLayoutCreateInfo, nullptr, &mPipelineLayout);
 	if (result != VK_SUCCESS || mPipelineLayout == VK_NULL_HANDLE)
 	{
 		// TODO : Use Numea System Log
@@ -74,16 +65,15 @@ bool PipelineLayout::init()
 	return true;
 }
 
-bool PipelineLayout::release()
+bool VulkanPipelineLayout::release()
 {
 	if (mPipelineLayout != VK_NULL_HANDLE)
 	{
-		vkDestroyPipelineLayout(mDevice.getHandle(), mPipelineLayout, nullptr);
+		vkDestroyPipelineLayout(getDeviceHandle(), mPipelineLayout, nullptr);
 		mPipelineLayout = VK_NULL_HANDLE;
 		return true;
 	}
 	return false;
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

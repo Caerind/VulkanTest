@@ -1,10 +1,10 @@
-#ifndef NU_STAGING_BUFFER_HPP
-#define NU_STAGING_BUFFER_HPP
+#pragma once
 
 #include "VulkanWrapper/VulkanDevice.hpp"
 #include "VulkanWrapper/VulkanBuffer.hpp"
 #include "VulkanWrapper/VulkanMemoryBlock.hpp"
 #include "VulkanWrapper/VulkanBufferView.hpp"
+#include "VulkanWrapper/VulkanCommandBuffer.hpp"
 
 #include <memory>
 
@@ -17,7 +17,7 @@ class StagingBuffer
 	public:
 		typedef std::unique_ptr<StagingBuffer> Ptr;
 
-		static StagingBuffer::Ptr createStagingBuffer(Vulkan::Buffer& dstBuffer);
+		static StagingBuffer::Ptr createStagingBuffer(VulkanBuffer& dstBuffer);
 
 		~StagingBuffer();
 
@@ -28,20 +28,18 @@ class StagingBuffer
 
 		bool mapWriteUnmap(uint32_t offset, uint32_t dataSize, void* data, bool unmap = true, void** pointer = nullptr);
 
-		void send(Vulkan::CommandBuffer* commandBuffer);
+		void send(VulkanCommandBuffer* commandBuffer);
 
 		bool needToSend() const;
 
 	private:
-		StagingBuffer(Vulkan::Buffer& dstBuffer);
+		StagingBuffer(VulkanBuffer& dstBuffer);
 
 		bool init();
 
-		Vulkan::Buffer& mDstBuffer;
-		Vulkan::Buffer::Ptr mBuffer;
+		VulkanBuffer& mDstBuffer;
+		VulkanBufferPtr mBuffer;
 		bool mNeedToSend;
 };
 
 } // namespace nu
-
-#endif // NU_STAGING_BUFFER_HPP

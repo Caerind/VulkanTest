@@ -1,81 +1,101 @@
 #include "VulkanInstance.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+#include <functional>
 
-Instance::Ptr Instance::createInstance(const std::vector<const char*>& desiredExtensions, const std::vector<const char*> desiredLayers)
+#include "VulkanLoader.hpp"
+#include "VulkanPhysicalDevice.hpp"
+#include "VulkanSurface.hpp"
+
+VULKAN_NAMESPACE_BEGIN
+
+VulkanInstance& VulkanInstance::get()
 {
-	Instance::Ptr instance(new Instance(desiredExtensions, desiredLayers));
-	if (instance != nullptr)
+	VULKAN_ASSERT(sInstance != nullptr);
+	return *sInstance;
+}
+
+bool VulkanInstance::initialize(const std::vector<const char*>& desiredExtensions, const std::vector<const char*>& desiredLayers)
+{
+	if (sInstance != nullptr)
 	{
-		if (!instance->init())
+		VULKAN_LOG_WARNING("Instance already initialized");
+		return true;
+	}
+	sInstance = new VulkanInstance();
+	if (sInstance != nullptr)
+	{
+		if (!sInstance->initializeInternal(desiredExtensions, desiredLayers))
 		{
-			instance.reset();
+			uninitialize();
 		}
 	}
-	return instance;
+	return sInstance != nullptr;
 }
 
-Instance::~Instance()
+bool VulkanInstance::uninitialize()
 {
-	release();
-
-	ObjectTracker::unregisterObject(ObjectType_Instance);
-}
-
-PhysicalDevice& Instance::getPhysicalDevice(uint32_t index)
-{
-	return mPhysicalDevices[index];
-}
-
-const PhysicalDevice& Instance::getPhysicalDevice(uint32_t index) const
-{
-	return mPhysicalDevices[index];
-}
-
-const std::vector<PhysicalDevice>& Instance::getPhysicalDevices() const
-{
-	if (mPhysicalDevices.size() == 0)
+	if (sInstance == nullptr)
 	{
-		queryAvailablePhysicalDevices();
+		VULKAN_LOG_WARNING("Instance not initialized");
+		return true;
 	}
+	
+	sInstance->uninitializeInternal();
+	
+	delete sInstance;
+	sInstance = nullptr;
+	
+	return true;
+}
 
+bool VulkanInstance::initialized()
+{
+	return sInstance != nullptr;
+}
+
+VulkanPhysicalDevice& VulkanInstance::getPhysicalDevice(VulkanU32 index)
+{
+	return *mPhysicalDevices[index];
+}
+
+const VulkanPhysicalDevice& VulkanInstance::getPhysicalDevice(VulkanU32 index) const
+{
+	return *mPhysicalDevices[index];
+}
+
+/*
+const std::vector<VulkanPhysicalDevicePtr>& VulkanInstance::getPhysicalDevices() const
+{
 	return mPhysicalDevices;
 }
+*/
 
-uint32_t Instance::getPhysicalDeviceCount() const
+VulkanU32 VulkanInstance::getPhysicalDeviceCount() const
 {
-	if (mPhysicalDevices.size() == 0)
-	{
-		queryAvailablePhysicalDevices();
-	}
-
-	return (uint32_t)mPhysicalDevices.size();
+	return (VulkanU32)mPhysicalDevices.size();
 }
 
-Surface::Ptr Instance::createSurface(const WindowParameters& windowParameters)
+VulkanSurfacePtr VulkanInstance::createSurface(const VulkanWindowParameters& windowParameters)
 {
-	return Surface::createSurface(*this, windowParameters);
+	return VulkanSurface::createSurface(windowParameters);
 }
 
-const VkInstance& Instance::getHandle() const
+const VkInstance& VulkanInstance::getHandle() const
 {
 	return mInstance;
 }
 
-const std::vector<const char*>& Instance::getExtensions() const
+const std::vector<const char*>& VulkanInstance::getExtensions() const
 {
 	return mExtensions;
 }
 
-const std::vector<const char*>& Instance::getLayers() const
+const std::vector<const char*>& VulkanInstance::getLayers() const
 {
 	return mLayers;
 }
 
-bool Instance::isInstanceExtensionSupported(const char* extensionName)
+bool VulkanInstance::isInstanceExtensionSupported(const char* extensionName)
 {
 	if (sAvailableInstanceExtensions.size() == 0)
 	{
@@ -92,7 +112,7 @@ bool Instance::isInstanceExtensionSupported(const char* extensionName)
 	return false;
 }
 
-bool Instance::isInstanceLayerSupported(const char* layerName)
+bool VulkanInstance::isInstanceLayerSupported(const char* layerName)
 {
 	if (sAvailableInstanceLayers.size() == 0)
 	{
@@ -109,33 +129,42 @@ bool Instance::isInstanceLayerSupported(const char* layerName)
 	return false;
 }
 
-Instance::Instance(const std::vector<const char*>& desiredExtensions, const std::vector<const char*>& desiredLayers)
+VulkanInstance::VulkanInstance()
 	: mInstance(VK_NULL_HANDLE)
-	, mDebugReportCallback(VK_NULL_HANDLE)
-	, mExtensions(desiredExtensions)
-	, mLayers(desiredLayers)
+	, mDebugMessenger(VK_NULL_HANDLE)
+	, mExtensions()
+	, mLayers()
 	, mPhysicalDevices()
 {
-	ObjectTracker::registerObject(ObjectType_Instance);
 }
 
-bool Instance::init()
+VulkanInstance::~VulkanInstance()
 {
-	if (!Loader::ensureDynamicLibraryLoaded())
-	{
-		return false;
-	}
-	if (!Loader::ensureExportedFunctionLoaded())
-	{
-		return false;
-	}
-	if (!Loader::ensureGlobalLevelFunctionsLoaded())
-	{
-		return false;
-	}
+	uninitializeInternal();
+}
 
-	// TODO : Only if wanted
-	if (true)
+bool VulkanInstance::initializeInternal(const std::vector<const char*>& desiredExtensions, const std::vector<const char*>& desiredLayers)
+{	
+	if (!VulkanLoader::ensureDynamicLibraryLoaded())
+	{
+		return false;
+	}
+	if (!VulkanLoader::ensureExportedFunctionLoaded())
+	{
+		return false;
+	}
+	if (!VulkanLoader::ensureGlobalLevelFunctionsLoaded())
+	{
+		return false;
+	}
+	
+	// Extensions
+	mExtensions.reserve(desiredExtensions.size());
+	for (const char* extension : desiredExtensions)
+	{
+		mExtensions.push_back(extension);
+	}
+	#if (defined VULKAN_KHR)
 	{
 		mExtensions.emplace_back(VK_KHR_SURFACE_EXTENSION_NAME);
 		#ifdef VK_USE_PLATFORM_WIN32_KHR
@@ -146,43 +175,52 @@ bool Instance::init()
 			mExtensions.emplace_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
 		#endif
 	}
-	// TODO : Only on Debug
-	if (true)
+	#endif
+	#if (defined VULKAN_BUILD_DEBUG)
 	{
-		mExtensions.emplace_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+		mExtensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 	}
-
-	// TODO : Only on Debug
-	if (true)
+	#endif
 	{
+		bool missingExtension = false;
 		for (auto& desiredExtension : mExtensions)
 		{
 			if (!isInstanceExtensionSupported(desiredExtension))
 			{
-				// TODO : Numea Log System
-				printf("Could not find a desired instance extension : %s\n", desiredExtension);
-				return false;
+				VULKAN_LOG_ERROR("Could not find a desired instance extension : %s", desiredExtension);
+				missingExtension = true;
 			}
 		}
+		if (missingExtension)
+		{
+			return false;
+		}
 	}
-
-	// TODO : Only on Debug
-	if (true)
+	
+	// Layers
+	mLayers.reserve(desiredLayers.size());
+	for (const char* layer : desiredLayers)
 	{
-		mLayers.emplace_back("VK_LAYER_LUNARG_standard_validation");
+		mLayers.push_back(layer);
 	}
-
-	// TODO : Only on Debug
-	if (true)
+	#if (defined VULKAN_BUILD_DEBUG)
 	{
+		mLayers.emplace_back("VK_LAYER_LUNARG_standard_validation"); // TODO : Macro for this ?
+	}
+	#endif
+	{
+		bool missingLayer = false;
 		for (auto& desiredLayer : mLayers)
 		{
 			if (!isInstanceLayerSupported(desiredLayer))
 			{
-				// TODO : Numea Log System
-				printf("Could not find a desired instance layer : %s\n", desiredLayer);
-				return false;
+				VULKAN_LOG_ERROR("Could not find a desired instance layer : %s", desiredLayer);
+				missingLayer = true;
 			}
+		}
+		if (missingLayer)
+		{
+			return false;
 		}
 	}
 
@@ -191,9 +229,9 @@ bool Instance::init()
 	VkApplicationInfo applicationInfo = {
 		VK_STRUCTURE_TYPE_APPLICATION_INFO,                // VkStructureType           sType
 		nullptr,                                           // const void              * pNext
-		"Vulkan Application",                              // const char              * pApplicationName
+		"VulkanTest",                              // const char              * pApplicationName
 		VK_MAKE_VERSION(1, 0, 0),                          // uint32_t                  applicationVersion
-		"Numea Engine",                                    // const char              * pEngineName
+		"VulkanTest",                                    // const char              * pEngineName
 		VK_MAKE_VERSION(1, 0, 0),                          // uint32_t                  engineVersion
 		VK_MAKE_VERSION(1, 0, 0)                           // uint32_t                  apiVersion
 	};
@@ -203,55 +241,67 @@ bool Instance::init()
 		nullptr,                                            // const void              * pNext
 		0,                                                  // VkInstanceCreateFlags     flags
 		&applicationInfo,                                   // const VkApplicationInfo * pApplicationInfo
-		static_cast<uint32_t>(mLayers.size()),              // uint32_t                  enabledLayerCount
+		static_cast<VulkanU32>(mLayers.size()),              // uint32_t                  enabledLayerCount
 		mLayers.data(),                                     // const char * const      * ppEnabledLayerNames
-		static_cast<uint32_t>(mExtensions.size()),          // uint32_t                  enabledExtensionCount
+		static_cast<VulkanU32>(mExtensions.size()),          // uint32_t                  enabledExtensionCount
 		mExtensions.data()                                  // const char * const      * ppEnabledExtensionNames
 	};
 
 	VkResult result = vkCreateInstance(&instanceCreateInfo, nullptr, &mInstance);
 	if (result != VK_SUCCESS || mInstance == VK_NULL_HANDLE)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not create Vulkan instance\n");
+		VULKAN_LOG_ERROR("Could not create Vulkan instance");
 		return false;
 	}
 
-	if (!Loader::ensureInstanceLevelFunctionsLoaded(*this))
+	if (!VulkanLoader::ensureInstanceLevelFunctionsLoaded(*this))
 	{
 		return false;
 	}
 
-	// TODO : Only on Debug
-	if (true)
+	#if (defined VULKAN_BUILD_DEBUG || defined VULKAN_BUILD_RELEASE)
 	{
-		// TODO : Change flags (and maybe use differents callbacks for differents flags)
-		VkDebugReportCallbackCreateInfoEXT callback = {
-			VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT,    // sType
-			NULL,                                                       // pNext
-			10,                                                         // flags
-			Instance::debugReportCallback,                              // pfnCallback
-			NULL                                                        // pUserData
+		VkDebugUtilsMessageSeverityFlagsEXT messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
+			| VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT; 
+		#if (defined VULKAN_BUILD_DEBUG)
+			messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
+				| VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
+		#endif
+
+		VkDebugUtilsMessageTypeFlagsEXT messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
+			| VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
+			| VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+		
+		VkDebugUtilsMessengerCreateInfoEXT messenger = {
+			VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,	// sType
+			nullptr,													// pNext
+			0,															// flags
+			messageSeverity,											// messageSeverity
+			messageType,												// messageType
+			VulkanInstance::debugCallback,								// pfnCallback
+			nullptr,													// pUserData
 		};
 
-		result = vkCreateDebugReportCallbackEXT(mInstance, &callback, nullptr, &mDebugReportCallback);
-		if (result != VK_SUCCESS || mDebugReportCallback == VK_NULL_HANDLE)
+		result = vkCreateDebugUtilsMessengerEXT(mInstance, &messenger, nullptr, &mDebugMessenger);
+		if (result != VK_SUCCESS || mDebugMessenger == VK_NULL_HANDLE)
 		{
-			// TODO : Use Numea System Log
-			printf("Could not create DebugReportCallback\n");
+			VULKAN_LOG_ERROR("Could not create DebugMessenger");
 			return false;
 		}
 	}
+	#endif
+
+	queryAvailablePhysicalDevices();
 
 	return true;
 }
 
-void Instance::release()
+bool VulkanInstance::uninitializeInternal()
 {
-	if (mDebugReportCallback != VK_NULL_HANDLE)
+	if (mDebugMessenger != VK_NULL_HANDLE)
 	{
-		vkDestroyDebugReportCallbackEXT(mInstance, mDebugReportCallback, nullptr);
-		mDebugReportCallback = VK_NULL_HANDLE;
+		vkDestroyDebugUtilsMessengerEXT(mInstance, mDebugMessenger, nullptr);
+		mDebugMessenger = VK_NULL_HANDLE;
 	}
 
 	if (mInstance != VK_NULL_HANDLE)
@@ -259,106 +309,123 @@ void Instance::release()
 		vkDestroyInstance(mInstance, nullptr);
 		mInstance = VK_NULL_HANDLE;
 	}
+	
+	return true;
 }
 
-bool Instance::queryAvailablePhysicalDevices() const
+bool VulkanInstance::queryAvailablePhysicalDevices()
 {
 	mPhysicalDevices.clear();
 
-	uint32_t devicesCount;
+	VulkanU32 devicesCount;
 	std::vector<VkPhysicalDevice> physicalDevices;
-	VkResult result = VK_SUCCESS;
-
-	result = vkEnumeratePhysicalDevices(mInstance, &devicesCount, nullptr);
+	
+	VkResult result = vkEnumeratePhysicalDevices(mInstance, &devicesCount, nullptr);
 	if (result != VK_SUCCESS || devicesCount == 0)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not get the number of available physical devices\n");
+		VULKAN_LOG_ERROR("Could not get the number of available physical devices");
 		return false;
 	}
 
 	physicalDevices.resize(devicesCount);
+	
 	result = vkEnumeratePhysicalDevices(mInstance, &devicesCount, physicalDevices.data());
 	if (result != VK_SUCCESS || devicesCount == 0)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not enumerate physical devices\n");
+		VULKAN_LOG_ERROR("Could not enumerate physical devices");
 		return false;
 	}
 
-	for (size_t i = 0; i < devicesCount; i++)
+	for (VulkanU32 i = 0; i < devicesCount; i++)
 	{
-		mPhysicalDevices.emplace_back(physicalDevices[i]);
+		mPhysicalDevices.emplace_back(new VulkanPhysicalDevice(physicalDevices[i]));
 	}
 
 	return true;
 }
 
-VKAPI_ATTR VkBool32 VKAPI_CALL Instance::debugReportCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
+VKAPI_ATTR VkBool32 VKAPI_CALL VulkanInstance::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT * pCallbackData, void * pUserData)
 {
-	// TODO : Improve callback
-	// TODO : Many differents callbacks
-	// TODO : Use Numea System Log
-	printf("%s\n", pMessage);
-	return VK_TRUE;
+	const char* type = "";
+	if (messageType == VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
+	{
+		type = "[VALI] ";
+	}
+	else if (messageType == VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
+	{
+		type = "[PERF] ";
+	}
+
+	if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+	{
+		VULKAN_LOG_ERROR("%s%s", type, pCallbackData->pMessage);
+	}
+	else if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+	{
+		VULKAN_LOG_WARNING("%s%s", type, pCallbackData->pMessage);
+	}
+	else
+	{
+		VULKAN_LOG_INFO("%s%s", type, pCallbackData->pMessage);
+	}
+
+	return VK_FALSE;
 }
 
-bool Instance::queryAvailableInstanceExtensions()
+bool VulkanInstance::queryAvailableInstanceExtensions()
 {
 	sAvailableInstanceExtensions.clear();
 
-	uint32_t extensionCount = 0;
+	VulkanU32 extensionCount = 0;
 	VkResult result = VK_SUCCESS;
 
 	result = vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
 	if (result != VK_SUCCESS || extensionCount == 0)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not get the number of instance extensions\n");
+		VULKAN_LOG_ERROR("Could not get the number of instance extensions");
 		return false;
 	}
 
 	sAvailableInstanceExtensions.resize(extensionCount);
+	
 	result = vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, sAvailableInstanceExtensions.data());
 	if (result != VK_SUCCESS || extensionCount == 0)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not enumerate instance extensions\n");
+		VULKAN_LOG_ERROR("Could not enumerate instance extensions");
 		return false;
 	}
 
 	return true;
 }
 
-bool Instance::queryAvailableInstanceLayers()
+bool VulkanInstance::queryAvailableInstanceLayers()
 {
 	sAvailableInstanceLayers.clear();
 
-	uint32_t layerCount = 0;
+	VulkanU32 layerCount = 0;
 	VkResult result = VK_SUCCESS;
 
 	result = vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 	if (result != VK_SUCCESS || layerCount == 0)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not get the number of instance layers\n");
+		VULKAN_LOG_ERROR("Could not get the number of instance layers");
 		return false;
 	}
 
 	sAvailableInstanceLayers.resize(layerCount);
+	
 	result = vkEnumerateInstanceLayerProperties(&layerCount, sAvailableInstanceLayers.data());
 	if (result != VK_SUCCESS || layerCount == 0)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not enumerate instance layers\n");
+		VULKAN_LOG_ERROR("Could not enumerate instance layers");
 		return false;
 	}
 
 	return true;
 }
 
-std::vector<VkExtensionProperties> Instance::sAvailableInstanceExtensions;
-std::vector<VkLayerProperties> Instance::sAvailableInstanceLayers;
+std::vector<VkExtensionProperties> VulkanInstance::sAvailableInstanceExtensions;
+std::vector<VkLayerProperties> VulkanInstance::sAvailableInstanceLayers;
+VulkanInstance* VulkanInstance::sInstance = nullptr;
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

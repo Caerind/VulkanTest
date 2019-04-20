@@ -1,5 +1,4 @@
-#ifndef REFLECTIVE_AND_REFRACTIVE_GEOMETRY_USING_CUBEMAPS_HPP
-#define REFLECTIVE_AND_REFRACTIVE_GEOMETRY_USING_CUBEMAPS_HPP
+#pragma once
 
 #include "../../CookBook/SampleBase.hpp"
 
@@ -21,15 +20,15 @@ class ReflectiveAndRefractiveGeometryUsingCubemaps : public SampleBase
 		nu::Mesh mMesh;
 		nu::VertexBuffer::Ptr mMeshVertexBuffer;
 
-		nu::Vulkan::ImageHelper::Ptr mSkyboxTexture;
+		VulkanImageHelperPtr mSkyboxTexture;
 
-		nu::Vulkan::DescriptorSetLayout::Ptr mDescriptorSetLayout;
-		nu::Vulkan::DescriptorPool::Ptr mDescriptorPool;
-		std::vector<nu::Vulkan::DescriptorSet::Ptr> mDescriptorSets;
+		VulkanDescriptorSetLayoutPtr mDescriptorSetLayout;
+		VulkanDescriptorPoolPtr mDescriptorPool;
+		std::vector<VulkanDescriptorSetPtr> mDescriptorSets;
 
-		nu::Vulkan::RenderPass::Ptr mRenderPass;
-		nu::Vulkan::PipelineLayout::Ptr mPipelineLayout; 
-		std::vector<nu::Vulkan::GraphicsPipeline::Ptr> mPipelines;
+		VulkanRenderPassPtr mRenderPass;
+		VulkanPipelineLayoutPtr mPipelineLayout; 
+		std::vector<VulkanGraphicsPipelinePtr> mPipelines;
 		enum PipelineNames
 		{
 			MeshPipeline = 0,
@@ -42,7 +41,7 @@ class ReflectiveAndRefractiveGeometryUsingCubemaps : public SampleBase
 
 		uint32_t mFrameIndex = 0;
 
-		virtual bool initialize(nu::Vulkan::WindowParameters windowParameters) override 
+		virtual bool initialize(VulkanWindowParameters windowParameters) override 
 		{
 			if (!initializeVulkan(windowParameters, nullptr)) 
 			{
@@ -52,29 +51,29 @@ class ReflectiveAndRefractiveGeometryUsingCubemaps : public SampleBase
 			// TODO : Camera
 
 			// Vertex data - mesh
-			if (!mMesh.loadFromFile("../Data/Models/teapot.obj", true, false, false, true))
+			if (!mMesh.loadFromFile("../../Data/Models/teapot.obj", true, false, false, true))
 			{
 				return false;
 			}
-			mMeshVertexBuffer = nu::VertexBuffer::createVertexBuffer(*mLogicalDevice, mMesh.size());
-			if (!mMeshVertexBuffer || !mMeshVertexBuffer->updateAndWait(mMesh.size(), &mMesh.data[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue.get(), {}, 50000000))
+			mMeshVertexBuffer = nu::VertexBuffer::createVertexBuffer(VulkanDevice::get(), mMesh.size());
+			if (!mMeshVertexBuffer || !mMeshVertexBuffer->updateAndWait(mMesh.size(), &mMesh.data[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue, {}, 50000000))
 			{
 				return false;
 			}
 
 			// Vertex data - skybox
-			if (!mSkybox.loadFromFile("../Data/Models/cube.obj", false, false, false, false))
+			if (!mSkybox.loadFromFile("../../Data/Models/cube.obj", false, false, false, false))
 			{
 				return false;
 			}
-			mSkyboxVertexBuffer = nu::VertexBuffer::createVertexBuffer(*mLogicalDevice, mSkybox.size());
-			if (!mSkyboxVertexBuffer || !mSkyboxVertexBuffer->updateAndWait(mSkybox.size(), &mSkybox.data[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue.get(), {}, 50000000))
+			mSkyboxVertexBuffer = nu::VertexBuffer::createVertexBuffer(VulkanDevice::get(), mSkybox.size());
+			if (!mSkyboxVertexBuffer || !mSkyboxVertexBuffer->updateAndWait(mSkybox.size(), &mSkybox.data[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue, {}, 50000000))
 			{
 				return false;
 			}
 
 			// Staging buffer & Uniform buffer
-			mUniformBuffer = nu::UniformBuffer::createUniformBuffer(*mLogicalDevice, 2 * 16 * sizeof(float));
+			mUniformBuffer = nu::UniformBuffer::createUniformBuffer(VulkanDevice::get(), 2 * 16 * sizeof(float));
 			if (mUniformBuffer == nullptr)
 			{
 				return false;
@@ -90,17 +89,17 @@ class ReflectiveAndRefractiveGeometryUsingCubemaps : public SampleBase
 			}
 
 			// Cubemap
-			mSkyboxTexture = nu::Vulkan::ImageHelper::createCombinedImageSampler(*mLogicalDevice, VK_IMAGE_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, { 1024, 1024, 1 }, 1, 6,
+			mSkyboxTexture = VulkanImageHelper::createCombinedImageSampler(VulkanDevice::get(), VK_IMAGE_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, { 1024, 1024, 1 }, 1, 6,
 				VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, true, VK_IMAGE_VIEW_TYPE_CUBE, VK_IMAGE_ASPECT_COLOR_BIT, VK_FILTER_LINEAR,
 				VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
 				VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, 0.0f, 0.0f, 1.0f, false, 1.0f, false, VK_COMPARE_OP_ALWAYS, VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK, false);
 			std::vector<std::string> cubemapImages = {
-				"../Data/Textures/Skansen/posx.jpg",
-				"../Data/Textures/Skansen/negx.jpg",
-				"../Data/Textures/Skansen/posy.jpg",
-				"../Data/Textures/Skansen/negy.jpg",
-				"../Data/Textures/Skansen/posz.jpg",
-				"../Data/Textures/Skansen/negz.jpg"
+				"../../Data/Textures/Skansen/posx.jpg",
+				"../../Data/Textures/Skansen/negx.jpg",
+				"../../Data/Textures/Skansen/posy.jpg",
+				"../../Data/Textures/Skansen/negy.jpg",
+				"../../Data/Textures/Skansen/posz.jpg",
+				"../../Data/Textures/Skansen/negz.jpg"
 			};
 
 			for (size_t i = 0; i < cubemapImages.size(); i++) 
@@ -140,7 +139,7 @@ class ReflectiveAndRefractiveGeometryUsingCubemaps : public SampleBase
 					nullptr                                     // const VkSampler    * pImmutableSamplers
 				}
 			};
-			mDescriptorSetLayout = mLogicalDevice->createDescriptorSetLayout(descriptorSetLayoutBindings);
+			mDescriptorSetLayout = VulkanDevice::get().createDescriptorSetLayout(descriptorSetLayoutBindings);
 			if (mDescriptorSetLayout == nullptr || !mDescriptorSetLayout->isInitialized())
 			{
 				return false;
@@ -156,7 +155,7 @@ class ReflectiveAndRefractiveGeometryUsingCubemaps : public SampleBase
 					1                                           // uint32_t             descriptorCount
 				}
 			};
-			mDescriptorPool = mLogicalDevice->createDescriptorPool(false, 1, descriptorPoolSizes);
+			mDescriptorPool = VulkanDevice::get().createDescriptorPool(false, 1, descriptorPoolSizes);
 			if (mDescriptorPool == nullptr || !mDescriptorPool->isInitialized())
 			{
 				return false;
@@ -173,7 +172,7 @@ class ReflectiveAndRefractiveGeometryUsingCubemaps : public SampleBase
 			// TODO : Update more than one at once
 			mUniformBuffer->updateDescriptor(mDescriptorSets[0].get(), 0, 0); 
 
-			nu::Vulkan::ImageDescriptorInfo imageDescriptorUpdate = {
+			VulkanImageDescriptorInfo imageDescriptorUpdate = {
 				mDescriptorSets[0]->getHandle(),            // VkDescriptorSet                      TargetDescriptorSet
 				1,                                          // uint32_t                             TargetDescriptorBinding
 				0,                                          // uint32_t                             TargetArrayElement
@@ -187,10 +186,10 @@ class ReflectiveAndRefractiveGeometryUsingCubemaps : public SampleBase
 				}
 			};
 
-			mLogicalDevice->updateDescriptorSets({ imageDescriptorUpdate }, {}, {}, {});
+			VulkanDevice::get().updateDescriptorSets({ imageDescriptorUpdate }, {}, {}, {});
 
 			// Render pass
-			mRenderPass = mLogicalDevice->initRenderPass();
+			mRenderPass = VulkanDevice::get().initRenderPass();
 
 			mRenderPass->addAttachment(mSwapchain->getFormat());
 			mRenderPass->setAttachmentLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR);
@@ -241,32 +240,32 @@ class ReflectiveAndRefractiveGeometryUsingCubemaps : public SampleBase
 				}
 			};
 
-			mPipelineLayout = mLogicalDevice->createPipelineLayout({ mDescriptorSetLayout->getHandle() }, pushConstantRanges);
+			mPipelineLayout = VulkanDevice::get().createPipelineLayout({ mDescriptorSetLayout->getHandle() }, pushConstantRanges);
 			if (mPipelineLayout == nullptr || !mPipelineLayout->isInitialized())
 			{
 				return false;
 			}
 
 			mPipelines.resize(PipelineNames::Count);
-			mPipelines[PipelineNames::MeshPipeline] = mLogicalDevice->initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
-			mPipelines[PipelineNames::SkyboxPipeline] = mLogicalDevice->initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
+			mPipelines[PipelineNames::MeshPipeline] = VulkanDevice::get().initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
+			mPipelines[PipelineNames::SkyboxPipeline] = VulkanDevice::get().initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
 
-			nu::Vulkan::GraphicsPipeline* modelPipeline = mPipelines[PipelineNames::MeshPipeline].get();
-			nu::Vulkan::GraphicsPipeline* skyboxPipeline = mPipelines[PipelineNames::SkyboxPipeline].get();
+			VulkanGraphicsPipeline* modelPipeline = mPipelines[PipelineNames::MeshPipeline].get();
+			VulkanGraphicsPipeline* skyboxPipeline = mPipelines[PipelineNames::SkyboxPipeline].get();
 
 			modelPipeline->setSubpass(0);
 			skyboxPipeline->setSubpass(0);
 
 			// Model
 
-			nu::Vulkan::ShaderModule::Ptr modelVertexShaderModule = mLogicalDevice->initShaderModule();
-			if (modelVertexShaderModule == nullptr || !modelVertexShaderModule->loadFromFile("../Examples/4 - Reflective and Refractive Geometry Using Cubemaps/modelShader.vert.spv", nu::Vulkan::ShaderModule::Vertex))
+			VulkanShaderModulePtr modelVertexShaderModule = VulkanDevice::get().initShaderModule();
+			if (modelVertexShaderModule == nullptr || !modelVertexShaderModule->loadFromFile("../../Examples/4 - Reflective and Refractive Geometry Using Cubemaps/modelShader.vert.spv", VulkanShaderModule::Vertex))
 			{
 				return false;
 			}
 
-			nu::Vulkan::ShaderModule::Ptr modelFragmentShaderModule = mLogicalDevice->initShaderModule();
-			if (modelFragmentShaderModule == nullptr || !modelFragmentShaderModule->loadFromFile("../Examples/4 - Reflective and Refractive Geometry Using Cubemaps/modelShader.frag.spv", nu::Vulkan::ShaderModule::Fragment))
+			VulkanShaderModulePtr modelFragmentShaderModule = VulkanDevice::get().initShaderModule();
+			if (modelFragmentShaderModule == nullptr || !modelFragmentShaderModule->loadFromFile("../../Examples/4 - Reflective and Refractive Geometry Using Cubemaps/modelShader.frag.spv", VulkanShaderModule::Fragment))
 			{
 				return false;
 			}
@@ -280,14 +279,14 @@ class ReflectiveAndRefractiveGeometryUsingCubemaps : public SampleBase
 
 			// Skybox
 
-			nu::Vulkan::ShaderModule::Ptr skyboxVertexShaderModule = mLogicalDevice->initShaderModule();
-			if (skyboxVertexShaderModule == nullptr || !skyboxVertexShaderModule->loadFromFile("../Examples/4 - Reflective and Refractive Geometry Using Cubemaps/skyboxShader.vert.spv", nu::Vulkan::ShaderModule::Vertex))
+			VulkanShaderModulePtr skyboxVertexShaderModule = VulkanDevice::get().initShaderModule();
+			if (skyboxVertexShaderModule == nullptr || !skyboxVertexShaderModule->loadFromFile("../../Examples/4 - Reflective and Refractive Geometry Using Cubemaps/skyboxShader.vert.spv", VulkanShaderModule::Vertex))
 			{
 				return false;
 			}
 
-			nu::Vulkan::ShaderModule::Ptr skyboxFragmentShaderModule = mLogicalDevice->initShaderModule();
-			if (skyboxFragmentShaderModule == nullptr || !skyboxFragmentShaderModule->loadFromFile("../Examples/4 - Reflective and Refractive Geometry Using Cubemaps/skyboxShader.frag.spv", nu::Vulkan::ShaderModule::Fragment))
+			VulkanShaderModulePtr skyboxFragmentShaderModule = VulkanDevice::get().initShaderModule();
+			if (skyboxFragmentShaderModule == nullptr || !skyboxFragmentShaderModule->loadFromFile("../../Examples/4 - Reflective and Refractive Geometry Using Cubemaps/skyboxShader.frag.spv", VulkanShaderModule::Fragment))
 			{
 				return false;
 			}
@@ -331,7 +330,7 @@ class ReflectiveAndRefractiveGeometryUsingCubemaps : public SampleBase
 
 		virtual bool draw() override 
 		{
-			auto prepareFrame = [&](nu::Vulkan::CommandBuffer* commandBuffer, uint32_t swapchainImageIndex, nu::Vulkan::Framebuffer* framebuffer) 
+			auto prepareFrame = [&](VulkanCommandBuffer* commandBuffer, uint32_t swapchainImageIndex, VulkanFramebuffer* framebuffer) 
 			{
 				if (!commandBuffer->beginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, nullptr))
 				{
@@ -345,7 +344,7 @@ class ReflectiveAndRefractiveGeometryUsingCubemaps : public SampleBase
 
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex()) 
 				{
-					nu::Vulkan::ImageTransition imageTransitionBeforeDrawing = {
+					VulkanImageTransition imageTransitionBeforeDrawing = {
 						mSwapchain->getImageHandle(swapchainImageIndex), // VkImage             image
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        currentAccess
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        newAccess
@@ -412,7 +411,7 @@ class ReflectiveAndRefractiveGeometryUsingCubemaps : public SampleBase
 
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex())
 				{
-					nu::Vulkan::ImageTransition imageTransitionBeforePresent = {
+					VulkanImageTransition imageTransitionBeforePresent = {
 						mSwapchain->getImageHandle(swapchainImageIndex),  // VkImage            image
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        currentAccess
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        newAccess
@@ -545,5 +544,3 @@ class ReflectiveAndRefractiveGeometryUsingCubemaps : public SampleBase
 			return true;
 		}
 };
-
-#endif // REFLECTIVE_AND_REFRACTIVE_GEOMETRY_USING_CUBEMAPS_HPP

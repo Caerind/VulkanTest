@@ -3,9 +3,28 @@
 
 #include "../System/Prerequisites.hpp"
 #include <cmath>
+#include <algorithm>
 
 namespace nu
 {
+
+template <typename T>
+inline T pi()
+{
+	return T(3.141592653589793238462643383);
+}
+
+template <typename T>
+inline T radToDeg(T rad)
+{
+	return T(180.0) / pi<T>() * rad;
+}
+
+template <typename T>
+inline T degToRad(T deg)
+{
+	return pi<T>() / T(180.0) * deg;
+}
 
 template <typename T>
 inline T sin(T deg) 
@@ -53,24 +72,6 @@ template <typename T>
 inline T sqrt(T value) 
 { 
 	return std::sqrt(value);
-}
-
-template <typename T>
-inline T pi()
-{ 
-	return T(3.141592653589793238462643383); 
-}
-
-template <typename T>
-inline T radToDeg(T rad) 
-{ 
-	return T(180.0) / pi<T>() * rad; 
-}
-
-template <typename T>
-inline T degToRad(T deg) 
-{ 
-	return pi<T>() / T(180.0) * deg; 
 }
 
 } // namespace nu

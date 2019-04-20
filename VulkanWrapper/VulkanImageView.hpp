@@ -1,47 +1,34 @@
-#ifndef NU_VULKAN_IMAGE_VIEW_HPP
-#define NU_VULKAN_IMAGE_VIEW_HPP
-
-#include <memory>
+#pragma once
 
 #include "VulkanFunctions.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-class Device;
-class Image;
-class ImageView
+class VulkanImageView : public VulkanDeviceObject<VulkanObjectType_ImageView>
 {
 	public:
-		typedef std::unique_ptr<ImageView> Ptr;
-
-		~ImageView();
+		~VulkanImageView();
 
 		VkImageViewType getViewType() const;
 		VkFormat getFormat() const;
 		VkImageAspectFlags getAspect() const;
 
-		Image& getImage();
-		const Image& getImage() const;
-		Device& getDevice();
-		const Device& getDevice() const;
+		VulkanImage& getImage();
+		const VulkanImage& getImage() const;
 		const VkImageView& getHandle() const;
 		const VkImage& getImageHandle() const;
-		const VkDevice& getDeviceHandle() const;
 
 	private:
-		friend class Image;
-		static ImageView::Ptr createImageView(Image& image, VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspect);
+		friend class VulkanImage;
+		static VulkanImageViewPtr createImageView(VulkanImage& image, VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspect);
 
-		ImageView(Image& image, VkImage imageHandleFromSwapchain, VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspect);
+		VulkanImageView(VulkanImage& image, VkImage imageHandleFromSwapchain, VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspect);
 
 		bool init();
 		void release();
 
-		Device& mDevice;
-		Image& mImage;
+	private:
+		VulkanImage& mImage;
 		VkImageView mImageView;
 
 		VkImageViewType mViewType;
@@ -49,7 +36,4 @@ class ImageView
 		VkImageAspectFlags mAspect;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_IMAGE_VIEW_HPP
+VULKAN_NAMESPACE_END

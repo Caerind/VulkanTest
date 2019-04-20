@@ -1,16 +1,11 @@
-#ifndef SAMPLE_BASE_HPP
-#define SAMPLE_BASE_HPP
+#pragma once
 
 #include <chrono>
 #include <vector>
 
 #include "Common.hpp" // TODO : Remove include
 
-#include "../VulkanWrapper/VulkanInstance.hpp"
-#include "../VulkanWrapper/VulkanDevice.hpp"
-#include "../VulkanWrapper/VulkanSurface.hpp"
-#include "../VulkanWrapper/VulkanSwapchain.hpp"
-#include "../VulkanWrapper/VulkanCommandPool.hpp"
+#include "../VulkanWrapper/VulkanWrapper.hpp"
 
 class MouseStateParameters 
 {
@@ -65,7 +60,7 @@ class SampleBase
 		SampleBase();
 		virtual ~SampleBase();
 
-		virtual bool initialize(nu::Vulkan::WindowParameters windowParameters) = 0;
+		virtual bool initialize(VulkanWindowParameters windowParameters) = 0;
 		virtual bool draw() = 0;
 		virtual bool resize() = 0;
 		virtual void deinitialize() final;
@@ -80,7 +75,7 @@ class SampleBase
 	protected:
 		virtual void onMouseEvent();
 
-		virtual bool initializeVulkan(nu::Vulkan::WindowParameters windowParameters, VkPhysicalDeviceFeatures* desiredDeviceFeatures = nullptr) final;
+		virtual bool initializeVulkan(VulkanWindowParameters windowParameters, VkPhysicalDeviceFeatures* desiredDeviceFeatures = nullptr) final;
 
 	private:
 		bool mReady;
@@ -89,16 +84,11 @@ class SampleBase
 		MouseStateParameters mMouseState;
 		TimerStateParameters mTimerState;
 
-		nu::Vulkan::Instance::Ptr mInstance;
-		nu::Vulkan::PhysicalDevice* mPhysicalDevice;
-		nu::Vulkan::Device::Ptr mLogicalDevice;
-		nu::Vulkan::Surface::Ptr mSurface;
-		nu::Vulkan::Swapchain::Ptr mSwapchain;
-		nu::Vulkan::CommandPool::Ptr mCommandPool;
-		nu::Vulkan::Queue::Ptr mGraphicsQueue;
-		nu::Vulkan::Queue::Ptr mComputeQueue;
-		nu::Vulkan::Queue::Ptr mPresentQueue;
+		VulkanSurfacePtr mSurface;
+		VulkanSwapchainPtr mSwapchain;
+		VulkanCommandPoolPtr mCommandPool;
+		VulkanQueue* mGraphicsQueue;
+		VulkanQueue* mComputeQueue;
+		VulkanQueue* mPresentQueue;
 		std::vector<FrameResources> mFramesResources;
 };
-
-#endif // SAMPLE_BASE_HPP

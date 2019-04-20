@@ -1,5 +1,4 @@
-#ifndef NU_UNIFORM_BUFFER_HPP
-#define NU_UNIFORM_BUFFER_HPP
+#pragma once
 
 #include <memory>
 
@@ -7,6 +6,7 @@
 #include "VulkanWrapper/VulkanBuffer.hpp"
 #include "VulkanWrapper/VulkanMemoryBlock.hpp"
 #include "VulkanWrapper/VulkanBufferView.hpp"
+#include "VulkanWrapper/VulkanDescriptorSet.hpp"
 
 #include "StagingBuffer.hpp"
 
@@ -24,23 +24,21 @@ class UniformBuffer
 	public:
 		typedef std::unique_ptr<UniformBuffer> Ptr;
 
-		static UniformBuffer::Ptr createUniformBuffer(Vulkan::Device& device, uint32_t size);
+		static UniformBuffer::Ptr createUniformBuffer(VulkanDevice& device, uint32_t size);
 		~UniformBuffer();
 
 		StagingBuffer::Ptr createStagingBuffer();
 
-		void updateDescriptor(Vulkan::DescriptorSet* dstSet, uint32_t dstBinding, uint32_t dstArrayElement);
+		void updateDescriptor(VulkanDescriptorSet* dstSet, uint32_t dstBinding, uint32_t dstArrayElement);
 
 	private:
 		friend class StagingBuffer;
 
 		UniformBuffer();
 
-		bool init(Vulkan::Device& device, uint32_t size);
+		bool init(VulkanDevice& device, uint32_t size);
 
-		Vulkan::Buffer::Ptr mBuffer;
+		VulkanBufferPtr mBuffer;
 };
 
 } // namespace nu
-
-#endif // NU_UNIFORM_BUFFER_HPP

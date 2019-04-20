@@ -1,5 +1,4 @@
-#ifndef DRAWING_PARTICLES_USING_COMPTE_AND_GRAPHICS_PIPELINES_HPP
-#define DRAWING_PARTICLES_USING_COMPTE_AND_GRAPHICS_PIPELINES_HPP
+#pragma once
 
 #include "../../CookBook/SampleBase.hpp"
 
@@ -17,10 +16,10 @@
 class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 {
 	public:
-		nu::Vulkan::CommandPool::Ptr mComputeCommandPool;
-		nu::Vulkan::CommandBuffer::Ptr mComputeCommandBuffer;
-		nu::Vulkan::Semaphore::Ptr mComputeSemaphore;
-		nu::Vulkan::Fence::Ptr mComputeFence;
+		VulkanCommandPoolPtr mComputeCommandPool;
+		VulkanCommandBufferPtr mComputeCommandBuffer;
+		VulkanSemaphorePtr mComputeSemaphore;
+		VulkanFencePtr mComputeFence;
 
 		const uint32_t PARTICLES_COUNT = 2000;
 
@@ -29,25 +28,25 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 		nu::UniformBuffer::Ptr mUniformBuffer;
 		nu::StagingBuffer::Ptr mStagingBuffer;
 
-		std::vector<nu::Vulkan::DescriptorSetLayout::Ptr> mDescriptorSetLayouts;
-		nu::Vulkan::DescriptorPool::Ptr mDescriptorPool;
-		std::vector<nu::Vulkan::DescriptorSet::Ptr> mDescriptorSets;
+		std::vector<VulkanDescriptorSetLayoutPtr> mDescriptorSetLayouts;
+		VulkanDescriptorPoolPtr mDescriptorPool;
+		std::vector<VulkanDescriptorSetPtr> mDescriptorSets;
 
-		nu::Vulkan::RenderPass::Ptr mRenderPass;
-		nu::Vulkan::PipelineLayout::Ptr mGraphicsPipelineLayout; 
-		std::vector<nu::Vulkan::GraphicsPipeline::Ptr> mGraphicsPipelines;
+		VulkanRenderPassPtr mRenderPass;
+		VulkanPipelineLayoutPtr mGraphicsPipelineLayout; 
+		std::vector<VulkanGraphicsPipelinePtr> mGraphicsPipelines;
 		enum GraphicsPipelineNames
 		{
 			ParticlesPipeline = 0,
 			Count
 		};
 
-		nu::Vulkan::PipelineLayout::Ptr mComputePipelineLayout;
-		nu::Vulkan::ComputePipeline::Ptr mComputePipeline;
+		VulkanPipelineLayoutPtr mComputePipelineLayout;
+		VulkanComputePipelinePtr mComputePipeline;
 
 		uint32_t mFrameIndex = 0;
 
-		virtual bool initialize(nu::Vulkan::WindowParameters windowParameters) override 
+		virtual bool initialize(VulkanWindowParameters windowParameters) override 
 		{
 			VkPhysicalDeviceFeatures deviceFeatures = {};
 			deviceFeatures.geometryShader = true;
@@ -58,7 +57,7 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 			}
 
 			// Compute command buffer creation
-			mComputeCommandPool = mLogicalDevice->createCommandPool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, mComputeQueue->getFamilyIndex());
+			mComputeCommandPool = VulkanDevice::get().createCommandPool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, mComputeQueue->getFamilyIndex());
 			if (mComputeCommandPool == nullptr)
 			{
 				return false;
@@ -91,7 +90,7 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 					particles.push_back(speed);
 				}
 
-				const VkFormatProperties& formatProperties = mLogicalDevice->getPhysicalDevice().getFormatProperties(VK_FORMAT_R32G32B32A32_SFLOAT);
+				const VkFormatProperties& formatProperties = VulkanDevice::get().getPhysicalDevice().getFormatProperties(VK_FORMAT_R32G32B32A32_SFLOAT);
 				if (!(formatProperties.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT))
 				{
 					// TODO : Use Numea System Log
@@ -99,8 +98,8 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 					return false;
 				}
 
-				mParticlesVertexBuffer = nu::VertexBuffer::createVertexBuffer(*mLogicalDevice, (uint32_t)sizeof(particles[0]) * (uint32_t)particles.size());
-				if (!mParticlesVertexBuffer || !mParticlesVertexBuffer->updateAndWait((uint32_t)sizeof(particles[0]) * (uint32_t)particles.size(), &particles[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue.get(), {}, 50000000))
+				mParticlesVertexBuffer = nu::VertexBuffer::createVertexBuffer(VulkanDevice::get(), (uint32_t)sizeof(particles[0]) * (uint32_t)particles.size());
+				if (!mParticlesVertexBuffer || !mParticlesVertexBuffer->updateAndWait((uint32_t)sizeof(particles[0]) * (uint32_t)particles.size(), &particles[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue, {}, 50000000))
 				{
 					return false;
 				}
@@ -109,7 +108,7 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 			}
 
 			// Staging buffer & Uniform buffer
-			mUniformBuffer = nu::UniformBuffer::createUniformBuffer(*mLogicalDevice, 2 * 16 * sizeof(float));
+			mUniformBuffer = nu::UniformBuffer::createUniformBuffer(VulkanDevice::get(), 2 * 16 * sizeof(float));
 			if (mUniformBuffer == nullptr)
 			{
 				return false;
@@ -142,12 +141,12 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 				}
 			};
 			mDescriptorSetLayouts.resize(2);
-			mDescriptorSetLayouts[0] = mLogicalDevice->createDescriptorSetLayout({ descriptorSetLayoutBindings[0] });
+			mDescriptorSetLayouts[0] = VulkanDevice::get().createDescriptorSetLayout({ descriptorSetLayoutBindings[0] });
 			if (mDescriptorSetLayouts[0] == nullptr || !mDescriptorSetLayouts[0]->isInitialized())
 			{
 				return false;
 			}
-			mDescriptorSetLayouts[1] = mLogicalDevice->createDescriptorSetLayout({ descriptorSetLayoutBindings[1] });
+			mDescriptorSetLayouts[1] = VulkanDevice::get().createDescriptorSetLayout({ descriptorSetLayoutBindings[1] });
 			if (mDescriptorSetLayouts[1] == nullptr || !mDescriptorSetLayouts[1]->isInitialized())
 			{
 				return false;
@@ -163,7 +162,7 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 					1                                           // uint32_t             descriptorCount
 				}
 			};
-			mDescriptorPool = mLogicalDevice->createDescriptorPool(false, 2, descriptorPoolSizes);
+			mDescriptorPool = VulkanDevice::get().createDescriptorPool(false, 2, descriptorPoolSizes);
 			if (mDescriptorPool == nullptr || !mDescriptorPool->isInitialized())
 			{
 				return false;
@@ -186,7 +185,7 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 			// TODO : Update more than one at once
 			mUniformBuffer->updateDescriptor(mDescriptorSets[0].get(), 0, 0);
 
-			nu::Vulkan::TexelBufferDescriptorInfo storageTexelBufferDescriptorUpdate = {
+			VulkanTexelBufferDescriptorInfo storageTexelBufferDescriptorUpdate = {
 				mDescriptorSets[1]->getHandle(),            // VkDescriptorSet                      TargetDescriptorSet
 				0,                                          // uint32_t                             TargetDescriptorBinding
 				0,                                          // uint32_t                             TargetArrayElement
@@ -198,10 +197,10 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 				}
 			};
 
-			mLogicalDevice->updateDescriptorSets({}, {}, { storageTexelBufferDescriptorUpdate }, {});
+			VulkanDevice::get().updateDescriptorSets({}, {}, { storageTexelBufferDescriptorUpdate }, {});
 
 			// Render pass
-			mRenderPass = mLogicalDevice->initRenderPass();
+			mRenderPass = VulkanDevice::get().initRenderPass();
 
 			mRenderPass->addAttachment(mSwapchain->getFormat());
 			mRenderPass->setAttachmentLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR);
@@ -247,14 +246,14 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 				0,                              // uint32_t               offset
 				sizeof(float)                   // uint32_t               size
 			};
-			mComputePipelineLayout = mLogicalDevice->createPipelineLayout({ mDescriptorSetLayouts[1]->getHandle() }, { pushConstantRange });
+			mComputePipelineLayout = VulkanDevice::get().createPipelineLayout({ mDescriptorSetLayouts[1]->getHandle() }, { pushConstantRange });
 			if (mComputePipelineLayout == nullptr || !mComputePipelineLayout->isInitialized())
 			{
 				return false;
 			}
 
-			nu::Vulkan::ShaderModule::Ptr computeShaderModule = mLogicalDevice->initShaderModule();
-			if (computeShaderModule == nullptr || !computeShaderModule->loadFromFile("../Examples/8 - Drawing Particles Using Compute And Graphics Pipelines/shader.comp.spv"))
+			VulkanShaderModulePtr computeShaderModule = VulkanDevice::get().initShaderModule();
+			if (computeShaderModule == nullptr || !computeShaderModule->loadFromFile("../../Examples/8 - Drawing Particles Using Compute And Graphics Pipelines/shader.comp.spv"))
 			{
 				return false;
 			}
@@ -265,19 +264,19 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 				return false;
 			}
 
-			mComputePipeline = mLogicalDevice->createComputePipeline(computeShaderModule.get(), mComputePipelineLayout.get(), nullptr, VK_NULL_HANDLE);
+			mComputePipeline = VulkanDevice::get().createComputePipeline(computeShaderModule.get(), mComputePipelineLayout.get(), nullptr, VK_NULL_HANDLE);
 			if (mComputePipeline == nullptr || !mComputePipeline->isInitialized())
 			{
 				return false;
 			}
 
-			mComputeSemaphore = mLogicalDevice->createSemaphore();
+			mComputeSemaphore = VulkanDevice::get().createSemaphore();
 			if (mComputeSemaphore == nullptr)
 			{
 				return false;
 			}
 
-			mComputeFence = mLogicalDevice->createFence(true);
+			mComputeFence = VulkanDevice::get().createFence(true);
 			if (mComputeFence == nullptr)
 			{
 				return false;
@@ -285,35 +284,35 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 
 			// Graphics pipeline
 
-			mGraphicsPipelineLayout = mLogicalDevice->createPipelineLayout({ mDescriptorSetLayouts[0]->getHandle() }, {});
+			mGraphicsPipelineLayout = VulkanDevice::get().createPipelineLayout({ mDescriptorSetLayouts[0]->getHandle() }, {});
 			if (mGraphicsPipelineLayout == nullptr || !mGraphicsPipelineLayout->isInitialized())
 			{
 				return false;
 			}
 
 			mGraphicsPipelines.resize(GraphicsPipelineNames::Count);
-			mGraphicsPipelines[GraphicsPipelineNames::ParticlesPipeline] = mLogicalDevice->initGraphicsPipeline(*mGraphicsPipelineLayout, *mRenderPass, nullptr);
+			mGraphicsPipelines[GraphicsPipelineNames::ParticlesPipeline] = VulkanDevice::get().initGraphicsPipeline(*mGraphicsPipelineLayout, *mRenderPass, nullptr);
 
-			nu::Vulkan::GraphicsPipeline* particlesPipeline = mGraphicsPipelines[GraphicsPipelineNames::ParticlesPipeline].get();
+			VulkanGraphicsPipeline* particlesPipeline = mGraphicsPipelines[GraphicsPipelineNames::ParticlesPipeline].get();
 
 			particlesPipeline->setSubpass(0);
 
-			nu::Vulkan::ShaderModule::Ptr particlesVertexShaderModule = mLogicalDevice->initShaderModule();
-			if (particlesVertexShaderModule == nullptr || !particlesVertexShaderModule->loadFromFile("../Examples/8 - Drawing Particles Using Compute And Graphics Pipelines/shader.vert.spv"))
+			VulkanShaderModulePtr particlesVertexShaderModule = VulkanDevice::get().initShaderModule();
+			if (particlesVertexShaderModule == nullptr || !particlesVertexShaderModule->loadFromFile("../../Examples/8 - Drawing Particles Using Compute And Graphics Pipelines/shader.vert.spv"))
 			{
 				return false;
 			}
 			particlesVertexShaderModule->setVertexEntrypointName("main");
 
-			nu::Vulkan::ShaderModule::Ptr particlesGeometryShaderModule = mLogicalDevice->initShaderModule();
-			if (particlesGeometryShaderModule == nullptr || !particlesGeometryShaderModule->loadFromFile("../Examples/8 - Drawing Particles Using Compute And Graphics Pipelines/shader.geom.spv"))
+			VulkanShaderModulePtr particlesGeometryShaderModule = VulkanDevice::get().initShaderModule();
+			if (particlesGeometryShaderModule == nullptr || !particlesGeometryShaderModule->loadFromFile("../../Examples/8 - Drawing Particles Using Compute And Graphics Pipelines/shader.geom.spv"))
 			{
 				return false;
 			}
 			particlesGeometryShaderModule->setGeometryEntrypointName("main");
 
-			nu::Vulkan::ShaderModule::Ptr particlesFragmentShaderModule = mLogicalDevice->initShaderModule();
-			if (particlesFragmentShaderModule == nullptr || !particlesFragmentShaderModule->loadFromFile("../Examples/8 - Drawing Particles Using Compute And Graphics Pipelines/shader.frag.spv"))
+			VulkanShaderModulePtr particlesFragmentShaderModule = VulkanDevice::get().initShaderModule();
+			if (particlesFragmentShaderModule == nullptr || !particlesFragmentShaderModule->loadFromFile("../../Examples/8 - Drawing Particles Using Compute And Graphics Pipelines/shader.frag.spv"))
 			{
 				return false;
 			}
@@ -397,7 +396,7 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 				return false;
 			}
 
-			auto prepareFrame = [&](nu::Vulkan::CommandBuffer* commandBuffer, uint32_t swapchainImageIndex, nu::Vulkan::Framebuffer* framebuffer) 
+			auto prepareFrame = [&](VulkanCommandBuffer* commandBuffer, uint32_t swapchainImageIndex, VulkanFramebuffer* framebuffer) 
 			{
 				if (!commandBuffer->beginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, nullptr))
 				{
@@ -411,7 +410,7 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex()) 
 				{
-					nu::Vulkan::ImageTransition imageTransitionBeforeDrawing = {
+					VulkanImageTransition imageTransitionBeforeDrawing = {
 						mSwapchain->getImageHandle(swapchainImageIndex), // VkImage             image
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        currentAccess
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        newAccess
@@ -461,7 +460,7 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex())
 				{
-					nu::Vulkan::ImageTransition imageTransitionBeforePresent = {
+					VulkanImageTransition imageTransitionBeforePresent = {
 						mSwapchain->getImageHandle(swapchainImageIndex),  // VkImage            image
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        currentAccess
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        newAccess
@@ -594,5 +593,3 @@ class DrawingParticlesUsingComputeAndGraphicsPipelines : public SampleBase
 			return true;
 		}
 };
-
-#endif // DRAWING_PARTICLES_USING_COMPTE_AND_GRAPHICS_PIPELINES_HPP

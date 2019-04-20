@@ -72,7 +72,7 @@ class Quaternion
 		inline void toMatrix3(Matrix3<T>& matrix) const;
 		inline Matrix3<T> toMatrix3() const;
 
-		inline Quaternion<T>& fromEulerAngles(const Vector3<T>& vector);
+		inline Quaternion<T>& fromEulerAngles(const Vector3<T>& eulerAngles);
 		inline Quaternion<T>& fromAngleAxis(const T& angle, const Vector3<T>& axis);
 		inline Quaternion<T>& fromMatrix3(const Matrix3<T>& matrix);
 
@@ -606,7 +606,7 @@ inline Matrix3<T> Quaternion<T>::toMatrix3() const
 }
 
 template<typename T>
-inline Quaternion<T>& Quaternion<T>::fromEulerAngles(const Vector3<T>& vector)
+inline Quaternion<T>& Quaternion<T>::fromEulerAngles(const Vector3<T>& eulerAngles)
 {
 	Vector3<T> halfAngles(T(0.5) * eulerAngles);
 	const T sx = nu::sin(halfAngles.x);

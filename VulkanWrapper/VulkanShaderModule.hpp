@@ -1,23 +1,16 @@
-#ifndef NU_VULKAN_SHADER_MODULE_HPP
-#define NU_VULKAN_SHADER_MODULE_HPP
+#pragma once
 
 #include "VulkanFunctions.hpp"
-
-#include <memory>
-#include <vector>
 
 // TODO : SpecializationInfo param
 // TODO : Add GLSL->Spirv tool
 // TODO : Get info about variables in shaders
 // TODO : Auto find entrypoints
+// TODO : Find better interface ?
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-class Device;
-class ShaderModule
+class VulkanShaderModule : public VulkanDeviceObject<VulkanObjectType_ShaderModule>
 {
 	public:
 		// TODO : Add multi stage shaders
@@ -32,9 +25,7 @@ class ShaderModule
 			Compute = 32
 		};
 
-		typedef std::unique_ptr<ShaderModule> Ptr;
-
-		~ShaderModule();
+		~VulkanShaderModule();
 
 		bool loadFromFile(const std::string& filename, ShaderStageFlags stage = ShaderStageFlags::None, const std::string& entrypoint = "main");
 
@@ -62,19 +53,18 @@ class ShaderModule
 		const ShaderStageFlags& getStages() const;
 
 	private:
-		friend class Device;
-		ShaderModule(Device& device);
+		friend class VulkanDevice;
+		VulkanShaderModule();
 
-		friend class GraphicsPipeline;
+		friend class VulkanGraphicsPipeline;
 		void addShaderStages(std::vector<VkPipelineShaderStageCreateInfo>& shaders);
 
-		friend class ComputePipeline;
+		friend class VulkanComputePipeline;
 		const VkPipelineShaderStageCreateInfo& getShaderStage();
 
 		void generateShaderStages() const;
 
 	private:
-		Device& mDevice;
 		VkShaderModule mShaderModule;
 
 		ShaderStageFlags mStages;
@@ -91,12 +81,4 @@ class ShaderModule
 		mutable std::vector<VkPipelineShaderStageCreateInfo> mShaderStageCreateInfos;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-inline nu::Vulkan::ShaderModule::ShaderStageFlags operator|(nu::Vulkan::ShaderModule::ShaderStageFlags a, nu::Vulkan::ShaderModule::ShaderStageFlags b)
-{
-	return static_cast<nu::Vulkan::ShaderModule::ShaderStageFlags>(static_cast<int>(a) | static_cast<int>(b));
-}
-
-#endif // NU_VULKAN_SHADER_MODULE_HPP
+VULKAN_NAMESPACE_END

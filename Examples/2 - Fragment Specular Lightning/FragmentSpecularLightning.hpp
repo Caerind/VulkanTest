@@ -1,5 +1,4 @@
-#ifndef FRAGMENT_SPECULAR_LIGHTNING_HPP
-#define FRAGMENT_SPECULAR_LIGHTNING_HPP
+#pragma once
 
 #include "../../CookBook/SampleBase.hpp"
 
@@ -18,13 +17,13 @@ class FragmentSpecularLightning : public SampleBase
 		nu::Mesh mMesh;
 		nu::VertexBuffer::Ptr mVertexBuffer;
 
-		nu::Vulkan::DescriptorSetLayout::Ptr mDescriptorSetLayout;
-		nu::Vulkan::DescriptorPool::Ptr mDescriptorPool;
-		std::vector<nu::Vulkan::DescriptorSet::Ptr> mDescriptorSets;
+		VulkanDescriptorSetLayoutPtr mDescriptorSetLayout;
+		VulkanDescriptorPoolPtr mDescriptorPool;
+		std::vector<VulkanDescriptorSetPtr> mDescriptorSets;
 
-		nu::Vulkan::RenderPass::Ptr mRenderPass;
-		nu::Vulkan::PipelineLayout::Ptr mPipelineLayout;
-		std::vector<nu::Vulkan::GraphicsPipeline::Ptr> mPipelines;
+		VulkanRenderPassPtr mRenderPass;
+		VulkanPipelineLayoutPtr mPipelineLayout;
+		std::vector<VulkanGraphicsPipelinePtr> mPipelines;
 		enum PipelineNames
 		{
 			MeshPipeline = 0,
@@ -36,7 +35,7 @@ class FragmentSpecularLightning : public SampleBase
 
 		uint32_t mFrameIndex = 0;
 
-		virtual bool initialize(nu::Vulkan::WindowParameters windowParameters) override 
+		virtual bool initialize(VulkanWindowParameters windowParameters) override 
 		{
 			if (!initializeVulkan(windowParameters, nullptr)) 
 			{
@@ -44,18 +43,18 @@ class FragmentSpecularLightning : public SampleBase
 			}
 
 			// Vertex data
-			if (!mMesh.loadFromFile("../Data/Models/knot.obj", true, false, false, true))
+			if (!mMesh.loadFromFile("../../Data/Models/knot.obj", true, false, false, true))
 			{
 				return false;
 			}
-			mVertexBuffer = nu::VertexBuffer::createVertexBuffer(*mLogicalDevice, mMesh.size());
-			if (!mVertexBuffer || !mVertexBuffer->updateAndWait(mMesh.size(), &mMesh.data[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue.get(), {}, 50000000))
+			mVertexBuffer = nu::VertexBuffer::createVertexBuffer(VulkanDevice::get(), mMesh.size());
+			if (!mVertexBuffer || !mVertexBuffer->updateAndWait(mMesh.size(), &mMesh.data[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue, {}, 50000000))
 			{
 				return false;
 			}
 
 			// Uniform buffer
-			mUniformBuffer = nu::UniformBuffer::createUniformBuffer(*mLogicalDevice, 2 * 16 * sizeof(float));
+			mUniformBuffer = nu::UniformBuffer::createUniformBuffer(VulkanDevice::get(), 2 * 16 * sizeof(float));
 			if (mUniformBuffer == nullptr)
 			{
 				return false;
@@ -79,7 +78,7 @@ class FragmentSpecularLightning : public SampleBase
 				VK_SHADER_STAGE_VERTEX_BIT,                 // VkShaderStageFlags   stageFlags
 				nullptr                                     // const VkSampler    * pImmutableSamplers
 			};
-			mDescriptorSetLayout = mLogicalDevice->createDescriptorSetLayout({ descriptorSetLayoutBinding });
+			mDescriptorSetLayout = VulkanDevice::get().createDescriptorSetLayout({ descriptorSetLayoutBinding });
 			if (mDescriptorSetLayout == nullptr || !mDescriptorSetLayout->isInitialized())
 			{
 				return false;
@@ -89,7 +88,7 @@ class FragmentSpecularLightning : public SampleBase
 				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          // VkDescriptorType     type
 				1                                           // uint32_t             descriptorCount
 			};
-			mDescriptorPool = mLogicalDevice->createDescriptorPool(false, 1, { descriptorPoolSize });
+			mDescriptorPool = VulkanDevice::get().createDescriptorPool(false, 1, { descriptorPoolSize });
 			if (mDescriptorPool == nullptr || !mDescriptorPool->isInitialized())
 			{
 				return false;
@@ -106,7 +105,7 @@ class FragmentSpecularLightning : public SampleBase
 			mUniformBuffer->updateDescriptor(mDescriptorSets[0].get(), 0, 0);
 
 			// Render pass
-			mRenderPass = mLogicalDevice->initRenderPass();
+			mRenderPass = VulkanDevice::get().initRenderPass();
 			mRenderPass->addAttachment(mSwapchain->getFormat());
 			mRenderPass->setAttachmentLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR);
 			mRenderPass->setAttachmentStoreOp(VK_ATTACHMENT_STORE_OP_STORE);
@@ -151,29 +150,29 @@ class FragmentSpecularLightning : public SampleBase
 				}
 			};
 
-			mPipelineLayout = mLogicalDevice->createPipelineLayout({ mDescriptorSetLayout->getHandle() }, pushConstantRanges);
+			mPipelineLayout = VulkanDevice::get().createPipelineLayout({ mDescriptorSetLayout->getHandle() }, pushConstantRanges);
 			if (mPipelineLayout == nullptr || !mPipelineLayout->isInitialized())
 			{
 				return false;
 			}
 
 
-			nu::Vulkan::ShaderModule::Ptr vertexShaderModule = mLogicalDevice->initShaderModule();
-			if (vertexShaderModule == nullptr || !vertexShaderModule->loadFromFile("../Examples/2 - Fragment Specular Lightning/shader.vert.spv", nu::Vulkan::ShaderModule::Vertex))
+			VulkanShaderModulePtr vertexShaderModule = VulkanDevice::get().initShaderModule();
+			if (vertexShaderModule == nullptr || !vertexShaderModule->loadFromFile("../../Examples/2 - Fragment Specular Lightning/shader.vert.spv", VulkanShaderModule::Vertex))
 			{
 				return false;
 			}
 
-			nu::Vulkan::ShaderModule::Ptr fragmentShaderModule = mLogicalDevice->initShaderModule();
-			if (fragmentShaderModule == nullptr || !fragmentShaderModule->loadFromFile("../Examples/2 - Fragment Specular Lightning/shader.frag.spv", nu::Vulkan::ShaderModule::Fragment))
+			VulkanShaderModulePtr fragmentShaderModule = VulkanDevice::get().initShaderModule();
+			if (fragmentShaderModule == nullptr || !fragmentShaderModule->loadFromFile("../../Examples/2 - Fragment Specular Lightning/shader.frag.spv", VulkanShaderModule::Fragment))
 			{
 				return false;
 			}
 
 			mPipelines.resize(PipelineNames::Count);
-			mPipelines[PipelineNames::MeshPipeline] = mLogicalDevice->initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
+			mPipelines[PipelineNames::MeshPipeline] = VulkanDevice::get().initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
 
-			nu::Vulkan::GraphicsPipeline* modelPipeline = mPipelines[PipelineNames::MeshPipeline].get();
+			VulkanGraphicsPipeline* modelPipeline = mPipelines[PipelineNames::MeshPipeline].get();
 
 			modelPipeline->setSubpass(0);
 
@@ -211,7 +210,7 @@ class FragmentSpecularLightning : public SampleBase
 
 		virtual bool draw() override 
 		{
-			auto prepareFrame = [&](nu::Vulkan::CommandBuffer* commandBuffer, uint32_t swapchainImageIndex, nu::Vulkan::Framebuffer* framebuffer) 
+			auto prepareFrame = [&](VulkanCommandBuffer* commandBuffer, uint32_t swapchainImageIndex, VulkanFramebuffer* framebuffer) 
 			{
 				if (!commandBuffer->beginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, nullptr))
 				{
@@ -225,7 +224,7 @@ class FragmentSpecularLightning : public SampleBase
 
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex()) 
 				{
-					nu::Vulkan::ImageTransition imageTransitionBeforeDrawing = {
+					VulkanImageTransition imageTransitionBeforeDrawing = {
 						mSwapchain->getImageHandle(swapchainImageIndex), // VkImage             image
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        currentAccess
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        newAccess
@@ -284,7 +283,7 @@ class FragmentSpecularLightning : public SampleBase
 
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex())
 				{
-					nu::Vulkan::ImageTransition imageTransitionBeforePresent = {
+					VulkanImageTransition imageTransitionBeforePresent = {
 						mSwapchain->getImageHandle(swapchainImageIndex),  // VkImage            image
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        currentAccess
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        newAccess
@@ -417,5 +416,3 @@ class FragmentSpecularLightning : public SampleBase
 			return true;
 		}
 };
-
-#endif // FRAGMENT_SPECULAR_LIGHTNING_HPP

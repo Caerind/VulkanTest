@@ -1,27 +1,14 @@
-#ifndef NU_VULKAN_SWAPCHAIN_HPP
-#define NU_VULKAN_SWAPCHAIN_HPP
+#pragma once
 
-#include <memory>
-
-#include "VulkanImage.hpp"
-#include "VulkanImageView.hpp"
-#include "VulkanHelper.hpp"
-
+#include "VulkanHelper.hpp" // TODO : Remove this include
 #include "../CookBook/Common.hpp" // TODO : Remove this (used for FrameResources)
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-class Device;
-class Surface;
-class Swapchain
+class VulkanSwapchain : public VulkanObject<VulkanObjectType_Swapchain>
 {
 	public:
-		typedef std::unique_ptr<Swapchain> Ptr;
-
-		~Swapchain();
+		~VulkanSwapchain();
 
 		bool recreate(std::vector<FrameResources>& framesResources);
 
@@ -37,19 +24,19 @@ class Swapchain
 		VkImage getImageHandle(uint32_t index) const;
 		VkImageView getImageViewHandle(uint32_t index) const;
 
-		Surface& getSurface();
-		const Surface& getSurface() const;
-		Device& getDevice();
-		const Device& getDevice() const;
+		VulkanSurface& getSurface();
+		const VulkanSurface& getSurface() const;
+		VulkanDevice& getDevice();
+		const VulkanDevice& getDevice() const;
 		const VkSwapchainKHR& getHandle() const;
 		const VkSurfaceKHR& getSurfaceHandle() const;
 		const VkDevice& getDeviceHandle() const;
 
 	private:
-		friend class Device;
-		static Swapchain::Ptr createSwapchain(Device& device, Surface& surface, std::vector<FrameResources>& framesResources);
+		friend class VulkanDevice;
+		static VulkanSwapchainPtr createSwapchain(VulkanDevice& device, VulkanSurface& surface, std::vector<FrameResources>& framesResources);
 
-		Swapchain(Device& device, Surface& surface);
+		VulkanSwapchain(VulkanDevice& device, VulkanSurface& surface);
 
 		bool init(std::vector<FrameResources>& framesResources);
 		void release();
@@ -64,8 +51,8 @@ class Swapchain
 		bool queryImageHandles(std::vector<VkImage>& swapchainImageHandles);
 
 	private:
-		Device& mDevice;
-		Surface& mSurface;
+		VulkanDevice& mDevice;
+		VulkanSurface& mSurface;
 		VkSwapchainKHR mSwapchain;
 		bool mReady;
 
@@ -78,13 +65,10 @@ class Swapchain
 		VkFormat mFormat;
 		VkColorSpaceKHR mColorSpace;
 
-		std::vector<Image::Ptr> mSwapchainImages;
+		std::vector<VulkanImagePtr> mSwapchainImages;
 
 		VkFormat mDepthFormat;
-		std::vector<ImageHelper::Ptr> mSwapchainDepthImages;
+		std::vector<VulkanImageHelperPtr> mSwapchainDepthImages;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_SWAPCHAIN_HPP
+VULKAN_NAMESPACE_END

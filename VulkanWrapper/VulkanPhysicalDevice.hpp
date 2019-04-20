@@ -1,21 +1,14 @@
-#ifndef NU_VULKAN_PHYSICAL_DEVICE_HPP
-#define NU_VULKAN_PHYSICAL_DEVICE_HPP
+#pragma once
 
 #include "VulkanFunctions.hpp"
+#include <unordered_map>
 
-#include <map>
-#include <vector>
+VULKAN_NAMESPACE_BEGIN
 
-namespace nu
-{
-namespace Vulkan
-{
-
-class Surface;
-class PhysicalDevice
+class VulkanPhysicalDevice
 {
 	public:
-		PhysicalDevice(const VkPhysicalDevice& physicalDevice);
+		VulkanPhysicalDevice(const VkPhysicalDevice& physicalDevice);
 
 		const std::vector<VkExtensionProperties>& getAvailableExtensions() const;
 		const VkPhysicalDeviceFeatures& getSupportedFeatures() const;
@@ -23,42 +16,46 @@ class PhysicalDevice
 		const std::vector<VkQueueFamilyProperties>& getQueueFamiliesProperties() const;
 		const VkPhysicalDeviceMemoryProperties& getMemoryProperties() const;
 		const VkFormatProperties& getFormatProperties(VkFormat format) const;
+		
+		bool queryAvailableExtensions();
+		bool querySupportedFeatures();
+		bool queryProperties();
+		bool queryQueueFamiliesProperties();
+		bool queryMemoryProperties();
+		bool queryFormatProperties(VkFormat format);
+		bool queryAllProperties();
+		
+		bool areAvailableExtensionsQueried() const;
+		bool areSupportedFeaturesQueried() const;
+		bool arePropertiesQueried() const;
+		bool areQueueFamiliesPropertiesQueried() const;
+		bool areMemoryPropertiesQueried() const;
+		bool areFormatPropertiesQueried(VkFormat format) const;
+		bool areAllPropertiesQueried() const;
 
 		bool isExtensionSupported(const char* extensionName) const;
 
-		uint32_t getQueueFamilyIndexWithDesiredCapabilities(VkQueueFlags desiredCapabilities) const;
-		uint32_t getGraphicsQueueFamilyIndex() const;
-		uint32_t getComputeQueueFamilyIndex() const;
-		uint32_t getPresentQueueFamilyIndex(Surface* presentationSurface) const;
-
 		const VkPhysicalDevice& getHandle() const;
-
-		static const uint32_t InvalidQueueFamilyIndex = ~uint32_t();
-
+		
 	private:
-		bool queryAvailableExtensions() const;
-		bool queryQueueFamiliesProperties() const;
+		// NonCopyable & NonMovable
+		VulkanPhysicalDevice(const VulkanPhysicalDevice& other) = delete;
+		VulkanPhysicalDevice& operator=(const VulkanPhysicalDevice& other) = delete;
+		VulkanPhysicalDevice(VulkanPhysicalDevice&& other) = delete;
+		VulkanPhysicalDevice& operator=(VulkanPhysicalDevice&& other) = delete;
 
 	private:
 		VkPhysicalDevice mPhysicalDevice; 
 
-		mutable std::vector<VkExtensionProperties> mAvailableExtensions;
-
-		mutable bool mSupportedFeaturesQueried;
-		mutable VkPhysicalDeviceFeatures mSupportedFeatures;
-
-		mutable bool mPropertiesQueried;
-		mutable VkPhysicalDeviceProperties mProperties;
-
-		mutable std::vector<VkQueueFamilyProperties> mQueueFamiliesProperties;
-
-		mutable bool mMemoryPropertiesQueried;
-		mutable VkPhysicalDeviceMemoryProperties mMemoryProperties;
-
-		mutable std::map<VkFormat, VkFormatProperties> mFormatProperties;
+		std::vector<VkExtensionProperties> mAvailableExtensions;
+		bool mSupportedFeaturesQueried;
+		VkPhysicalDeviceFeatures mSupportedFeatures;
+		bool mPropertiesQueried;
+		VkPhysicalDeviceProperties mProperties;
+		std::vector<VkQueueFamilyProperties> mQueueFamiliesProperties;
+		bool mMemoryPropertiesQueried;
+		VkPhysicalDeviceMemoryProperties mMemoryProperties;
+		mutable std::unordered_map<VkFormat, VkFormatProperties> mFormatProperties;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_PHYSICAL_DEVICE_HPP
+VULKAN_NAMESPACE_END

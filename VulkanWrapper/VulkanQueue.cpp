@@ -1,31 +1,32 @@
 #include "VulkanQueue.hpp"
 
 #include "VulkanDevice.hpp"
+#include "VulkanBuffer.hpp"
+#include "VulkanImage.hpp"
+#include "VulkanMemoryBlock.hpp"
+#include "VulkanFence.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-Queue::~Queue()
+VulkanQueue::~VulkanQueue()
 {
-	ObjectTracker::unregisterObject(ObjectType_Queue);
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-bool Queue::useStagingBufferToUpdateBufferAndWait(VkDeviceSize dataSize, void* data, Buffer* buffer, VkDeviceSize offset, VkAccessFlags currentAccess, VkAccessFlags newAccess, VkPipelineStageFlags generatingStages, VkPipelineStageFlags consumingStages, CommandBuffer* commandBuffer, std::vector<VkSemaphore> signalSemaphores, uint64_t timeout)
+bool VulkanQueue::useStagingBufferToUpdateBufferAndWait(VkDeviceSize dataSize, void* data, VulkanBuffer* buffer, VkDeviceSize offset, VkAccessFlags currentAccess, VkAccessFlags newAccess, VkPipelineStageFlags generatingStages, VkPipelineStageFlags consumingStages, VulkanCommandBuffer* commandBuffer, std::vector<VkSemaphore> signalSemaphores, uint64_t timeout)
 {
-	nu::Vulkan::Fence::Ptr fence = mDevice.createFence(false);
+	VulkanFencePtr fence = getDevice().createFence(false);
 	if (fence == nullptr)
 	{
 		return false;
 	}
 
-	nu::Vulkan::Buffer::Ptr stagingBuffer = mDevice.createBuffer(dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+	VulkanBufferPtr stagingBuffer = getDevice().createBuffer(dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 	if (stagingBuffer == nullptr)
 	{
 		return false;
 	}
-	nu::Vulkan::MemoryBlock* stagingBufferMemory = stagingBuffer->allocateMemoryBlock(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+	VulkanMemoryBlock* stagingBufferMemory = stagingBuffer->allocateMemoryBlock(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 	if (stagingBufferMemory == nullptr)
 	{
 		return false;
@@ -66,20 +67,20 @@ bool Queue::useStagingBufferToUpdateBufferAndWait(VkDeviceSize dataSize, void* d
 	return fence->wait(timeout);
 }
 
-bool Queue::useStagingBufferToUpdateImageAndWait(VkDeviceSize dataSize, void* data, Image* image, VkImageSubresourceLayers subresource, VkOffset3D offset, VkExtent3D size, VkImageLayout currentLayout, VkImageLayout newLayout, VkAccessFlags currentAccess, VkAccessFlags newAccess, VkImageAspectFlags aspect, VkPipelineStageFlags generatingStages, VkPipelineStageFlags consumingStages, CommandBuffer* commandBuffer, std::vector<VkSemaphore> signalSemaphores, uint64_t timeout)
+bool VulkanQueue::useStagingBufferToUpdateImageAndWait(VkDeviceSize dataSize, void* data, VulkanImage* image, VkImageSubresourceLayers subresource, VkOffset3D offset, VkExtent3D size, VkImageLayout currentLayout, VkImageLayout newLayout, VkAccessFlags currentAccess, VkAccessFlags newAccess, VkImageAspectFlags aspect, VkPipelineStageFlags generatingStages, VkPipelineStageFlags consumingStages, VulkanCommandBuffer* commandBuffer, std::vector<VkSemaphore> signalSemaphores, uint64_t timeout)
 {
-	nu::Vulkan::Fence::Ptr fence = mDevice.createFence(false);
+	VulkanFencePtr fence = getDevice().createFence(false);
 	if (fence == nullptr)
 	{
 		return false;
 	}
 
-	nu::Vulkan::Buffer::Ptr stagingBuffer = mDevice.createBuffer(dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+	VulkanBufferPtr stagingBuffer = getDevice().createBuffer(dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 	if (stagingBuffer == nullptr)
 	{
 		return false;
 	}
-	nu::Vulkan::MemoryBlock* stagingBufferMemory = stagingBuffer->allocateMemoryBlock(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+	VulkanMemoryBlock* stagingBufferMemory = stagingBuffer->allocateMemoryBlock(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 	if (stagingBufferMemory == nullptr)
 	{
 		return false;
@@ -159,7 +160,7 @@ bool Queue::useStagingBufferToUpdateImageAndWait(VkDeviceSize dataSize, void* da
 	return fence->wait(timeout);
 }
 
-bool Queue::submitCommandBuffers(std::vector<CommandBuffer*> commandBuffers, std::vector<WaitSemaphoreInfo> waitSemaphoreInfos, std::vector<VkSemaphore> signalSemaphores, Fence* fence)
+bool VulkanQueue::submitCommandBuffers(std::vector<VulkanCommandBuffer*> commandBuffers, std::vector<WaitSemaphoreInfo> waitSemaphoreInfos, std::vector<VkSemaphore> signalSemaphores, VulkanFence* fence)
 {
 	std::vector<VkSemaphore> waitSemaphoreHandles;
 	std::vector<VkPipelineStageFlags> waitSemaphoreStages;
@@ -196,7 +197,7 @@ bool Queue::submitCommandBuffers(std::vector<CommandBuffer*> commandBuffers, std
 	return true;
 }
 
-bool Queue::submitCommandBuffersAndWait(std::vector<CommandBuffer*> commandBuffers, std::vector<WaitSemaphoreInfo> waitSemaphoreInfos, std::vector<VkSemaphore> signalSemaphores, Fence* fence, uint64_t timeout)
+bool VulkanQueue::submitCommandBuffersAndWait(std::vector<VulkanCommandBuffer*> commandBuffers, std::vector<WaitSemaphoreInfo> waitSemaphoreInfos, std::vector<VkSemaphore> signalSemaphores, VulkanFence* fence, uint64_t timeout)
 {
 	if (!submitCommandBuffers(commandBuffers, waitSemaphoreInfos, signalSemaphores, fence))
 	{
@@ -206,7 +207,7 @@ bool Queue::submitCommandBuffersAndWait(std::vector<CommandBuffer*> commandBuffe
 	return fence->wait(timeout);
 }
 
-bool Queue::presentImage(std::vector<VkSemaphore> renderingSemaphores, std::vector<PresentInfo> imagesToPresent)
+bool VulkanQueue::presentImage(std::vector<VkSemaphore> renderingSemaphores, std::vector<PresentInfo> imagesToPresent)
 {
 	VkResult result;
 
@@ -232,47 +233,80 @@ bool Queue::presentImage(std::vector<VkSemaphore> renderingSemaphores, std::vect
 	result = vkQueuePresentKHR(mQueue, &presentInfo);
 	if (result != VK_SUCCESS)
 	{
+		// TODO : Log
 		printf("Could not present image\n");
 		return false;
 	}
 	return true;
 }
 
-uint32_t Queue::getFamilyIndex() const
+VulkanU32 VulkanQueue::getFamilyIndex() const
 {
 	return mFamilyIndex;
 }
 
-uint32_t Queue::getIndex() const
+VulkanU32 VulkanQueue::getIndex() const
 {
 	return mIndex;
 }
 
-bool Queue::isInitialized() const
+const VkQueueFamilyProperties& VulkanQueue::getFamilyProperties() const
+{
+	return getDevice().getQueueFamiliesProperties()[mFamilyIndex];
+}
+
+const VkQueueFlags& VulkanQueue::getFlags() const
+{
+	return getFamilyProperties().queueFlags;
+}
+
+bool VulkanQueue::hasGraphicsFlag() const
+{
+	return (getFlags() & VK_QUEUE_GRAPHICS_BIT) != 0;
+}
+
+bool VulkanQueue::hasComputeFlag() const
+{
+	return (getFlags() & VK_QUEUE_COMPUTE_BIT) != 0;
+}
+
+bool VulkanQueue::hasTransferFlag() const
+{
+	return (getFlags() & VK_QUEUE_TRANSFER_BIT) != 0;
+}
+
+bool VulkanQueue::hasSparseBindingFlag() const
+{
+	return (getFlags() & VK_QUEUE_SPARSE_BINDING_BIT) != 0;
+}
+
+bool VulkanQueue::isInitialized() const
 {
 	return mQueue != VK_NULL_HANDLE;
 }
 
-const VkQueue& Queue::getHandle() const
+const VkQueue& VulkanQueue::getHandle() const
 {
 	return mQueue;
 }
 
-const VkDevice& Queue::getDeviceHandle() const
+VulkanQueue::VulkanQueue(VulkanDevice& device, VulkanU32 familyIndex, VulkanU32 index)
+	: mQueue(VK_NULL_HANDLE)
+	, mFamilyIndex(familyIndex)
+	, mIndex(index)
 {
-	return mDevice.getHandle();
+	VULKAN_OBJECTTRACKER_REGISTER();
+	
+	// TODO : Move this elsewhere ?
+	#if (!defined VULKAN_MONO_DEVICE)
+	setDeviceId(device.getDeviceId());
+	#endif
 }
 
-Queue::Queue(Device& device, uint32_t queueFamilyIndex, uint32_t queueIndex)
-	: mDevice(device)
-	, mQueue(VK_NULL_HANDLE)
-	, mFamilyIndex(queueFamilyIndex)
-	, mIndex(queueIndex)
+bool VulkanQueue::initialize()
 {
-	ObjectTracker::registerObject(ObjectType_Queue);
-
-	vkGetDeviceQueue(mDevice.getHandle(), queueFamilyIndex, queueIndex, &mQueue);
+	vkGetDeviceQueue(getDeviceHandle(), mFamilyIndex, mIndex, &mQueue);
+	return true;
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

@@ -1,37 +1,35 @@
 #include "VulkanMemoryBlock.hpp"
 
 #include "VulkanDevice.hpp"
+#include "VulkanPhysicalDevice.hpp"
 #include "VulkanBuffer.hpp"
 #include "VulkanImage.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-MemoryBlock::~MemoryBlock()
+VulkanMemoryBlock::~VulkanMemoryBlock()
 {
 	unmap();
 
 	release();
 
-	ObjectTracker::unregisterObject(ObjectType_MemoryBlock);
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-bool MemoryBlock::map(VkDeviceSize offset, VkDeviceSize size)
+bool VulkanMemoryBlock::map(VkDeviceSize offset, VkDeviceSize size)
 {
 	unmap();
 
-	assert(offset < mMemoryRequirements.size, "offset must be less than the size of memory");
-	assert(size == VK_WHOLE_SIZE || size > 0, "If size is not equal to VK_WHOLE_SIZE, size must be greater than 0");
-	assert(size == VK_WHOLE_SIZE || size <= mMemoryRequirements.size - offset, "If size is not equal to VK_WHOLE_SIZE, size must be less than or equal to the size of the memory minus offset");
-	assert(isHostVisible(), "memory must have been created with a memory type that reports VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT");
+	VULKAN_ASSERT(offset < mMemoryRequirements.size, "offset must be less than the size of memory");
+	VULKAN_ASSERT(size == VK_WHOLE_SIZE || size > 0, "If size is not equal to VK_WHOLE_SIZE, size must be greater than 0");
+	VULKAN_ASSERT(size == VK_WHOLE_SIZE || size <= mMemoryRequirements.size - offset, "If size is not equal to VK_WHOLE_SIZE, size must be less than or equal to the size of the memory minus offset");
+	VULKAN_ASSERT(isHostVisible(), "memory must have been created with a memory type that reports VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT");
 
-	VkResult result = vkMapMemory(mDevice.getHandle(), mMemoryBlock, offset, size, 0, &mMappedData);
+	VkResult result = vkMapMemory(getDeviceHandle(), mMemoryBlock, offset, size, 0, &mMappedData);
 	if (result != VK_SUCCESS)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not map memory object\n");
+		// TODO : Log more
+		VULKAN_LOG_ERROR("Could not map memory object\n");
 		return false;
 	}
 
@@ -41,18 +39,18 @@ bool MemoryBlock::map(VkDeviceSize offset, VkDeviceSize size)
 	return true;
 }
 
-bool MemoryBlock::read(void* data)
+bool VulkanMemoryBlock::read(void* data)
 {
-	assert(isMapped(), "memory must be mapped to be read");
+	VULKAN_ASSERT(isMapped(), "memory must be mapped to be read");
 
 	std::memcpy(data, mMappedData, mMappedSize);
 
 	return true;
 }
 
-bool MemoryBlock::write(const void* data)
+bool VulkanMemoryBlock::write(const void* data)
 {
-	assert(isMapped(), "memory must be mapped to be written");
+	VULKAN_ASSERT(isMapped(), "memory must be mapped to be written");
 
 	std::memcpy(mMappedData, data, mMappedSize);
 
@@ -71,7 +69,7 @@ bool MemoryBlock::write(const void* data)
 		// TODO : Allow multiple memory ranges flushing
 		// TODO : Flush only if wanted ?
 		// TODO : Invalidate instead of Flush ?
-		VkResult result = vkFlushMappedMemoryRanges(mDevice.getHandle(), static_cast<uint32_t>(memoryRanges.size()), memoryRanges.data());
+		VkResult result = vkFlushMappedMemoryRanges(getDeviceHandle(), static_cast<uint32_t>(memoryRanges.size()), memoryRanges.data());
 		if (result != VK_SUCCESS)
 		{
 			// TODO : Use Numea System Log
@@ -83,11 +81,11 @@ bool MemoryBlock::write(const void* data)
 	return true;
 }
 
-bool MemoryBlock::unmap()
+bool VulkanMemoryBlock::unmap()
 {
 	if (isMapped())
 	{
-		vkUnmapMemory(mDevice.getHandle(), mMemoryBlock);
+		vkUnmapMemory(getDeviceHandle(), mMemoryBlock);
 		mMappedData = nullptr;
 		mMappedOffset = 0;
 		mMappedSize = 0;
@@ -95,12 +93,12 @@ bool MemoryBlock::unmap()
 	return true;
 }
 
-bool MemoryBlock::bind(Buffer* buffer, VkDeviceSize offsetInMemory)
+bool VulkanMemoryBlock::bind(VulkanBuffer* buffer, VkDeviceSize offsetInMemory)
 {
-	assert(buffer != nullptr, "Valid buffer must be provided");
+	VULKAN_ASSERT(buffer != nullptr, "Valid buffer must be provided");
 	// TODO : Add others assert for valid usage from the specifications
 
-	VkResult result = vkBindBufferMemory(mDevice.getHandle(), buffer->getHandle(), mMemoryBlock, offsetInMemory);
+	VkResult result = vkBindBufferMemory(getDeviceHandle(), buffer->getHandle(), mMemoryBlock, offsetInMemory);
 	if (result != VK_SUCCESS)
 	{
 		// TODO : Use Numea Log System
@@ -113,12 +111,12 @@ bool MemoryBlock::bind(Buffer* buffer, VkDeviceSize offsetInMemory)
 	return true;
 }
 
-bool MemoryBlock::bind(Image* image, VkDeviceSize memoryOffset)
+bool VulkanMemoryBlock::bind(VulkanImage* image, VkDeviceSize memoryOffset)
 {
-	assert(image != nullptr, "Valid image must be provided");
+	VULKAN_ASSERT(image != nullptr, "Valid image must be provided");
 	// TODO : Add others assert for valid usage from the specifications
 
-	VkResult result = vkBindImageMemory(mDevice.getHandle(), image->getHandle(), mMemoryBlock, memoryOffset);
+	VkResult result = vkBindImageMemory(getDeviceHandle(), image->getHandle(), mMemoryBlock, memoryOffset);
 	if (result != VK_SUCCESS)
 	{
 		// TODO : Use Numea Log System
@@ -131,79 +129,64 @@ bool MemoryBlock::bind(Image* image, VkDeviceSize memoryOffset)
 	return true;
 }
 
-bool MemoryBlock::isHostVisible() const
+bool VulkanMemoryBlock::isHostVisible() const
 {
 	return (mMemoryProperties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
 }
 
-bool MemoryBlock::isDeviceLocal() const
+bool VulkanMemoryBlock::isDeviceLocal() const
 {
 	return (mMemoryProperties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0;
 }
 
-bool MemoryBlock::isHostCoherent() const
+bool VulkanMemoryBlock::isHostCoherent() const
 {
 	return (mMemoryProperties & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0;
 }
 
-VkDeviceSize MemoryBlock::getSize() const
+VkDeviceSize VulkanMemoryBlock::getSize() const
 {
 	return mMemoryRequirements.size;
 }
 
-VkDeviceSize MemoryBlock::getAlignment() const
+VkDeviceSize VulkanMemoryBlock::getAlignment() const
 {
 	return mMemoryRequirements.alignment;
 }
 
-uint32_t MemoryBlock::getMemoryType() const
+uint32_t VulkanMemoryBlock::getMemoryType() const
 {
 	return mMemoryRequirements.memoryTypeBits;
 }
 
-VkMemoryPropertyFlags MemoryBlock::getMemoryProperties() const
+VkMemoryPropertyFlags VulkanMemoryBlock::getMemoryProperties() const
 {
 	return mMemoryProperties;
 }
 
-bool MemoryBlock::isMapped() const
+bool VulkanMemoryBlock::isMapped() const
 {
 	return mMappedData != nullptr;
 }
 
-VkDeviceSize MemoryBlock::getMappedOffset() const
+VkDeviceSize VulkanMemoryBlock::getMappedOffset() const
 {
 	return mMappedOffset;
 }
 
-VkDeviceSize MemoryBlock::getMappedSize() const
+VkDeviceSize VulkanMemoryBlock::getMappedSize() const
 {
 	return mMappedSize;
 }
 
-Device& MemoryBlock::getDevice()
-{
-	return mDevice;
-}
-
-const Device& MemoryBlock::getDevice() const
-{
-	return mDevice;
-}
-
-const VkDeviceMemory& MemoryBlock::getHandle() const
+const VkDeviceMemory& VulkanMemoryBlock::getHandle() const
 {
 	return mMemoryBlock;
 }
 
-const VkDevice& MemoryBlock::getDeviceHandle() const
+VulkanMemoryBlockPtr VulkanMemoryBlock::createMemoryBlock(VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags memoryProperties)
 {
-	return mDevice.getHandle();
-}
-
-MemoryBlock::Ptr MemoryBlock::createMemoryBlock(Device& device, VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags memoryProperties)
-{
-	MemoryBlock::Ptr memoryBlock(new MemoryBlock(device, memoryRequirements, memoryProperties));
+	VulkanMemoryBlockPtr memoryBlock(new VulkanMemoryBlock(memoryRequirements, memoryProperties));
 	if (memoryBlock != nullptr)
 	{
 		if (!memoryBlock->init())
@@ -214,21 +197,20 @@ MemoryBlock::Ptr MemoryBlock::createMemoryBlock(Device& device, VkMemoryRequirem
 	return memoryBlock;
 }
 
-MemoryBlock::MemoryBlock(Device& device, VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags memoryProperties)
-	: mDevice(device)
-	, mMemoryBlock(VK_NULL_HANDLE)
+VulkanMemoryBlock::VulkanMemoryBlock(VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags memoryProperties)
+	: mMemoryBlock(VK_NULL_HANDLE)
 	, mMemoryRequirements(memoryRequirements)
 	, mMemoryProperties(memoryProperties)
 	, mMappedData(nullptr)
 	, mMappedOffset(0)
 	, mMappedSize(0)
 {
-	ObjectTracker::registerObject(ObjectType_MemoryBlock);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-bool MemoryBlock::init()
+bool VulkanMemoryBlock::init()
 {
-	const VkPhysicalDeviceMemoryProperties& deviceMemoryProperties = mDevice.getPhysicalDevice().getMemoryProperties();
+	const VkPhysicalDeviceMemoryProperties& deviceMemoryProperties = getDevice().getMemoryProperties();
 	const VkMemoryRequirements& memoryRequirements = mMemoryRequirements;
 		
 	for (uint32_t type = 0; type < deviceMemoryProperties.memoryTypeCount; type++) 
@@ -243,10 +225,9 @@ bool MemoryBlock::init()
 				type                                      // uint32_t           memoryTypeIndex
 			};
 
-			VkResult result = vkAllocateMemory(mDevice.getHandle(), &bufferMemoryAllocateInfo, nullptr, &mMemoryBlock);
+			VkResult result = vkAllocateMemory(getDeviceHandle(), &bufferMemoryAllocateInfo, nullptr, &mMemoryBlock);
 			if (result == VK_SUCCESS) 
 			{
-				// Store the properties
 				mMemoryRequirements.memoryTypeBits = type;
 				mMemoryProperties = deviceMemoryPropertiesFlags;
 				break;
@@ -256,22 +237,20 @@ bool MemoryBlock::init()
 
 	if (mMemoryBlock == VK_NULL_HANDLE) 
 	{
-		// TODO : Use Numea Log System
-		printf("Could not allocate memory for a buffer\n");
+		VULKAN_LOG_ERROR("Could not allocate memory for a buffer");
 		return false;
 	}
 
 	return true;
 }
 
-void MemoryBlock::release()
+void VulkanMemoryBlock::release()
 {
 	if (mMemoryBlock != VK_NULL_HANDLE)
 	{
-		vkFreeMemory(mDevice.getHandle(), mMemoryBlock, nullptr);
+		vkFreeMemory(getDeviceHandle(), mMemoryBlock, nullptr);
 		mMemoryBlock = VK_NULL_HANDLE;
 	}
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

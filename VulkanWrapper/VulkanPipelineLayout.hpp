@@ -1,44 +1,29 @@
-#ifndef NU_VULKAN_PIPELINE_LAYOUT_HPP
-#define NU_VULKAN_PIPELINE_LAYOUT_HPP
+#pragma once
 
 #include "VulkanFunctions.hpp"
 
-#include <memory>
-#include <vector>
+VULKAN_NAMESPACE_BEGIN
 
-namespace nu
-{
-namespace Vulkan
-{
-
-class Device;
-class PipelineLayout
+class VulkanPipelineLayout : public VulkanDeviceObject<VulkanObjectType_PipelineLayout>
 {
 	public:
-		typedef std::unique_ptr<PipelineLayout> Ptr;
+		static VulkanPipelineLayoutPtr createPipelineLayout(const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, const std::vector<VkPushConstantRange> pushConstantRanges);
 
-		static PipelineLayout::Ptr createPipelineLayout(Device& device, const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, const std::vector<VkPushConstantRange> pushConstantRanges);
-
-		~PipelineLayout();
+		~VulkanPipelineLayout();
 
 		bool isInitialized() const;
 		const VkPipelineLayout& getHandle() const;
-		const VkDevice& getDeviceHandle() const;
 
 	private:
-		PipelineLayout(Device& device, const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, const std::vector<VkPushConstantRange> pushConstantRanges);
+		VulkanPipelineLayout(const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, const std::vector<VkPushConstantRange> pushConstantRanges);
 
 		bool init();
 		bool release();
 
-		Device& mDevice;
 		VkPipelineLayout mPipelineLayout;
 
 		std::vector<VkDescriptorSetLayout> mDescriptorSetLayouts;
 		std::vector<VkPushConstantRange> mPushConstantRanges;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_PIPELINE_LAYOUT_HPP
+VULKAN_NAMESPACE_END

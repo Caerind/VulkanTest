@@ -1,33 +1,33 @@
 #include "VulkanBuffer.hpp"
 
+#include "VulkanBufferView.hpp"
 #include "VulkanDevice.hpp"
+#include "VulkanMemoryBlock.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-Buffer::~Buffer()
+VulkanBuffer::~VulkanBuffer()
 {
 	release();
-
-	ObjectTracker::unregisterObject(ObjectType_Buffer);
+	
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-const VkMemoryRequirements& Buffer::getMemoryRequirements() const
+const VkMemoryRequirements& VulkanBuffer::getMemoryRequirements() const
 {
+	// TODO : Move this elsewhere and query on loading
 	if (!mMemoryRequirementsQueried)
 	{
 		mMemoryRequirementsQueried = true;
-		vkGetBufferMemoryRequirements(mDevice.getHandle(), mBuffer, &mMemoryRequirements);
+		vkGetBufferMemoryRequirements(getDeviceHandle(), mBuffer, &mMemoryRequirements);
 	}
 
 	return mMemoryRequirements;
 }
 
-MemoryBlock* Buffer::allocateMemoryBlock(VkMemoryPropertyFlagBits memoryProperties)
+VulkanMemoryBlock* VulkanBuffer::allocateMemoryBlock(VkMemoryPropertyFlagBits memoryProperties)
 {
-	mOwnedMemoryBlock = mDevice.createMemoryBlock(getMemoryRequirements(), memoryProperties);
+	mOwnedMemoryBlock = getDevice().createMemoryBlock(getMemoryRequirements(), memoryProperties);
 	if (mOwnedMemoryBlock != nullptr)
 	{
 		mOwnedMemoryBlock->bind(this, 0);
@@ -39,29 +39,29 @@ MemoryBlock* Buffer::allocateMemoryBlock(VkMemoryPropertyFlagBits memoryProperti
 	return mMemoryBlock;
 }
 
-bool Buffer::ownMemoryBlock() const
+bool VulkanBuffer::ownMemoryBlock() const
 {
 	return mOwnedMemoryBlock != nullptr;
 }
 
-bool Buffer::isBoundToMemoryBlock() const
+bool VulkanBuffer::isBoundToMemoryBlock() const
 {
 	return mMemoryBlock != nullptr;
 }
 
-MemoryBlock* Buffer::getMemoryBlock()
+VulkanMemoryBlock* VulkanBuffer::getMemoryBlock()
 {
 	return mMemoryBlock;
 }
 
-VkDeviceSize Buffer::getOffsetInMemoryBlock() const
+VkDeviceSize VulkanBuffer::getOffsetInMemoryBlock() const
 {
 	return mOffsetInMemoryBlock;
 }
 
-BufferView* Buffer::createBufferView(VkFormat format, VkDeviceSize memoryOffset, VkDeviceSize memoryRange)
+VulkanBufferView* VulkanBuffer::createBufferView(VkFormat format, VkDeviceSize memoryOffset, VkDeviceSize memoryRange)
 {
-	BufferView::Ptr bufferView = BufferView::createBufferView(*this, format, memoryOffset, memoryRange);
+	VulkanBufferViewPtr bufferView = VulkanBufferView::createBufferView(*this, format, memoryOffset, memoryRange);
 	if (bufferView != nullptr)
 	{
 		mBufferViews.emplace_back(std::move(bufferView));
@@ -73,61 +73,46 @@ BufferView* Buffer::createBufferView(VkFormat format, VkDeviceSize memoryOffset,
 	}
 }
 
-BufferView* Buffer::getBufferView(uint32_t index)
+VulkanBufferView* VulkanBuffer::getBufferView(VulkanU32 index)
 {
-	assert(index < getBufferViewCount());
+	VULKAN_ASSERT(index < getBufferViewCount());
 	return mBufferViews[index].get();
 }
 
-const BufferView* Buffer::getBufferView(uint32_t index) const
+const VulkanBufferView* VulkanBuffer::getBufferView(VulkanU32 index) const
 {
-	assert(index < getBufferViewCount());
+	VULKAN_ASSERT(index < getBufferViewCount());
 	return mBufferViews[index].get();
 }
 
-uint32_t Buffer::getBufferViewCount() const
+VulkanU32 VulkanBuffer::getBufferViewCount() const
 {
-	return (uint32_t)mBufferViews.size();
+	return (VulkanU32)mBufferViews.size();
 }
 
-void Buffer::clearBufferViews()
+void VulkanBuffer::clearBufferViews()
 {
 	mBufferViews.clear();
 }
 
-VkDeviceSize Buffer::getSize() const
+VkDeviceSize VulkanBuffer::getSize() const
 {
 	return mSize;
 }
 
-VkBufferUsageFlags Buffer::getUsage() const
+VkBufferUsageFlags VulkanBuffer::getUsage() const
 {
 	return mUsage;
 }
 
-Device& Buffer::getDevice()
-{
-	return mDevice;
-}
-
-const Device& Buffer::getDevice() const
-{
-	return mDevice;
-}
-
-const VkBuffer& Buffer::getHandle() const
+const VkBuffer& VulkanBuffer::getHandle() const
 {
 	return mBuffer;
 }
 
-const VkDevice& Buffer::getDeviceHandle() const
+VulkanBufferPtr VulkanBuffer::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage)
 {
-	return mDevice.getHandle();
-}
-
-Buffer::Ptr Buffer::createBuffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage)
-{
-	Buffer::Ptr buffer(new Buffer(device, size, usage));
+	VulkanBufferPtr buffer(new VulkanBuffer(size, usage));
 	if (buffer != nullptr)
 	{
 		if (!buffer->init())
@@ -138,9 +123,8 @@ Buffer::Ptr Buffer::createBuffer(Device& device, VkDeviceSize size, VkBufferUsag
 	return buffer;
 }
 
-Buffer::Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage)
-	: mDevice(device)
-	, mBuffer(VK_NULL_HANDLE)
+VulkanBuffer::VulkanBuffer(VkDeviceSize size, VkBufferUsageFlags usage)
+	: mBuffer(VK_NULL_HANDLE)
 	, mOwnedMemoryBlock(nullptr)
 	, mMemoryBlock(nullptr)
 	, mOffsetInMemoryBlock(0)
@@ -150,10 +134,10 @@ Buffer::Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage)
 	, mMemoryRequirementsQueried(false)
 	, mMemoryRequirements()
 {
-	ObjectTracker::registerObject(ObjectType_Buffer);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-bool Buffer::init()
+bool VulkanBuffer::init()
 {
 	VkBufferCreateInfo bufferCreateInfo = {
 		VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,   // VkStructureType        sType
@@ -166,31 +150,29 @@ bool Buffer::init()
 		nullptr                                 // const uint32_t       * pQueueFamilyIndices
 	};
 
-	VkResult result = vkCreateBuffer(mDevice.getHandle(), &bufferCreateInfo, nullptr, &mBuffer);
+	VkResult result = vkCreateBuffer(getDeviceHandle(), &bufferCreateInfo, nullptr, &mBuffer);
 	if (result != VK_SUCCESS || mBuffer == VK_NULL_HANDLE)
 	{
-		// TODO : Use Numea Log System
-		printf("Could not create buffer\n");
+		VULKAN_LOG_ERROR("Could not create buffer");
 		return false;
 	}
 
 	return true;
 }
 
-void Buffer::release()
+void VulkanBuffer::release()
 {
 	if (mBuffer != VK_NULL_HANDLE)
 	{
-		vkDestroyBuffer(mDevice.getHandle(), mBuffer, nullptr);
+		vkDestroyBuffer(getDeviceHandle(), mBuffer, nullptr);
 		mBuffer = VK_NULL_HANDLE;
 	}
 }
 
-void Buffer::bindToMemoryBlock(MemoryBlock* memoryBlock, VkDeviceSize offsetInMemoryBlock)
+void VulkanBuffer::bindToMemoryBlock(VulkanMemoryBlock* memoryBlock, VkDeviceSize offsetInMemoryBlock)
 {
 	mMemoryBlock = memoryBlock;
 	mOffsetInMemoryBlock = offsetInMemoryBlock;
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

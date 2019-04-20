@@ -1,15 +1,13 @@
 #include "VulkanFramebuffer.hpp"
 
 #include "VulkanDevice.hpp"
+#include "VulkanRenderPass.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-Framebuffer::Ptr Framebuffer::createFramebuffer(Device& device, RenderPass& renderPass, const std::vector<VkImageView>& attachments, uint32_t width, uint32_t height, uint32_t layers)
+VulkanFramebufferPtr VulkanFramebuffer::createFramebuffer(VulkanDevice& device, VulkanRenderPass& renderPass, const std::vector<VkImageView>& attachments, VulkanU32 width, VulkanU32 height, VulkanU32 layers)
 {
-	Framebuffer::Ptr framebuffer(new Framebuffer(device, renderPass, attachments, width, height, layers));
+	VulkanFramebufferPtr framebuffer(new VulkanFramebuffer(device, renderPass, attachments, width, height, layers));
 	if (framebuffer != nullptr)
 	{
 		if (!framebuffer->init())
@@ -20,29 +18,29 @@ Framebuffer::Ptr Framebuffer::createFramebuffer(Device& device, RenderPass& rend
 	return framebuffer;
 }
 
-Framebuffer::~Framebuffer()
+VulkanFramebuffer::~VulkanFramebuffer()
 {
-	ObjectTracker::unregisterObject(ObjectType_Framebuffer);
-
 	release();
+
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-bool Framebuffer::isInitialized() const
+bool VulkanFramebuffer::isInitialized() const
 {
 	return mFramebuffer != VK_NULL_HANDLE;
 }
 
-const VkFramebuffer& Framebuffer::getHandle() const
+const VkFramebuffer& VulkanFramebuffer::getHandle() const
 {
 	return mFramebuffer;
 }
 
-const VkDevice& Framebuffer::getDeviceHandle() const
+const VkDevice& VulkanFramebuffer::getDeviceHandle() const
 {
 	return mDevice.getHandle();
 }
 
-Framebuffer::Framebuffer(Device& device, RenderPass& renderPass, const std::vector<VkImageView>& attachments, uint32_t width, uint32_t height, uint32_t layers)
+VulkanFramebuffer::VulkanFramebuffer(VulkanDevice& device, VulkanRenderPass& renderPass, const std::vector<VkImageView>& attachments, VulkanU32 width, VulkanU32 height, VulkanU32 layers)
 	: mDevice(device)
 	, mRenderPass(renderPass)
 	, mFramebuffer(VK_NULL_HANDLE)
@@ -51,17 +49,17 @@ Framebuffer::Framebuffer(Device& device, RenderPass& renderPass, const std::vect
 	, mHeight(height)
 	, mLayers(layers)
 {
-	ObjectTracker::registerObject(ObjectType_Framebuffer);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-bool Framebuffer::init()
+bool VulkanFramebuffer::init()
 {
 	VkFramebufferCreateInfo framebufferCreateInfo = {
 		VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,    // VkStructureType              sType
 		nullptr,                                      // const void                 * pNext
 		0,                                            // VkFramebufferCreateFlags     flags
 		mRenderPass.getHandle(),                      // VkRenderPass                 renderPass
-		static_cast<uint32_t>(mAttachments.size()),   // uint32_t                     attachmentCount
+		static_cast<VulkanU32>(mAttachments.size()),  // uint32_t                     attachmentCount
 		mAttachments.data(),                          // const VkImageView          * pAttachments
 		mWidth,                                       // uint32_t                     width
 		mHeight,                                      // uint32_t                     height
@@ -71,15 +69,14 @@ bool Framebuffer::init()
 	VkResult result = vkCreateFramebuffer(mDevice.getHandle(), &framebufferCreateInfo, nullptr, &mFramebuffer);
 	if (result != VK_SUCCESS || mFramebuffer == VK_NULL_HANDLE)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not create a framebuffer\n");
+		VULKAN_LOG_ERROR("Could not create framebuffer");
 		return false;
 	}
 
 	return true;
 }
 
-bool Framebuffer::release()
+bool VulkanFramebuffer::release()
 {
 	if (mFramebuffer != VK_NULL_HANDLE)
 	{
@@ -90,5 +87,4 @@ bool Framebuffer::release()
 	return false;
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

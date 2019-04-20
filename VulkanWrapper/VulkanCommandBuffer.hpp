@@ -1,139 +1,120 @@
-#ifndef NU_VULKAN_COMMAND_BUFFER_HPP
-#define NU_VULKAN_COMMAND_BUFFER_HPP
+#pragma once
 
 #include "VulkanFunctions.hpp"
 
-#include <array>
-#include <memory>
-#include <vector>
+VULKAN_NAMESPACE_BEGIN
 
-#include "VulkanBuffer.hpp"
-#include "VulkanImage.hpp"
-#include "VulkanDescriptorSet.hpp"
-
-#include "VulkanGraphicsPipeline.hpp"
-#include "VulkanComputePipeline.hpp"
-
-namespace nu
-{
-namespace Vulkan
-{
-
-enum CommandBufferType
+enum VulkanCommandBufferType
 {
 	Primary = 0,
 	Secondary = 1
 };
 
-struct BufferTransition 
+struct VulkanBufferTransition 
 {
-	Buffer* buffer;
+	VulkanBuffer* buffer;
 	VkAccessFlags currentAccess;
 	VkAccessFlags newAccess;
-	uint32_t currentQueueFamily;
-	uint32_t newQueueFamily;
+	VulkanU32 currentQueueFamily;
+	VulkanU32 newQueueFamily;
 };
 
-struct ImageTransition 
+struct VulkanImageTransition 
 {
 	VkImage image; // TODO : Use Image* instead
 	VkAccessFlags currentAccess;
 	VkAccessFlags newAccess;
 	VkImageLayout currentLayout;
 	VkImageLayout newLayout;
-	uint32_t currentQueueFamily;
-	uint32_t newQueueFamily;
+	VulkanU32 currentQueueFamily;
+	VulkanU32 newQueueFamily;
 	VkImageAspectFlags aspect;
 };
 
-struct VertexBufferParameters
+struct VulkanVertexBufferParameters
 {
-	Buffer* buffer;
+	VulkanBuffer* buffer;
 	VkDeviceSize memoryOffset;
 };
 
-class CommandPool;
-class CommandBuffer
+class VulkanCommandBuffer : public VulkanObject<VulkanObjectType_CommandBuffer>
 {
 	public:
-		typedef std::unique_ptr<CommandBuffer> Ptr;
-
-		~CommandBuffer();
+		~VulkanCommandBuffer();
 
 		bool beginRecording(VkCommandBufferUsageFlags usage, VkCommandBufferInheritanceInfo* secondaryCommandBufferInfo);
 		bool endRecording();
 
-		// TODO : nu::Vulkan::...* instead
+		// TODO : Pass Vulkan...* instead
 		void beginRenderPass(VkRenderPass renderPass, VkFramebuffer framebuffer, VkRect2D renderArea, const std::vector<VkClearValue>& clearsValues, VkSubpassContents subpassContents);
 		void progressToTheNextSubpass(VkSubpassContents subpassContents);
 		void endRenderPass();
 		
-		// TODO : Pass nu::Vulkan::...* instead
+		// TODO : Pass Vulkan...* instead
 		// TODO : Save layout in image
 		void clearColorImage(VkImage image, VkImageLayout imageLayout, const std::vector<VkImageSubresourceRange>& imageSubresourceRanges, VkClearColorValue& clearColor);
 		void clearDepthStencilImage(VkImage image, VkImageLayout imageLayout, const std::vector<VkImageSubresourceRange>& imageSubresourceRanges, VkClearDepthStencilValue& clearValue);
 		void clearRenderPassAttachments(const std::vector<VkClearAttachment>& attachments, const std::vector<VkClearRect>& rects);
 
-		// TODO : Pass nu::Vulkan::...* instead
-		void bindVertexBuffers(uint32_t firstBinding, const std::vector<VertexBufferParameters>& buffersParameters);
-		void bindIndexBuffer(Buffer* buffer, VkDeviceSize memoryOffset, VkIndexType indexType);
-		void bindDescriptorSets(VkPipelineBindPoint pipelineType, VkPipelineLayout pipelineLayout, uint32_t indexForFirstSet, const std::vector<DescriptorSet*>& descriptorsSets, const std::vector<uint32_t>& dynamicOffsets);
-		void bindPipeline(GraphicsPipeline* pipeline);
-		void bindPipeline(ComputePipeline* pipeline);
+		// TODO : Pass Vulkan...* instead
+		void bindVertexBuffers(VulkanU32 firstBinding, const std::vector<VulkanVertexBufferParameters>& buffersParameters);
+		void bindIndexBuffer(VulkanBuffer* buffer, VkDeviceSize memoryOffset, VkIndexType indexType);
+		void bindDescriptorSets(VkPipelineBindPoint pipelineType, VkPipelineLayout pipelineLayout, VulkanU32 indexForFirstSet, const std::vector<VulkanDescriptorSet*>& descriptorsSets, const std::vector<VulkanU32>& dynamicOffsets);
+		void bindPipeline(VulkanGraphicsPipeline* pipeline);
+		void bindPipeline(VulkanComputePipeline* pipeline);
 
-		// TODO : Pass nu::Vulkan::...* instead
-		void provideDataToShadersThroughPushConstants(VkPipelineLayout pipelineLayout, VkShaderStageFlags pipelineStages, uint32_t offset, uint32_t size, void* data);
+		// TODO : Pass Vulkan...* instead
+		void provideDataToShadersThroughPushConstants(VkPipelineLayout pipelineLayout, VkShaderStageFlags pipelineStages, VulkanU32 offset, VulkanU32 size, void* data);
 
-		void setViewportStateDynamically(uint32_t firstViewport, const std::vector<VkViewport>& viewports);
-		void setScissorStateDynamically(uint32_t firstScissor, const std::vector<VkRect2D>& scissors);
+		// TODO : Create our own Viewport/Scissor class
+		void setViewportStateDynamically(VulkanU32 firstViewport, const std::vector<VkViewport>& viewports);
+		void setScissorStateDynamically(VulkanU32 firstScissor, const std::vector<VkRect2D>& scissors);
 		void setLineWidthStateDynamically(float lineWidth);
 		void setDepthBiasStateDynamically(float constantFactor, float clampValue, float slopeFactor);
-		void setBlendConstantsStateDynamically(const std::array<float, 4>& blendConstants);
+		void setBlendConstantsStateDynamically(const float (&blendConstants)[4]);
 
-		// TODO : Pass nu::Vulkan::...* instead
-		void drawGeometry(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance);
-		void drawIndexedGeometry(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset, uint32_t firstInstance);
+		// TODO : Pass Vulkan...* instead
+		void drawGeometry(VulkanU32 vertexCount, VulkanU32 instanceCount, VulkanU32 firstVertex, VulkanU32 firstInstance);
+		void drawIndexedGeometry(VulkanU32 indexCount, VulkanU32 instanceCount, VulkanU32 firstIndex, VulkanU32 vertexOffset, VulkanU32 firstInstance);
 		
-		void dispatchComputeWork(uint32_t xSize, uint32_t ySize, uint32_t zSize);
+		void dispatchComputeWork(VulkanU32 xSize, VulkanU32 ySize, VulkanU32 zSize);
 
-		// TODO : Pass nu::Vulkan::...* instead
-		void executeSecondaryCommandBuffer(const std::vector<CommandBuffer*>& secondaryCommandBuffers);
+		// TODO : Pass Vulkan...* instead
+		// TODO : Store this as members ? Allow creation of secondary from primary ?
+		void executeSecondaryCommandBuffer(const std::vector<VulkanCommandBuffer*>& secondaryCommandBuffers);
 
-		void copyDataBetweenBuffers(Buffer* sourceBuffer, Buffer* destinationBuffer, std::vector<VkBufferCopy> regions);
-		void copyDataFromBufferToImage(Buffer* sourceBuffer, Image* destinationImage, VkImageLayout imageLayout, std::vector<VkBufferImageCopy> regions);
-		void copyDataFromImageToBuffer(Image* sourceImage, VkImageLayout imageLayout, Buffer* destinationBuffer, std::vector<VkBufferImageCopy> regions);
+		// TODO : Save ImageLayout in Image ?
+		void copyDataBetweenBuffers(VulkanBuffer* sourceBuffer, VulkanBuffer* destinationBuffer, std::vector<VkBufferCopy> regions);
+		void copyDataFromBufferToImage(VulkanBuffer* sourceBuffer, VulkanImage* destinationImage, VkImageLayout imageLayout, std::vector<VkBufferImageCopy> regions);
+		void copyDataFromImageToBuffer(VulkanImage* sourceImage, VkImageLayout imageLayout, VulkanBuffer* destinationBuffer, std::vector<VkBufferImageCopy> regions);
 
-		void setBufferMemoryBarrier(VkPipelineStageFlags generatingStages, VkPipelineStageFlags consumingStages, std::vector<BufferTransition> bufferTransitions);
-		void setImageMemoryBarrier(VkPipelineStageFlags generatingStages, VkPipelineStageFlags consumingStages, std::vector<ImageTransition> imageTransitions);
+		void setBufferMemoryBarrier(VkPipelineStageFlags generatingStages, VkPipelineStageFlags consumingStages, const std::vector<VulkanBufferTransition>& bufferTransitions);
+		void setImageMemoryBarrier(VkPipelineStageFlags generatingStages, VkPipelineStageFlags consumingStages, const std::vector<VulkanImageTransition>& imageTransitions);
 
 		bool reset();
 
 		bool isRecording() const;
 
-		const CommandPool& getCommandPool() const;
+		const VulkanCommandPool& getCommandPool() const;
 
-		const CommandBufferType& getType() const;
+		const VulkanCommandBufferType& getType() const;
 
 		bool isInitialized() const;
 		const VkCommandBuffer& getHandle() const;
 		const VkCommandPool& getCommandPoolHandle() const;
+		// TODO : getCommandPool() ?
 
 	private:
-		friend class CommandPool;
-		CommandBuffer(CommandPool& commandPool, CommandBufferType type);
+		friend class VulkanCommandPool;
+		VulkanCommandBuffer(VulkanCommandPool& commandPool, VulkanCommandBufferType type);
 
 		bool init();
 		bool release();
 
 		VkCommandBuffer mCommandBuffer;
-		CommandPool& mCommandPool;
-		CommandBufferType mType;
+		VulkanCommandPool& mCommandPool;
+		VulkanCommandBufferType mType;
 		bool mRecording;
-
-		friend class CommandPool;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_COMMAND_BUFFER_HPP
+VULKAN_NAMESPACE_END

@@ -1,5 +1,4 @@
-#ifndef ADDING_SHADOWS_HPP
-#define ADDING_SHADOWS_HPP
+#pragma once
 
 #include "../../CookBook/SampleBase.hpp"
 
@@ -24,19 +23,19 @@ class AddingShadows : public SampleBase
 		std::array<nu::Mesh, 2> mScene;
 		nu::VertexBuffer::Ptr mVertexBuffer;
 
-		nu::Vulkan::ImageHelper::Ptr mShadowMap;
-		nu::Vulkan::Framebuffer::Ptr mShadowMapFramebuffer;
+		VulkanImageHelperPtr mShadowMap;
+		VulkanFramebufferPtr mShadowMapFramebuffer;
 
-		nu::Vulkan::DescriptorSetLayout::Ptr mDescriptorSetLayout;
-		nu::Vulkan::DescriptorPool::Ptr mDescriptorPool;
-		std::vector<nu::Vulkan::DescriptorSet::Ptr> mDescriptorSets;
+		VulkanDescriptorSetLayoutPtr mDescriptorSetLayout;
+		VulkanDescriptorPoolPtr mDescriptorPool;
+		std::vector<VulkanDescriptorSetPtr> mDescriptorSets;
 
-		nu::Vulkan::PipelineLayout::Ptr mPipelineLayout;
+		VulkanPipelineLayoutPtr mPipelineLayout;
 
-		nu::Vulkan::RenderPass::Ptr mShadowRenderPass;
-		nu::Vulkan::RenderPass::Ptr mSceneRenderPass;
+		VulkanRenderPassPtr mShadowRenderPass;
+		VulkanRenderPassPtr mSceneRenderPass;
 
-		std::vector<nu::Vulkan::GraphicsPipeline::Ptr> mPipelines;
+		std::vector<VulkanGraphicsPipelinePtr> mPipelines;
 		enum PipelineNames
 		{
 			ShadowPipeline = 0,
@@ -49,7 +48,7 @@ class AddingShadows : public SampleBase
 
 		uint32_t mFrameIndex = 0;
 
-		virtual bool initialize(nu::Vulkan::WindowParameters windowParameters) override
+		virtual bool initialize(VulkanWindowParameters windowParameters) override
 		{
 			if (!initializeVulkan(windowParameters, nullptr))
 			{
@@ -57,24 +56,24 @@ class AddingShadows : public SampleBase
 			}
 
 			// Vertex data
-			if (!mScene[0].loadFromFile("../Data/Models/knot.obj", true, false, false, true))
+			if (!mScene[0].loadFromFile("../../Data/Models/knot.obj", true, false, false, true))
 			{
 				return false;
 			}
-			if (!mScene[1].loadFromFile("../Data/Models/plane.obj", true, false, false, false))
+			if (!mScene[1].loadFromFile("../../Data/Models/plane.obj", true, false, false, false))
 			{
 				return false;
 			}
 			std::vector<float> vertexData(mScene[0].data);
 			vertexData.insert(vertexData.end(), mScene[1].data.begin(), mScene[1].data.end());
-			mVertexBuffer = nu::VertexBuffer::createVertexBuffer(*mLogicalDevice, (uint32_t)sizeof(vertexData[0]) * (uint32_t)vertexData.size());
-			if (!mVertexBuffer || !mVertexBuffer->updateAndWait((uint32_t)sizeof(vertexData[0]) * (uint32_t)vertexData.size(), &vertexData[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue.get(), {}, 50000000))
+			mVertexBuffer = nu::VertexBuffer::createVertexBuffer(VulkanDevice::get(), (uint32_t)sizeof(vertexData[0]) * (uint32_t)vertexData.size());
+			if (!mVertexBuffer || !mVertexBuffer->updateAndWait((uint32_t)sizeof(vertexData[0]) * (uint32_t)vertexData.size(), &vertexData[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue, {}, 50000000))
 			{
 				return false;
 			}
 
 			// Staging buffer & Uniform buffer
-			mUniformBuffer = nu::UniformBuffer::createUniformBuffer(*mLogicalDevice, 3 * 16 * sizeof(float));
+			mUniformBuffer = nu::UniformBuffer::createUniformBuffer(VulkanDevice::get(), 3 * 16 * sizeof(float));
 			if (mUniformBuffer == nullptr)
 			{
 				return false;
@@ -90,7 +89,7 @@ class AddingShadows : public SampleBase
 			}
 
 			// Image in which shadow map will be stored
-			mShadowMap = nu::Vulkan::ImageHelper::createCombinedImageSampler(*mLogicalDevice, VK_IMAGE_TYPE_2D, mSwapchain->getDepthFormat(), { 512, 512, 1 }, 1, 1,
+			mShadowMap = VulkanImageHelper::createCombinedImageSampler(VulkanDevice::get(), VK_IMAGE_TYPE_2D, mSwapchain->getDepthFormat(), { 512, 512, 1 }, 1, 1,
 				VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_DEPTH_BIT, VK_FILTER_LINEAR,
 				VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
 				VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, 0.0f, 0.0f, 1.0f, false, 1.0f, false, VK_COMPARE_OP_ALWAYS, VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
@@ -119,7 +118,7 @@ class AddingShadows : public SampleBase
 					nullptr                                     // const VkSampler    * pImmutableSamplers
 				}
 			};
-			mDescriptorSetLayout = mLogicalDevice->createDescriptorSetLayout(descriptorSetLayoutBindings);
+			mDescriptorSetLayout = VulkanDevice::get().createDescriptorSetLayout(descriptorSetLayoutBindings);
 			if (mDescriptorSetLayout == nullptr || !mDescriptorSetLayout->isInitialized())
 			{
 				return false;
@@ -135,7 +134,7 @@ class AddingShadows : public SampleBase
 					1                                           // uint32_t             descriptorCount
 				}
 			};
-			mDescriptorPool = mLogicalDevice->createDescriptorPool(false, 1, descriptorPoolSizes);
+			mDescriptorPool = VulkanDevice::get().createDescriptorPool(false, 1, descriptorPoolSizes);
 			if (mDescriptorPool == nullptr || !mDescriptorPool->isInitialized())
 			{
 				return false;
@@ -152,7 +151,7 @@ class AddingShadows : public SampleBase
 			// TODO : Update more than one at once
 			mUniformBuffer->updateDescriptor(mDescriptorSets[0].get(), 0, 0);
 
-			nu::Vulkan::ImageDescriptorInfo imageDescriptorUpdate = {
+			VulkanImageDescriptorInfo imageDescriptorUpdate = {
 				mDescriptorSets[0]->getHandle(),                  // VkDescriptorSet                      TargetDescriptorSet
 				1,                                                // uint32_t                             TargetDescriptorBinding
 				0,                                                // uint32_t                             TargetArrayElement
@@ -166,11 +165,11 @@ class AddingShadows : public SampleBase
 				}
 			};
 
-			mLogicalDevice->updateDescriptorSets({ imageDescriptorUpdate }, {  }, {}, {});
+			VulkanDevice::get().updateDescriptorSets({ imageDescriptorUpdate }, {  }, {}, {});
 
 			// Shadow map render pass - for rendering into depth attachment
 
-			mShadowRenderPass = mLogicalDevice->initRenderPass();
+			mShadowRenderPass = VulkanDevice::get().initRenderPass();
 
 			mShadowRenderPass->addAttachment({
 				0,                                                // VkAttachmentDescriptionFlags     flags
@@ -218,7 +217,7 @@ class AddingShadows : public SampleBase
 			}
 
 			// Render pass
-			mSceneRenderPass = mLogicalDevice->initRenderPass();
+			mSceneRenderPass = VulkanDevice::get().initRenderPass();
 			mSceneRenderPass->addAttachment({
 				0,                                                // VkAttachmentDescriptionFlags     flags
 				mSwapchain->getFormat(),                          // VkFormat                         format
@@ -268,29 +267,29 @@ class AddingShadows : public SampleBase
 			}
 
 			// Graphics pipeline
-			mPipelineLayout = mLogicalDevice->createPipelineLayout({ mDescriptorSetLayout->getHandle() }, { { VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 4 } });
+			mPipelineLayout = VulkanDevice::get().createPipelineLayout({ mDescriptorSetLayout->getHandle() }, { { VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 4 } });
 			if (mPipelineLayout == nullptr || !mPipelineLayout->isInitialized())
 			{
 				return false;
 			}
 
 			mPipelines.resize(PipelineNames::Count);
-			mPipelines[PipelineNames::ScenePipeline] = mLogicalDevice->initGraphicsPipeline(*mPipelineLayout, *mSceneRenderPass, nullptr);
-			mPipelines[PipelineNames::ShadowPipeline] = mLogicalDevice->initGraphicsPipeline(*mPipelineLayout, *mShadowRenderPass, nullptr);
+			mPipelines[PipelineNames::ScenePipeline] = VulkanDevice::get().initGraphicsPipeline(*mPipelineLayout, *mSceneRenderPass, nullptr);
+			mPipelines[PipelineNames::ShadowPipeline] = VulkanDevice::get().initGraphicsPipeline(*mPipelineLayout, *mShadowRenderPass, nullptr);
 
-			nu::Vulkan::GraphicsPipeline* scenePipeline = mPipelines[PipelineNames::ScenePipeline].get();
+			VulkanGraphicsPipeline* scenePipeline = mPipelines[PipelineNames::ScenePipeline].get();
 
 			scenePipeline->setSubpass(0);
 
-			nu::Vulkan::ShaderModule::Ptr vertexShaderModule = mLogicalDevice->initShaderModule();
-			if (vertexShaderModule == nullptr || !vertexShaderModule->loadFromFile("../Examples/5 - Adding Shadows/scene.vert.spv"))
+			VulkanShaderModulePtr vertexShaderModule = VulkanDevice::get().initShaderModule();
+			if (vertexShaderModule == nullptr || !vertexShaderModule->loadFromFile("../../Examples/5 - Adding Shadows/scene.vert.spv"))
 			{
 				return false;
 			}
 			vertexShaderModule->setVertexEntrypointName("main");
 
-			nu::Vulkan::ShaderModule::Ptr fragmentShaderModule = mLogicalDevice->initShaderModule();
-			if (fragmentShaderModule == nullptr || !fragmentShaderModule->loadFromFile("../Examples/5 - Adding Shadows/scene.frag.spv"))
+			VulkanShaderModulePtr fragmentShaderModule = VulkanDevice::get().initShaderModule();
+			if (fragmentShaderModule == nullptr || !fragmentShaderModule->loadFromFile("../../Examples/5 - Adding Shadows/scene.frag.spv"))
 			{
 				return false;
 			}
@@ -332,12 +331,12 @@ class AddingShadows : public SampleBase
 
 
 
-			nu::Vulkan::GraphicsPipeline* shadowPipeline = mPipelines[PipelineNames::ShadowPipeline].get();
+			VulkanGraphicsPipeline* shadowPipeline = mPipelines[PipelineNames::ShadowPipeline].get();
 
 			shadowPipeline->setSubpass(0);
 
-			nu::Vulkan::ShaderModule::Ptr shadowVertexShaderModule = mLogicalDevice->initShaderModule();
-			if (vertexShaderModule == nullptr || !shadowVertexShaderModule->loadFromFile("../Examples/5 - Adding Shadows/shadow.vert.spv"))
+			VulkanShaderModulePtr shadowVertexShaderModule = VulkanDevice::get().initShaderModule();
+			if (vertexShaderModule == nullptr || !shadowVertexShaderModule->loadFromFile("../../Examples/5 - Adding Shadows/shadow.vert.spv"))
 			{
 				return false;
 			}
@@ -376,7 +375,7 @@ class AddingShadows : public SampleBase
 
 		virtual bool draw() override
 		{
-			auto prepareFrame = [&](nu::Vulkan::CommandBuffer* commandBuffer, uint32_t swapchainImageIndex, nu::Vulkan::Framebuffer* framebuffer)
+			auto prepareFrame = [&](VulkanCommandBuffer* commandBuffer, uint32_t swapchainImageIndex, VulkanFramebuffer* framebuffer)
 			{
 				if (!commandBuffer->beginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, nullptr))
 				{
@@ -399,7 +398,7 @@ class AddingShadows : public SampleBase
 				// Image transition before drawing
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex())
 				{
-					nu::Vulkan::ImageTransition imageTransitionBeforeDrawing = {
+					VulkanImageTransition imageTransitionBeforeDrawing = {
 						mSwapchain->getImageHandle(swapchainImageIndex), // VkImage             image
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        currentAccess
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        newAccess
@@ -451,7 +450,7 @@ class AddingShadows : public SampleBase
 
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex())
 				{
-					nu::Vulkan::ImageTransition imageTransitionBeforePresent = {
+					VulkanImageTransition imageTransitionBeforePresent = {
 						mSwapchain->getImageHandle(swapchainImageIndex),  // VkImage            image
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        currentAccess
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        newAccess
@@ -584,5 +583,3 @@ class AddingShadows : public SampleBase
 			return true;
 		}
 };
-
-#endif // ADDING_SHADOWS_HPP

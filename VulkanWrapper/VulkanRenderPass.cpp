@@ -1,20 +1,18 @@
 #include "VulkanRenderPass.hpp"
 
 #include "VulkanDevice.hpp"
+#include "VulkanFramebuffer.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-RenderPass::~RenderPass()
+VulkanRenderPass::~VulkanRenderPass()
 {
-	ObjectTracker::unregisterObject(ObjectType_RenderPass);
-
 	destroy();
+
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-void RenderPass::addAttachment(VkFormat format)
+void VulkanRenderPass::addAttachment(VkFormat format)
 {
 	VkAttachmentDescription attachmentDescription = {
 		0,                                                // VkAttachmentDescriptionFlags     flags
@@ -31,7 +29,7 @@ void RenderPass::addAttachment(VkFormat format)
 	mAttachmentDescriptions.push_back(attachmentDescription);
 }
 
-void RenderPass::addAttachment(VkAttachmentDescriptionFlags flags, VkFormat format, VkSampleCountFlagBits samples, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp, VkAttachmentLoadOp stencilLoadOp, VkAttachmentStoreOp stencilStoreOp, VkImageLayout initialLayout, VkImageLayout finalLayout)
+void VulkanRenderPass::addAttachment(VkAttachmentDescriptionFlags flags, VkFormat format, VkSampleCountFlagBits samples, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp, VkAttachmentLoadOp stencilLoadOp, VkAttachmentStoreOp stencilStoreOp, VkImageLayout initialLayout, VkImageLayout finalLayout)
 {
 	VkAttachmentDescription attachmentDescription = {
 		flags,                                            // VkAttachmentDescriptionFlags     flags
@@ -48,57 +46,57 @@ void RenderPass::addAttachment(VkAttachmentDescriptionFlags flags, VkFormat form
 	mAttachmentDescriptions.push_back(attachmentDescription);
 }
 
-void RenderPass::addAttachment(const VkAttachmentDescription& attachmentDescription)
+void VulkanRenderPass::addAttachment(const VkAttachmentDescription& attachmentDescription)
 {
 	mAttachmentDescriptions.push_back(attachmentDescription);
 }
 
-void RenderPass::setAttachmentFlags(VkAttachmentDescriptionFlags flags)
+void VulkanRenderPass::setAttachmentFlags(VkAttachmentDescriptionFlags flags)
 {
 	mAttachmentDescriptions.back().flags = flags;
 }
 
-void RenderPass::setAttachmentFormat(VkFormat format)
+void VulkanRenderPass::setAttachmentFormat(VkFormat format)
 {
 	mAttachmentDescriptions.back().format = format;
 }
 
-void RenderPass::setAttachmentSamples(VkSampleCountFlagBits samples)
+void VulkanRenderPass::setAttachmentSamples(VkSampleCountFlagBits samples)
 {
 	mAttachmentDescriptions.back().samples = samples;
 }
 
-void RenderPass::setAttachmentLoadOp(VkAttachmentLoadOp loadOp)
+void VulkanRenderPass::setAttachmentLoadOp(VkAttachmentLoadOp loadOp)
 {
 	mAttachmentDescriptions.back().loadOp = loadOp;
 }
 
-void RenderPass::setAttachmentStoreOp(VkAttachmentStoreOp storeOp)
+void VulkanRenderPass::setAttachmentStoreOp(VkAttachmentStoreOp storeOp)
 {
 	mAttachmentDescriptions.back().storeOp = storeOp;
 }
 
-void RenderPass::setAttachmentStencilLoadOp(VkAttachmentLoadOp stencilLoadOp)
+void VulkanRenderPass::setAttachmentStencilLoadOp(VkAttachmentLoadOp stencilLoadOp)
 {
 	mAttachmentDescriptions.back().stencilLoadOp = stencilLoadOp;
 }
 
-void RenderPass::setAttachmentStencilStoreOp(VkAttachmentStoreOp stencilStoreOp)
+void VulkanRenderPass::setAttachmentStencilStoreOp(VkAttachmentStoreOp stencilStoreOp)
 {
 	mAttachmentDescriptions.back().stencilStoreOp = stencilStoreOp;
 }
 
-void RenderPass::setAttachmentInitialLayout(VkImageLayout initialLayout)
+void VulkanRenderPass::setAttachmentInitialLayout(VkImageLayout initialLayout)
 {
 	mAttachmentDescriptions.back().initialLayout = initialLayout;
 }
 
-void RenderPass::setAttachmentFinalLayout(VkImageLayout finalLayout)
+void VulkanRenderPass::setAttachmentFinalLayout(VkImageLayout finalLayout)
 {
 	mAttachmentDescriptions.back().finalLayout = finalLayout;
 }
 
-void RenderPass::addSubpass(VkPipelineBindPoint bindPoint)
+void VulkanRenderPass::addSubpass(VkPipelineBindPoint bindPoint)
 {
 	VkSubpassDescription subpassDescription = {
 		0,                         // VkSubpassDescriptionFlags        flags
@@ -116,9 +114,9 @@ void RenderPass::addSubpass(VkPipelineBindPoint bindPoint)
 	mSubpassDescriptions.push_back(subpassDescription);
 }
 
-void RenderPass::addColorAttachmentToSubpass(uint32_t attachment, VkImageLayout imageLayout)
+void VulkanRenderPass::addColorAttachmentToSubpass(uint32_t attachment, VkImageLayout imageLayout)
 {
-	assert(mNumColorAttachmentReferences < MaxColorAttachmentReferences);
+	VULKAN_ASSERT(mNumColorAttachmentReferences < MaxColorAttachmentReferences);
 
 	mColorAttachmentReferences[mNumColorAttachmentReferences] = VkAttachmentReference {
 		attachment,      // uint32_t                             attachment
@@ -135,9 +133,9 @@ void RenderPass::addColorAttachmentToSubpass(uint32_t attachment, VkImageLayout 
 	mNumColorAttachmentReferences++;
 }
 
-void RenderPass::addInputAttachmentToSubpass(uint32_t attachment, VkImageLayout imageLayout)
+void VulkanRenderPass::addInputAttachmentToSubpass(uint32_t attachment, VkImageLayout imageLayout)
 {
-	assert(mNumInputAttachmentReferences < MaxInputAttachmentReferences);
+	VULKAN_ASSERT(mNumInputAttachmentReferences < MaxInputAttachmentReferences);
 
 	mInputAttachmentReferences[mNumInputAttachmentReferences] = VkAttachmentReference{
 		attachment,      // uint32_t                             attachment
@@ -154,7 +152,7 @@ void RenderPass::addInputAttachmentToSubpass(uint32_t attachment, VkImageLayout 
 	mNumInputAttachmentReferences++;
 }
 
-void RenderPass::addDepthStencilAttachmentToSubpass(uint32_t attachment, VkImageLayout imageLayout)
+void VulkanRenderPass::addDepthStencilAttachmentToSubpass(uint32_t attachment, VkImageLayout imageLayout)
 {
 	VkAttachmentReference attachmentReference = {
 		attachment,      // uint32_t                             attachment
@@ -165,7 +163,7 @@ void RenderPass::addDepthStencilAttachmentToSubpass(uint32_t attachment, VkImage
 	mSubpassDescriptions.back().pDepthStencilAttachment = mDepthStencilAttachmentReference.get();
 }
 
-void RenderPass::addDependency(uint32_t srcSubpass, uint32_t dstSubpass)
+void VulkanRenderPass::addDependency(uint32_t srcSubpass, uint32_t dstSubpass)
 {
 	VkSubpassDependency subpassDependency = {
 		srcSubpass,                                     // uint32_t                   srcSubpass
@@ -180,7 +178,7 @@ void RenderPass::addDependency(uint32_t srcSubpass, uint32_t dstSubpass)
 	mSubpassDependencies.push_back(subpassDependency);
 }
 
-void RenderPass::addDependency(uint32_t srcSubpass, uint32_t dstSubpass, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, VkDependencyFlags flags)
+void VulkanRenderPass::addDependency(uint32_t srcSubpass, uint32_t dstSubpass, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, VkDependencyFlags flags)
 {
 	VkSubpassDependency subpassDependency = {
 		srcSubpass,                                     // uint32_t                   srcSubpass
@@ -195,47 +193,47 @@ void RenderPass::addDependency(uint32_t srcSubpass, uint32_t dstSubpass, VkPipel
 	mSubpassDependencies.push_back(subpassDependency);
 }
 
-void RenderPass::addDependency(const VkSubpassDependency& subpassDependency)
+void VulkanRenderPass::addDependency(const VkSubpassDependency& subpassDependency)
 {
 	mSubpassDependencies.push_back(subpassDependency);
 }
 
-void RenderPass::setDependencySrcSubpass(uint32_t srcSubpass)
+void VulkanRenderPass::setDependencySrcSubpass(uint32_t srcSubpass)
 {
 	mSubpassDependencies.back().srcSubpass = srcSubpass;
 }
 
-void RenderPass::setDependencyDstSubpass(uint32_t dstSubpass)
+void VulkanRenderPass::setDependencyDstSubpass(uint32_t dstSubpass)
 {
 	mSubpassDependencies.back().dstSubpass = dstSubpass;
 }
 
-void RenderPass::setDependencySrcStageMask(VkPipelineStageFlags srcStageMask)
+void VulkanRenderPass::setDependencySrcStageMask(VkPipelineStageFlags srcStageMask)
 {
 	mSubpassDependencies.back().srcStageMask = srcStageMask;
 }
 
-void RenderPass::setDependencyDstStageMask(VkPipelineStageFlags dstStageMask)
+void VulkanRenderPass::setDependencyDstStageMask(VkPipelineStageFlags dstStageMask)
 {
 	mSubpassDependencies.back().dstStageMask = dstStageMask;
 }
 
-void RenderPass::setDependencySrcAccessMask(VkAccessFlags srcAccessMask)
+void VulkanRenderPass::setDependencySrcAccessMask(VkAccessFlags srcAccessMask)
 {
 	mSubpassDependencies.back().srcAccessMask = srcAccessMask;
 }
 
-void RenderPass::setDependencyDstAccessMask(VkAccessFlags dstAccessMask)
+void VulkanRenderPass::setDependencyDstAccessMask(VkAccessFlags dstAccessMask)
 {
 	mSubpassDependencies.back().dstAccessMask = dstAccessMask;
 }
 
-void RenderPass::setDependencyFlags(VkDependencyFlags dependencyFlags)
+void VulkanRenderPass::setDependencyFlags(VkDependencyFlags dependencyFlags)
 {
 	mSubpassDependencies.back().dependencyFlags = dependencyFlags;
 }
 
-bool RenderPass::create()
+bool VulkanRenderPass::create()
 {
 	VkRenderPassCreateInfo renderPassCreateInfo = {
 		VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,                // VkStructureType                    sType
@@ -249,7 +247,7 @@ bool RenderPass::create()
 		mSubpassDependencies.data()                               // const VkSubpassDependency        * pDependencies
 	};
 
-	VkResult result = vkCreateRenderPass(mDevice.getHandle(), &renderPassCreateInfo, nullptr, &mRenderPass);
+	VkResult result = vkCreateRenderPass(getDeviceHandle(), &renderPassCreateInfo, nullptr, &mRenderPass);
 	if (result != VK_SUCCESS || mRenderPass == VK_NULL_HANDLE)
 	{
 		// TODO : Use Numea System Log
@@ -259,35 +257,34 @@ bool RenderPass::create()
 	return true;
 }
 
-bool RenderPass::destroy()
+bool VulkanRenderPass::destroy()
 {
 	if (mRenderPass != VK_NULL_HANDLE)
 	{
-		vkDestroyRenderPass(mDevice.getHandle(), mRenderPass, nullptr);
+		vkDestroyRenderPass(getDeviceHandle(), mRenderPass, nullptr);
 		mRenderPass = VK_NULL_HANDLE;
 		return true;
 	}
 	return false;
 }
 
-bool RenderPass::isCreated() const
+bool VulkanRenderPass::isCreated() const
 {
 	return mRenderPass != VK_NULL_HANDLE;
 }
 
-const VkRenderPass& RenderPass::getHandle() const
+const VkRenderPass& VulkanRenderPass::getHandle() const
 {
 	return mRenderPass;
 }
 
-Framebuffer::Ptr RenderPass::createFramebuffer(const std::vector<VkImageView>& attachments, uint32_t width, uint32_t height, uint32_t layers)
+VulkanFramebufferPtr VulkanRenderPass::createFramebuffer(const std::vector<VkImageView>& attachments, uint32_t width, uint32_t height, uint32_t layers)
 {
-	return Framebuffer::createFramebuffer(mDevice, *this, attachments, width, height, layers);
+	return VulkanFramebuffer::createFramebuffer(getDevice(), *this, attachments, width, height, layers);
 }
 
-RenderPass::RenderPass(Device& device)
-	: mDevice(device)
-	, mRenderPass(VK_NULL_HANDLE)
+VulkanRenderPass::VulkanRenderPass()
+	: mRenderPass(VK_NULL_HANDLE)
 	, mAttachmentDescriptions()
 	, mSubpassDescriptions()
 	, mSubpassDependencies()
@@ -297,8 +294,7 @@ RenderPass::RenderPass(Device& device)
 	, mNumInputAttachmentReferences(0)
 	, mDepthStencilAttachmentReference(nullptr)
 {
-	ObjectTracker::registerObject(ObjectType_RenderPass);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

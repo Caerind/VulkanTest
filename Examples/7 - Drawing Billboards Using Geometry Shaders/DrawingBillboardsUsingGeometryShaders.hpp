@@ -1,5 +1,4 @@
-#ifndef DRAWING_BILLBOARDS_USING_GEOMETRY_SHADERS_HPP
-#define DRAWING_BILLBOARDS_USING_GEOMETRY_SHADERS_HPP
+#pragma once
 
 #include "../../CookBook/SampleBase.hpp"
 
@@ -21,13 +20,13 @@ class DrawingBillboardsUsingGeometryShaders : public SampleBase
 		nu::UniformBuffer::Ptr mUniformBuffer;
 		nu::StagingBuffer::Ptr mStagingBuffer;
 
-		nu::Vulkan::DescriptorSetLayout::Ptr mDescriptorSetLayout;
-		nu::Vulkan::DescriptorPool::Ptr mDescriptorPool;
-		std::vector<nu::Vulkan::DescriptorSet::Ptr> mDescriptorSets;
+		VulkanDescriptorSetLayoutPtr mDescriptorSetLayout;
+		VulkanDescriptorPoolPtr mDescriptorPool;
+		std::vector<VulkanDescriptorSetPtr> mDescriptorSets;
 
-		nu::Vulkan::RenderPass::Ptr mRenderPass;
-		nu::Vulkan::PipelineLayout::Ptr mPipelineLayout; 
-		std::vector<nu::Vulkan::GraphicsPipeline::Ptr> mPipelines;
+		VulkanRenderPassPtr mRenderPass;
+		VulkanPipelineLayoutPtr mPipelineLayout; 
+		std::vector<VulkanGraphicsPipelinePtr> mPipelines;
 		enum PipelineNames
 		{
 			BillboardsPipeline = 0,
@@ -36,7 +35,7 @@ class DrawingBillboardsUsingGeometryShaders : public SampleBase
 
 		uint32_t mFrameIndex = 0;
 
-		virtual bool initialize(nu::Vulkan::WindowParameters windowParameters) override 
+		virtual bool initialize(VulkanWindowParameters windowParameters) override 
 		{
 			VkPhysicalDeviceFeatures deviceFeatures = {};
 			deviceFeatures.geometryShader = true;
@@ -47,18 +46,18 @@ class DrawingBillboardsUsingGeometryShaders : public SampleBase
 			}
 
 			// Vertex data
-			if (!mBillboards.loadFromFile("../Data/Models/ice_low.obj", false, false, false, true))
+			if (!mBillboards.loadFromFile("../../Data/Models/ice_low.obj", false, false, false, true))
 			{
 				return false;
 			}
-			mBillboardsVertexBuffer = nu::VertexBuffer::createVertexBuffer(*mLogicalDevice, mBillboards.size());
-			if (!mBillboardsVertexBuffer || !mBillboardsVertexBuffer->updateAndWait(mBillboards.size(), &mBillboards.data[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue.get(), {}, 50000000))
+			mBillboardsVertexBuffer = nu::VertexBuffer::createVertexBuffer(VulkanDevice::get(), mBillboards.size());
+			if (!mBillboardsVertexBuffer || !mBillboardsVertexBuffer->updateAndWait(mBillboards.size(), &mBillboards.data[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue, {}, 50000000))
 			{
 				return false;
 			}
 
 			// Staging buffer & Uniform buffer
-			mUniformBuffer = nu::UniformBuffer::createUniformBuffer(*mLogicalDevice, 2 * 16 * sizeof(float));
+			mUniformBuffer = nu::UniformBuffer::createUniformBuffer(VulkanDevice::get(), 2 * 16 * sizeof(float));
 			if (mUniformBuffer == nullptr)
 			{
 				return false;
@@ -83,7 +82,7 @@ class DrawingBillboardsUsingGeometryShaders : public SampleBase
 					nullptr                                     // const VkSampler    * pImmutableSamplers
 				}
 			};
-			mDescriptorSetLayout = mLogicalDevice->createDescriptorSetLayout(descriptorSetLayoutBindings);
+			mDescriptorSetLayout = VulkanDevice::get().createDescriptorSetLayout(descriptorSetLayoutBindings);
 			if (mDescriptorSetLayout == nullptr || !mDescriptorSetLayout->isInitialized())
 			{
 				return false;
@@ -95,7 +94,7 @@ class DrawingBillboardsUsingGeometryShaders : public SampleBase
 					1                                           // uint32_t             descriptorCount
 				}
 			};
-			mDescriptorPool = mLogicalDevice->createDescriptorPool(false, 1, descriptorPoolSizes);
+			mDescriptorPool = VulkanDevice::get().createDescriptorPool(false, 1, descriptorPoolSizes);
 			if (mDescriptorPool == nullptr || !mDescriptorPool->isInitialized())
 			{
 				return false;
@@ -114,7 +113,7 @@ class DrawingBillboardsUsingGeometryShaders : public SampleBase
 			mUniformBuffer->updateDescriptor(mDescriptorSets[0].get(), 0, 0);
 
 			// Render pass
-			mRenderPass = mLogicalDevice->initRenderPass();
+			mRenderPass = VulkanDevice::get().initRenderPass();
 
 			mRenderPass->addAttachment(mSwapchain->getFormat());
 			mRenderPass->setAttachmentLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR);
@@ -155,35 +154,35 @@ class DrawingBillboardsUsingGeometryShaders : public SampleBase
 
 			// Graphics pipeline
 
-			mPipelineLayout = mLogicalDevice->createPipelineLayout({ mDescriptorSetLayout->getHandle() }, {});
+			mPipelineLayout = VulkanDevice::get().createPipelineLayout({ mDescriptorSetLayout->getHandle() }, {});
 			if (mPipelineLayout == nullptr || !mPipelineLayout->isInitialized())
 			{
 				return false;
 			}
 
 			mPipelines.resize(PipelineNames::Count);
-			mPipelines[PipelineNames::BillboardsPipeline] = mLogicalDevice->initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
+			mPipelines[PipelineNames::BillboardsPipeline] = VulkanDevice::get().initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
 
-			nu::Vulkan::GraphicsPipeline* billboardsPipeline = mPipelines[PipelineNames::BillboardsPipeline].get();
+			VulkanGraphicsPipeline* billboardsPipeline = mPipelines[PipelineNames::BillboardsPipeline].get();
 
 			billboardsPipeline->setSubpass(0);
 
-			nu::Vulkan::ShaderModule::Ptr billboardsVertexShaderModule = mLogicalDevice->initShaderModule();
-			if (billboardsVertexShaderModule == nullptr || !billboardsVertexShaderModule->loadFromFile("../Examples/7 - Drawing Billboards Using Geometry Shaders/shader.vert.spv"))
+			VulkanShaderModulePtr billboardsVertexShaderModule = VulkanDevice::get().initShaderModule();
+			if (billboardsVertexShaderModule == nullptr || !billboardsVertexShaderModule->loadFromFile("../../Examples/7 - Drawing Billboards Using Geometry Shaders/shader.vert.spv"))
 			{
 				return false;
 			}
 			billboardsVertexShaderModule->setVertexEntrypointName("main");
 
-			nu::Vulkan::ShaderModule::Ptr billboardsGeometryShaderModule = mLogicalDevice->initShaderModule();
-			if (billboardsGeometryShaderModule == nullptr || !billboardsGeometryShaderModule->loadFromFile("../Examples/7 - Drawing Billboards Using Geometry Shaders/shader.geom.spv"))
+			VulkanShaderModulePtr billboardsGeometryShaderModule = VulkanDevice::get().initShaderModule();
+			if (billboardsGeometryShaderModule == nullptr || !billboardsGeometryShaderModule->loadFromFile("../../Examples/7 - Drawing Billboards Using Geometry Shaders/shader.geom.spv"))
 			{
 				return false;
 			}
 			billboardsGeometryShaderModule->setGeometryEntrypointName("main");
 
-			nu::Vulkan::ShaderModule::Ptr billboardsFragmentShaderModule = mLogicalDevice->initShaderModule();
-			if (billboardsFragmentShaderModule == nullptr || !billboardsFragmentShaderModule->loadFromFile("../Examples/7 - Drawing Billboards Using Geometry Shaders/shader.frag.spv"))
+			VulkanShaderModulePtr billboardsFragmentShaderModule = VulkanDevice::get().initShaderModule();
+			if (billboardsFragmentShaderModule == nullptr || !billboardsFragmentShaderModule->loadFromFile("../../Examples/7 - Drawing Billboards Using Geometry Shaders/shader.frag.spv"))
 			{
 				return false;
 			}
@@ -214,7 +213,7 @@ class DrawingBillboardsUsingGeometryShaders : public SampleBase
 
 		virtual bool draw() override 
 		{
-			auto prepareFrame = [&](nu::Vulkan::CommandBuffer* commandBuffer, uint32_t swapchainImageIndex, nu::Vulkan::Framebuffer* framebuffer) 
+			auto prepareFrame = [&](VulkanCommandBuffer* commandBuffer, uint32_t swapchainImageIndex, VulkanFramebuffer* framebuffer) 
 			{
 				if (!commandBuffer->beginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, nullptr))
 				{
@@ -228,7 +227,7 @@ class DrawingBillboardsUsingGeometryShaders : public SampleBase
 
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex()) 
 				{
-					nu::Vulkan::ImageTransition imageTransitionBeforeDrawing = {
+					VulkanImageTransition imageTransitionBeforeDrawing = {
 						mSwapchain->getImageHandle(swapchainImageIndex), // VkImage             image
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        currentAccess
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        newAccess
@@ -282,7 +281,7 @@ class DrawingBillboardsUsingGeometryShaders : public SampleBase
 
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex())
 				{
-					nu::Vulkan::ImageTransition imageTransitionBeforePresent = {
+					VulkanImageTransition imageTransitionBeforePresent = {
 						mSwapchain->getImageHandle(swapchainImageIndex),  // VkImage            image
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        currentAccess
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        newAccess
@@ -415,5 +414,3 @@ class DrawingBillboardsUsingGeometryShaders : public SampleBase
 			return true;
 		}
 };
-
-#endif // DRAWING_BILLBOARDS_USING_GEOMETRY_SHADERS_HPP

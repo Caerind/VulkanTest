@@ -61,7 +61,12 @@ int main()
 	}
 	printf("\n\n");
 
-	nu::Vulkan::ObjectTracker::checkForLeaks();
+	#if defined VULKAN_OPTION_OBJECTTRACKER
+		if (VulkanObjectTracker::hasLeaks())
+		{
+			printf("\n\n%d leaks found\n\n\n", VulkanObjectTracker::getLeaksCount());
+		}
+	#endif
 
 	printf("2 - Fragment Specular Lightning\n");
 	{
@@ -113,7 +118,12 @@ int main()
 	}
 	printf("\n\n");
 
-	nu::Vulkan::ObjectTracker::checkForLeaks();
+	#if defined VULKAN_OPTION_OBJECTTRACKER
+		if (VulkanObjectTracker::hasLeaks())
+		{
+			printf("\n\n%d leaks found\n\n\n", VulkanObjectTracker::getLeaksCount());
+		}
+	#endif
 
 	printf("3 - Normal Mapped Geometry\n");
 	{
@@ -165,7 +175,12 @@ int main()
 	}
 	printf("\n\n");
 
-	nu::Vulkan::ObjectTracker::checkForLeaks();
+	#if defined VULKAN_OPTION_OBJECTTRACKER
+		if (VulkanObjectTracker::hasLeaks())
+		{
+			printf("\n\n%d leaks found\n\n\n", VulkanObjectTracker::getLeaksCount());
+		}
+	#endif
 
 	printf("4 - Reflective and Refractive Geometry Using Cubemaps\n");
 	{
@@ -217,7 +232,12 @@ int main()
 	}
 	printf("\n\n");
 
-	nu::Vulkan::ObjectTracker::checkForLeaks();
+	#if defined VULKAN_OPTION_OBJECTTRACKER
+		if (VulkanObjectTracker::hasLeaks())
+		{
+			printf("\n\n%d leaks found\n\n\n", VulkanObjectTracker::getLeaksCount());
+		}
+	#endif
 
 	/*
 	printf("5 - Adding Shadows\n");
@@ -269,9 +289,14 @@ int main()
 		sample.wait();
 	}
 	printf("\n\n");
-
-	nu::Vulkan::ObjectTracker::checkForLeaks();
 	*/
+
+	#if defined VULKAN_OPTION_OBJECTTRACKER
+		if (VulkanObjectTracker::hasLeaks())
+		{
+			printf("\n\n%d leaks found\n\n\n", VulkanObjectTracker::getLeaksCount());
+		}
+	#endif
 
 	printf("6 - Drawing Skybox\n");
 	{
@@ -323,7 +348,12 @@ int main()
 	}
 	printf("\n\n");
 
-	nu::Vulkan::ObjectTracker::checkForLeaks();
+	#if defined VULKAN_OPTION_OBJECTTRACKER
+		if (VulkanObjectTracker::hasLeaks())
+		{
+			printf("\n\n%d leaks found\n\n\n", VulkanObjectTracker::getLeaksCount());
+		}
+	#endif
 
 	printf("7 - Drawing Billboards Using Geometry Shaders\n");
 	{
@@ -375,7 +405,12 @@ int main()
 	}
 	printf("\n\n");
 
-	nu::Vulkan::ObjectTracker::checkForLeaks();
+	#if defined VULKAN_OPTION_OBJECTTRACKER
+		if (VulkanObjectTracker::hasLeaks())
+		{
+			printf("\n\n%d leaks found\n\n\n", VulkanObjectTracker::getLeaksCount());
+		}
+	#endif
 
 	/*
 	printf("8 - Drawing Particles Using Compute And Graphics Pipelines\n");
@@ -427,9 +462,14 @@ int main()
 		sample.wait();
 	}
 	printf("\n\n");
-
-	nu::Vulkan::ObjectTracker::checkForLeaks();
 	*/
+
+	#if defined VULKAN_OPTION_OBJECTTRACKER
+		if (VulkanObjectTracker::hasLeaks())
+		{
+			printf("\n\n%d leaks found\n\n\n", VulkanObjectTracker::getLeaksCount());
+		}
+	#endif
 
 	printf("9 - Rendering Tesselated Terrain\n");
 	{
@@ -481,7 +521,12 @@ int main()
 	}
 	printf("\n\n");
 
-	nu::Vulkan::ObjectTracker::checkForLeaks();
+	#if defined VULKAN_OPTION_OBJECTTRACKER
+		if (VulkanObjectTracker::hasLeaks())
+		{
+			printf("\n\n%d leaks found\n\n\n", VulkanObjectTracker::getLeaksCount());
+		}
+	#endif
 
 	printf("10 - Postprocessing\n");
 	{
@@ -533,7 +578,12 @@ int main()
 	}
 	printf("\n\n");
 
-	nu::Vulkan::ObjectTracker::checkForLeaks();
+	#if defined VULKAN_OPTION_OBJECTTRACKER
+		if (VulkanObjectTracker::hasLeaks())
+		{
+			printf("\n\n%d leaks found\n\n\n", VulkanObjectTracker::getLeaksCount());
+		}
+	#endif
 
 	system("pause");
 	return 0;

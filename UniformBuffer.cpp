@@ -3,7 +3,7 @@
 namespace nu
 {
 
-UniformBuffer::Ptr UniformBuffer::createUniformBuffer(Vulkan::Device& device, uint32_t size)
+UniformBuffer::Ptr UniformBuffer::createUniformBuffer(VulkanDevice& device, uint32_t size)
 {
 	UniformBuffer::Ptr uniformBuffer = UniformBuffer::Ptr(new UniformBuffer());
 	if (uniformBuffer != nullptr)
@@ -25,11 +25,11 @@ StagingBuffer::Ptr UniformBuffer::createStagingBuffer()
 	return StagingBuffer::createStagingBuffer(*mBuffer);
 }
 
-void UniformBuffer::updateDescriptor(Vulkan::DescriptorSet* dstSet, uint32_t dstBinding, uint32_t dstArrayElement)
+void UniformBuffer::updateDescriptor(VulkanDescriptorSet* dstSet, uint32_t dstBinding, uint32_t dstArrayElement)
 {
 	assert(dstSet != nullptr);
 
-	nu::Vulkan::BufferDescriptorInfo bufferDescriptorUpdate = {
+	VulkanBufferDescriptorInfo bufferDescriptorUpdate = {
 		dstSet->getHandle(),                        // VkDescriptorSet                      TargetDescriptorSet
 		dstBinding,                                 // uint32_t                             TargetDescriptorBinding
 		dstArrayElement,                            // uint32_t                             TargetArrayElement
@@ -52,7 +52,7 @@ UniformBuffer::UniformBuffer()
 {
 }
 
-bool UniformBuffer::init(Vulkan::Device& device, uint32_t size)
+bool UniformBuffer::init(VulkanDevice& device, uint32_t size)
 {
 	mBuffer = device.createBuffer(size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 	if (!mBuffer || !mBuffer->allocateMemoryBlock(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))

@@ -1,7 +1,4 @@
-#ifndef NU_VULKAN_MEMORY_BLOCK_HPP
-#define NU_VULKAN_MEMORY_BLOCK_HPP
-
-#include <memory>
+#pragma once
 
 #include "VulkanFunctions.hpp"
 
@@ -10,28 +7,20 @@
 // TODO : Read/Write only a subpart of mapped memory
 // TODO : Binding on MemoryBlock side or Image/Buffer side ?
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-class Device;
-class Buffer;
-class Image;
-class MemoryBlock
+class VulkanMemoryBlock : public VulkanDeviceObject<VulkanObjectType_MemoryBlock>
 {
 	public:
-		typedef std::unique_ptr<MemoryBlock> Ptr;
-
-		~MemoryBlock();
+		~VulkanMemoryBlock();
 
 		bool map(VkDeviceSize offset, VkDeviceSize size);
 		bool read(void* data);
 		bool write(const void* data);
 		bool unmap();
 
-		bool bind(Buffer* buffer, VkDeviceSize memoryOffset);
-		bool bind(Image* image, VkDeviceSize memoryOffset);
+		bool bind(VulkanBuffer* buffer, VkDeviceSize memoryOffset);
+		bool bind(VulkanImage* image, VkDeviceSize memoryOffset);
 
 		bool isHostVisible() const;
 		bool isDeviceLocal() const;
@@ -46,22 +35,18 @@ class MemoryBlock
 		VkDeviceSize getMappedOffset() const;
 		VkDeviceSize getMappedSize() const;
 
-		Device& getDevice();
-		const Device& getDevice() const;
 		const VkDeviceMemory& getHandle() const;
-		const VkDevice& getDeviceHandle() const;
 
 	private:
-		friend class Device;
-		static MemoryBlock::Ptr createMemoryBlock(Device& device, VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags memoryProperties);
+		friend class VulkanDevice;
+		static VulkanMemoryBlockPtr createMemoryBlock(VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags memoryProperties);
 
-		MemoryBlock(Device& device, VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags memoryProperties);
+		VulkanMemoryBlock(VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags memoryProperties);
 
 		bool init();
 		void release();
 
 	private:
-		Device& mDevice;
 		VkDeviceMemory mMemoryBlock;
 		VkMemoryRequirements mMemoryRequirements;
 		VkMemoryPropertyFlags mMemoryProperties;
@@ -71,7 +56,4 @@ class MemoryBlock
 		VkDeviceSize mMappedSize;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_BUFFER_HPP
+VULKAN_NAMESPACE_END

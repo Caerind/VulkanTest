@@ -1,15 +1,16 @@
 #include "VulkanHelper.hpp"
 
 #include "VulkanDevice.hpp"
+#include "VulkanSampler.hpp"
+#include "VulkanImage.hpp"
+#include "VulkanImageView.hpp"
+#include "VulkanPhysicalDevice.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-ImageHelper::Ptr ImageHelper::createImage2DAndView(Device& device, VkFormat format, VkExtent2D size, uint32_t numMipmaps, uint32_t numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usage, VkImageAspectFlags aspect)
+VulkanImageHelperPtr VulkanImageHelper::createImage2DAndView(VulkanDevice& device, VkFormat format, VkExtent2D size, uint32_t numMipmaps, uint32_t numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usage, VkImageAspectFlags aspect)
 {
-	ImageHelper::Ptr image(new ImageHelper());
+	VulkanImageHelperPtr image(new VulkanImageHelper());
 	if (image != nullptr)
 	{
 		image->mImage = device.createImage(VK_IMAGE_TYPE_2D, format, { size.width, size.height, 1 }, numMipmaps, numLayers, samples, usage, false);
@@ -36,9 +37,9 @@ ImageHelper::Ptr ImageHelper::createImage2DAndView(Device& device, VkFormat form
 	return image;
 }
 
-ImageHelper::Ptr ImageHelper::createLayered2DImageWithCubemapView(Device& device, uint32_t size, uint32_t numMipmaps, VkImageUsageFlags usage, VkImageAspectFlags aspect)
+VulkanImageHelperPtr VulkanImageHelper::createLayered2DImageWithCubemapView(VulkanDevice& device, uint32_t size, uint32_t numMipmaps, VkImageUsageFlags usage, VkImageAspectFlags aspect)
 {
-	ImageHelper::Ptr image(new ImageHelper());
+	VulkanImageHelperPtr image(new VulkanImageHelper());
 	if (image != nullptr)
 	{
 		image->mImage = device.createImage(VK_IMAGE_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, { size, size, 1 }, numMipmaps, 6, VK_SAMPLE_COUNT_1_BIT, usage, true);
@@ -65,9 +66,9 @@ ImageHelper::Ptr ImageHelper::createLayered2DImageWithCubemapView(Device& device
 	return image;
 }
 
-ImageHelper::Ptr ImageHelper::createSampledImage(Device& device, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkImageUsageFlags usage, bool cubemap, VkImageViewType viewType, VkImageAspectFlags aspect, bool linearFiltering)
+VulkanImageHelperPtr VulkanImageHelper::createSampledImage(VulkanDevice& device, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkImageUsageFlags usage, bool cubemap, VkImageViewType viewType, VkImageAspectFlags aspect, bool linearFiltering)
 {
-	ImageHelper::Ptr image(new ImageHelper());
+	VulkanImageHelperPtr image(new VulkanImageHelper());
 	if (image != nullptr)
 	{
 		const VkFormatProperties& formatProperties = device.getPhysicalDevice().getFormatProperties(format);
@@ -110,9 +111,9 @@ ImageHelper::Ptr ImageHelper::createSampledImage(Device& device, VkImageType typ
 	return image;
 }
 
-ImageHelper::Ptr ImageHelper::createCombinedImageSampler(Device& device, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkImageUsageFlags usage, bool cubemap, VkImageViewType viewType, VkImageAspectFlags aspect, VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, float lodBias, float minLod, float maxLod, bool anisotropyEnable, float maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, VkBorderColor borderColor, bool unnormalizedCoords)
+VulkanImageHelperPtr VulkanImageHelper::createCombinedImageSampler(VulkanDevice& device, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkImageUsageFlags usage, bool cubemap, VkImageViewType viewType, VkImageAspectFlags aspect, VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, float lodBias, float minLod, float maxLod, bool anisotropyEnable, float maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, VkBorderColor borderColor, bool unnormalizedCoords)
 {
-	ImageHelper::Ptr image(new ImageHelper());
+	VulkanImageHelperPtr image(new VulkanImageHelper());
 	if (image != nullptr)
 	{
 		image->mSampler = device.createSampler(magFilter, minFilter, mipmapMode, uAddressMode, vAddressMode, wAddressMode, lodBias, minLod, maxLod, anisotropyEnable, maxAnisotropy, compareEnable, compareOperator, borderColor, unnormalizedCoords);
@@ -164,9 +165,9 @@ ImageHelper::Ptr ImageHelper::createCombinedImageSampler(Device& device, VkImage
 	return image;
 }
 
-ImageHelper::Ptr ImageHelper::createStorageImage(Device& device, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkImageUsageFlags usage, VkImageViewType viewType, VkImageAspectFlags aspect, bool atomicOperations)
+VulkanImageHelperPtr VulkanImageHelper::createStorageImage(VulkanDevice& device, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkImageUsageFlags usage, VkImageViewType viewType, VkImageAspectFlags aspect, bool atomicOperations)
 {
-	ImageHelper::Ptr image(new ImageHelper());
+	VulkanImageHelperPtr image(new VulkanImageHelper());
 	if (image != nullptr)
 	{
 		const VkFormatProperties& formatProperties = device.getPhysicalDevice().getFormatProperties(format);
@@ -208,9 +209,9 @@ ImageHelper::Ptr ImageHelper::createStorageImage(Device& device, VkImageType typ
 	return image;
 }
 
-ImageHelper::Ptr ImageHelper::createInputAttachment(Device& device, VkImageType type, VkFormat format, VkExtent3D size, VkImageUsageFlags usage, VkImageViewType viewType, VkImageAspectFlags aspect)
+VulkanImageHelperPtr VulkanImageHelper::createInputAttachment(VulkanDevice& device, VkImageType type, VkFormat format, VkExtent3D size, VkImageUsageFlags usage, VkImageViewType viewType, VkImageAspectFlags aspect)
 {
-	ImageHelper::Ptr image(new ImageHelper());
+	VulkanImageHelperPtr image(new VulkanImageHelper());
 	if (image != nullptr)
 	{
 		const VkFormatProperties& formatProperties = device.getPhysicalDevice().getFormatProperties(format);
@@ -253,38 +254,35 @@ ImageHelper::Ptr ImageHelper::createInputAttachment(Device& device, VkImageType 
 	return image;
 }
 
-Image* ImageHelper::getImage()
+VulkanImage* VulkanImageHelper::getImage()
 {
 	return mImage.get();
 }
 
-MemoryBlock* ImageHelper::getMemoryBlock()
+VulkanMemoryBlock* VulkanImageHelper::getMemoryBlock()
 {
 	return mMemoryBlock;
 }
 
-ImageView* ImageHelper::getImageView()
+VulkanImageView* VulkanImageHelper::getImageView()
 {
 	return mImageView;
 }
 
-Sampler* ImageHelper::getSampler()
+VulkanSampler* VulkanImageHelper::getSampler()
 {
 	return mSampler.get();
 }
 
-bool ImageHelper::hasSampler() const
+bool VulkanImageHelper::hasSampler() const
 {
 	return mSampler != nullptr;
 }
 
-ImageHelper::ImageHelper()
+VulkanImageHelper::VulkanImageHelper()
 	: mImage(nullptr)
 	, mMemoryBlock(nullptr)
 	, mImageView(nullptr)
 	, mSampler(nullptr)
 {
 }
-
-} // namespace Vulkan
-} // namespace nu

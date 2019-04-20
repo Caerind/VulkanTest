@@ -5,7 +5,7 @@
 namespace nu
 {
 
-StagingBuffer::Ptr StagingBuffer::createStagingBuffer(Vulkan::Buffer& dstBuffer)
+StagingBuffer::Ptr StagingBuffer::createStagingBuffer(VulkanBuffer& dstBuffer)
 {
 	StagingBuffer::Ptr stagingBuffer = StagingBuffer::Ptr(new StagingBuffer(dstBuffer));
 	if (stagingBuffer != nullptr)
@@ -50,7 +50,7 @@ bool StagingBuffer::mapWriteUnmap(uint32_t offset, uint32_t dataSize, void* data
 {
 	assert(mBuffer->isBoundToMemoryBlock());
 
-	Vulkan::MemoryBlock* memoryBlock = mBuffer->getMemoryBlock();
+	VulkanMemoryBlock* memoryBlock = mBuffer->getMemoryBlock();
 	if (!memoryBlock->map(offset, dataSize))
 	{
 		return false;
@@ -76,11 +76,11 @@ bool StagingBuffer::mapWriteUnmap(uint32_t offset, uint32_t dataSize, void* data
 	return true;
 }
 
-void StagingBuffer::send(Vulkan::CommandBuffer* commandBuffer)
+void StagingBuffer::send(VulkanCommandBuffer* commandBuffer)
 {
 	mNeedToSend = false;
 
-	nu::Vulkan::BufferTransition preTransferTransition = {
+	VulkanBufferTransition preTransferTransition = {
 		&mDstBuffer,                  // Buffer*          buffer
 		VK_ACCESS_UNIFORM_READ_BIT,   // VkAccessFlags    currentAccess
 		VK_ACCESS_TRANSFER_WRITE_BIT, // VkAccessFlags    newAccess
@@ -99,7 +99,7 @@ void StagingBuffer::send(Vulkan::CommandBuffer* commandBuffer)
 	// TODO : Use srcOffset & dstOffset
 	commandBuffer->copyDataBetweenBuffers(mBuffer.get(), &mDstBuffer, regions);
 
-	nu::Vulkan::BufferTransition postTransferTransition = {
+	VulkanBufferTransition postTransferTransition = {
 		&mDstBuffer,                  // Buffer*          buffer
 		VK_ACCESS_TRANSFER_WRITE_BIT, // VkAccessFlags    currentAccess
 		VK_ACCESS_UNIFORM_READ_BIT,   // VkAccessFlags    newAccess
@@ -114,7 +114,7 @@ bool StagingBuffer::needToSend() const
 	return mNeedToSend;
 }
 
-StagingBuffer::StagingBuffer(Vulkan::Buffer& dstBuffer)
+StagingBuffer::StagingBuffer(VulkanBuffer& dstBuffer)
 	: mDstBuffer(dstBuffer)
 	, mBuffer(nullptr)
 	, mNeedToSend(false)

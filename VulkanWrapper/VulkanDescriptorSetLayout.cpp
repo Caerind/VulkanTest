@@ -2,14 +2,11 @@
 
 #include "VulkanDevice.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-DescriptorSetLayout::Ptr DescriptorSetLayout::createDescriptorSetLayout(Device& device, const std::vector<VkDescriptorSetLayoutBinding>& bindings)
+VulkanDescriptorSetLayoutPtr VulkanDescriptorSetLayout::createDescriptorSetLayout(const std::vector<VkDescriptorSetLayoutBinding>& bindings)
 {
-	DescriptorSetLayout::Ptr descriptorSetLayout(new DescriptorSetLayout(device, bindings));
+	VulkanDescriptorSetLayoutPtr descriptorSetLayout(new VulkanDescriptorSetLayout(bindings));
 	if (descriptorSetLayout != nullptr)
 	{
 		if (!descriptorSetLayout->init())
@@ -20,67 +17,60 @@ DescriptorSetLayout::Ptr DescriptorSetLayout::createDescriptorSetLayout(Device& 
 	return descriptorSetLayout;
 }
 
-DescriptorSetLayout::~DescriptorSetLayout()
+VulkanDescriptorSetLayout::~VulkanDescriptorSetLayout()
 {
-	ObjectTracker::unregisterObject(ObjectType_DescriptorSetLayout);
-
 	release();
+	
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-bool DescriptorSetLayout::isInitialized() const
+bool VulkanDescriptorSetLayout::isInitialized() const
 {
 	return mDescriptorSetLayout != VK_NULL_HANDLE;
 }
 
-const VkDescriptorSetLayout& DescriptorSetLayout::getHandle() const
+const VkDescriptorSetLayout& VulkanDescriptorSetLayout::getHandle() const
 {
 	return mDescriptorSetLayout;
 }
 
-const VkDevice& DescriptorSetLayout::getDeviceHandle() const
-{
-	return mDevice.getHandle();
-}
-
-DescriptorSetLayout::DescriptorSetLayout(Device& device, const std::vector<VkDescriptorSetLayoutBinding>& bindings)
-	: mDevice(device)
-	, mDescriptorSetLayout(VK_NULL_HANDLE)
+VulkanDescriptorSetLayout::VulkanDescriptorSetLayout(const std::vector<VkDescriptorSetLayoutBinding>& bindings)
+	: mDescriptorSetLayout(VK_NULL_HANDLE)
 	, mBindings(bindings)
 {
-	ObjectTracker::registerObject(ObjectType_DescriptorSetLayout);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-bool DescriptorSetLayout::init()
+bool VulkanDescriptorSetLayout::init()
 {
+	// TODO : Flags ?
 	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
 		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,  // VkStructureType                      sType
 		nullptr,                                              // const void                         * pNext
 		0,                                                    // VkDescriptorSetLayoutCreateFlags     flags
-		static_cast<uint32_t>(mBindings.size()),              // uint32_t                             bindingCount
+		static_cast<VulkanU32>(mBindings.size()),              // uint32_t                             bindingCount
 		mBindings.data()                                      // const VkDescriptorSetLayoutBinding * pBindings
 	};
 
-	VkResult result = vkCreateDescriptorSetLayout(mDevice.getHandle(), &descriptorSetLayoutCreateInfo, nullptr, &mDescriptorSetLayout);
+	VkResult result = vkCreateDescriptorSetLayout(getDeviceHandle(), &descriptorSetLayoutCreateInfo, nullptr, &mDescriptorSetLayout);
 	if (result != VK_SUCCESS || mDescriptorSetLayout == VK_NULL_HANDLE)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not create a layout for descriptor sets\n");
+		VULKAN_LOG_ERROR("Could not create a layout for descriptor sets");
 		return false;
 	}
 
 	return true;
 }
 
-bool DescriptorSetLayout::release()
+bool VulkanDescriptorSetLayout::release()
 {
 	if (mDescriptorSetLayout != VK_NULL_HANDLE)
 	{
-		vkDestroyDescriptorSetLayout(mDevice.getHandle(), mDescriptorSetLayout, nullptr);
+		vkDestroyDescriptorSetLayout(getDeviceHandle(), mDescriptorSetLayout, nullptr);
 		mDescriptorSetLayout = VK_NULL_HANDLE;
 		return true;
 	}
 	return false;
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

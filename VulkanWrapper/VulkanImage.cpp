@@ -1,36 +1,35 @@
 #include "VulkanImage.hpp"
 
 #include "VulkanDevice.hpp"
+#include "VulkanMemoryBlock.hpp"
+#include "VulkanImageView.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-Image::~Image()
+VulkanImage::~VulkanImage()
 {
 	if (!isSwapchainImage())
 	{
 		release();
 	}
 
-	ObjectTracker::unregisterObject(ObjectType_Image);
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-const VkMemoryRequirements& Image::getMemoryRequirements() const
+const VkMemoryRequirements& VulkanImage::getMemoryRequirements() const
 {
 	if (!mMemoryRequirementsQueried)
 	{
 		mMemoryRequirementsQueried = true;
-		vkGetImageMemoryRequirements(mDevice.getHandle(), mImage, &mMemoryRequirements);
+		vkGetImageMemoryRequirements(getDeviceHandle(), mImage, &mMemoryRequirements);
 	}
 
 	return mMemoryRequirements;
 }
 
-MemoryBlock* Image::allocateMemoryBlock(VkMemoryPropertyFlagBits memoryProperties)
+VulkanMemoryBlock* VulkanImage::allocateMemoryBlock(VkMemoryPropertyFlagBits memoryProperties)
 {
-	mOwnedMemoryBlock = mDevice.createMemoryBlock(getMemoryRequirements(), memoryProperties);
+	mOwnedMemoryBlock = getDevice().createMemoryBlock(getMemoryRequirements(), memoryProperties);
 	if (mOwnedMemoryBlock != nullptr)
 	{
 		mOwnedMemoryBlock->bind(this, 0);
@@ -42,29 +41,29 @@ MemoryBlock* Image::allocateMemoryBlock(VkMemoryPropertyFlagBits memoryPropertie
 	return mMemoryBlock;
 }
 
-bool Image::ownMemoryBlock() const
+bool VulkanImage::ownMemoryBlock() const
 {
 	return mOwnedMemoryBlock != nullptr;
 }
 
-bool Image::isBoundToMemoryBlock() const
+bool VulkanImage::isBoundToMemoryBlock() const
 {
 	return mMemoryBlock != nullptr;
 }
 
-MemoryBlock* Image::getMemoryBlock()
+VulkanMemoryBlock* VulkanImage::getMemoryBlock()
 {
 	return mMemoryBlock;
 }
 
-VkDeviceSize Image::getOffsetInMemoryBlock() const
+VkDeviceSize VulkanImage::getOffsetInMemoryBlock() const
 {
 	return mOffsetInMemoryBlock;
 }
 
-ImageView* Image::createImageView(VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspect)
+VulkanImageView* VulkanImage::createImageView(VkImageViewType viewType, VkFormat format, VkImageAspectFlags aspect)
 {
-	ImageView::Ptr imageView = ImageView::createImageView(*this, viewType, format, aspect);
+	VulkanImageViewPtr imageView = VulkanImageView::createImageView(*this, viewType, format, aspect);
 	if (imageView != nullptr)
 	{
 		mImageViews.emplace_back(std::move(imageView));
@@ -76,96 +75,81 @@ ImageView* Image::createImageView(VkImageViewType viewType, VkFormat format, VkI
 	}
 }
 
-ImageView* Image::getImageView(uint32_t index)
+VulkanImageView* VulkanImage::getImageView(VulkanU32 index)
 {
-	assert(index < getImageViewCount());
+	VULKAN_ASSERT(index < getImageViewCount());
 	return mImageViews[index].get();
 }
 
-const ImageView* Image::getImageView(uint32_t index) const
+const VulkanImageView* VulkanImage::getImageView(VulkanU32 index) const
 {
-	assert(index < getImageViewCount());
+	VULKAN_ASSERT(index < getImageViewCount());
 	return mImageViews[index].get();
 }
 
-uint32_t Image::getImageViewCount() const
+VulkanU32 VulkanImage::getImageViewCount() const
 {
-	return (uint32_t)mImageViews.size();
+	return (VulkanU32)mImageViews.size();
 }
 
-void Image::clearImageViews()
+void VulkanImage::clearImageViews()
 {
 	mImageViews.clear();
 }
 
-VkImageType Image::getType() const
+VkImageType VulkanImage::getType() const
 {
 	return mType;
 }
 
-VkFormat Image::getFormat() const
+VkFormat VulkanImage::getFormat() const
 {
 	return mFormat;
 }
 
-VkExtent3D Image::getSize() const
+VkExtent3D VulkanImage::getSize() const
 {
 	return mSize;
 }
 
-uint32_t Image::getNumMipmaps() const
+VulkanU32 VulkanImage::getNumMipmaps() const
 {
 	return mNumMipmaps;
 }
 
-uint32_t Image::getNumLayers() const
+VulkanU32 VulkanImage::getNumLayers() const
 {
 	return mNumLayers;
 }
 
-VkSampleCountFlagBits Image::getSamples() const
+VkSampleCountFlagBits VulkanImage::getSamples() const
 {
 	return mSamples;
 }
 
-VkImageUsageFlags Image::getUsage() const
+VkImageUsageFlags VulkanImage::getUsage() const
 {
 	return mUsage;
 }
 
-bool Image::isCubemap() const
+bool VulkanImage::isCubemap() const
 {
 	return mCubemap;
 }
 
-bool Image::isSwapchainImage() const
+bool VulkanImage::isSwapchainImage() const
 {
 	return mIsSwapchainImage;
 }
 
-Device& Image::getDevice()
-{
-	return mDevice;
-}
-
-const Device& Image::getDevice() const
-{
-	return mDevice;
-}
-
-const VkImage& Image::getHandle() const
+const VkImage& VulkanImage::getHandle() const
 {
 	return mImage;
 }
 
-const VkDevice& Image::getDeviceHandle() const
+VulkanImagePtr VulkanImage::createImage(VkImageType type, VkFormat format, VkExtent3D size, VulkanU32 numMipmaps, VulkanU32 numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usage, bool cubemap)
 {
-	return mDevice.getHandle();
-}
-
-Image::Ptr Image::createImage(Device& device, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usage, bool cubemap)
-{
-	Image::Ptr image(new Image(device, type, format, size, numMipmaps, numLayers, samples, usage, cubemap));
+	VulkanImagePtr image(new VulkanImage(type, format, size, numMipmaps, numLayers, samples, usage, cubemap));
 	if (image != nullptr)
 	{
 		if (!image->init())
@@ -176,9 +160,9 @@ Image::Ptr Image::createImage(Device& device, VkImageType type, VkFormat format,
 	return image;
 }
 
-Image::Ptr Image::createImageFromSwapchain(Device& device, VkImage swapchainImageHandle, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usage, bool cubemap)
+VulkanImagePtr VulkanImage::createImageFromSwapchain(VulkanDevice& device, VkImage swapchainImageHandle, VkImageType type, VkFormat format, VkExtent3D size, VulkanU32 numMipmaps, VulkanU32 numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usage, bool cubemap)
 {
-	Image::Ptr image(new Image(device, type, format, size, numMipmaps, numLayers, samples, usage, cubemap));
+	VulkanImagePtr image(new VulkanImage(type, format, size, numMipmaps, numLayers, samples, usage, cubemap));
 	if (image != nullptr)
 	{
 		image->mImage = swapchainImageHandle;
@@ -187,9 +171,8 @@ Image::Ptr Image::createImageFromSwapchain(Device& device, VkImage swapchainImag
 	return image;
 }
 
-Image::Image(Device& device, VkImageType type, VkFormat format, VkExtent3D size, uint32_t numMipmaps, uint32_t numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usage, bool cubemap)
-	: mDevice(device)
-	, mImage(VK_NULL_HANDLE)
+VulkanImage::VulkanImage(VkImageType type, VkFormat format, VkExtent3D size, VulkanU32 numMipmaps, VulkanU32 numLayers, VkSampleCountFlagBits samples, VkImageUsageFlags usage, bool cubemap)
+	: mImage(VK_NULL_HANDLE)
 	, mOwnedMemoryBlock(nullptr)
 	, mMemoryBlock(nullptr)
 	, mOffsetInMemoryBlock(0)
@@ -206,10 +189,10 @@ Image::Image(Device& device, VkImageType type, VkFormat format, VkExtent3D size,
 	, mMemoryRequirementsQueried(false)
 	, mMemoryRequirements()
 {
-	ObjectTracker::registerObject(ObjectType_Image);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-bool Image::init()
+bool VulkanImage::init()
 {
 	VkImageCreateInfo imageCreateInfo = {
 		VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,                // VkStructureType          sType
@@ -218,42 +201,40 @@ bool Image::init()
 		mType,                                              // VkImageType              imageType
 		mFormat,                                            // VkFormat                 format
 		mSize,                                              // VkExtent3D               extent
-		mNumMipmaps,                                        // uint32_t                 mipLevels
-		mCubemap ? 6 * mNumLayers : mNumLayers,             // uint32_t                 arrayLayers
+		mNumMipmaps,                                        // VulkanU32                 mipLevels
+		mCubemap ? 6 * mNumLayers : mNumLayers,             // VulkanU32                 arrayLayers
 		mSamples,                                           // VkSampleCountFlagBits    samples
 		VK_IMAGE_TILING_OPTIMAL,                            // VkImageTiling            tiling
 		mUsage,                                             // VkImageUsageFlags        usage
 		VK_SHARING_MODE_EXCLUSIVE,                          // VkSharingMode            sharingMode
-		0,                                                  // uint32_t                 queueFamilyIndexCount
-		nullptr,                                            // const uint32_t         * pQueueFamilyIndices
+		0,                                                  // VulkanU32                 queueFamilyIndexCount
+		nullptr,                                            // const VulkanU32         * pQueueFamilyIndices
 		VK_IMAGE_LAYOUT_UNDEFINED                           // VkImageLayout            initialLayout
 	};
 	// TODO : initial image layout ?
 
-	VkResult result = vkCreateImage(mDevice.getHandle(), &imageCreateInfo, nullptr, &mImage);
+	VkResult result = vkCreateImage(getDeviceHandle(), &imageCreateInfo, nullptr, &mImage);
 	if (result != VK_SUCCESS || mImage == VK_NULL_HANDLE)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not create an image\n");
+		VULKAN_LOG_ERROR("Could not create an image");
 		return false;
 	}
 	return true;
 }
 
-void Image::release()
+void VulkanImage::release()
 {
 	if (mImage != VK_NULL_HANDLE)
 	{
-		vkDestroyImage(mDevice.getHandle(), mImage, nullptr);
+		vkDestroyImage(getDeviceHandle(), mImage, nullptr);
 		mImage = VK_NULL_HANDLE;
 	}
 }
 
-void Image::bindToMemoryBlock(MemoryBlock* memoryBlock, VkDeviceSize offsetInMemoryBlock)
+void VulkanImage::bindToMemoryBlock(VulkanMemoryBlock* memoryBlock, VkDeviceSize offsetInMemoryBlock)
 {
 	mMemoryBlock = memoryBlock;
 	mOffsetInMemoryBlock = offsetInMemoryBlock;
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

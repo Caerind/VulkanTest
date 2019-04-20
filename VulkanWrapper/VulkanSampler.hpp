@@ -1,22 +1,13 @@
-#ifndef NU_VULKAN_SAMPLER_HPP
-#define NU_VULKAN_SAMPLER_HPP
-
-#include <memory>
+#pragma once
 
 #include "VulkanFunctions.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-class Device;
-class Sampler
+class VulkanSampler : public VulkanDeviceObject<VulkanObjectType_Sampler>
 {
 	public:
-		typedef std::unique_ptr<Sampler> Ptr;
-
-		~Sampler();
+		~VulkanSampler();
 
 		VkFilter getMagFilter() const;
 		VkFilter getMinFilter() const;
@@ -34,21 +25,17 @@ class Sampler
 		VkBorderColor getBorderColor() const;
 		bool isUnnormalizedCoords() const;
 
-		Device& getDevice();
-		const Device& getDevice() const;
-		const VkSampler& getHandle() const;
-		const VkDevice& getDeviceHandle() const;
+		const VkSampler& getHandle() const; 
 
 	private:
-		friend class Device;
-		static Sampler::Ptr createSampler(Device& device, VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, float lodBias, float minLod, float maxLod, bool anisotropyEnable, float maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, VkBorderColor borderColor, bool unnormalizedCoords);
+		friend class VulkanDevice;
+		static VulkanSamplerPtr createSampler(VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, float lodBias, float minLod, float maxLod, bool anisotropyEnable, float maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, VkBorderColor borderColor, bool unnormalizedCoords);
 
-		Sampler(Device& device, VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, float lodBias, float minLod, float maxLod, bool anisotropyEnable, float maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, VkBorderColor borderColor, bool unnormalizedCoords);
+		VulkanSampler(VkFilter magFilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode uAddressMode, VkSamplerAddressMode vAddressMode, VkSamplerAddressMode wAddressMode, float lodBias, float minLod, float maxLod, bool anisotropyEnable, float maxAnisotropy, bool compareEnable, VkCompareOp compareOperator, VkBorderColor borderColor, bool unnormalizedCoords);
 
 		bool init();
 		void release();
 
-		Device& mDevice;
 		VkSampler mSampler;
 
 		VkFilter mMagFilter;
@@ -68,7 +55,4 @@ class Sampler
 		bool mUnnormalizedCoords;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_SAMPLER_HPP
+VULKAN_NAMESPACE_END

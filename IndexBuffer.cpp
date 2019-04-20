@@ -3,7 +3,7 @@
 namespace nu
 {
 
-IndexBuffer::Ptr IndexBuffer::createIndexBuffer(Vulkan::Device& device)
+IndexBuffer::Ptr IndexBuffer::createIndexBuffer(VulkanDevice& device)
 {
 	return nullptr;
 }

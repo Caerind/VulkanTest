@@ -1,5 +1,4 @@
-#ifndef RENDERING_TESSELATED_TERRAIN_HPP
-#define RENDERING_TESSELATED_TERRAIN_HPP
+#pragma once
 
 #include "../../CookBook/SampleBase.hpp"
 
@@ -18,18 +17,18 @@ class RenderingTesselatedTerrain : public SampleBase
 		nu::Mesh mModel;
 		nu::VertexBuffer::Ptr mModelVertexBuffer;
 
-		nu::Vulkan::ImageHelper::Ptr mHeightMap;
+		VulkanImageHelperPtr mHeightMap;
 
 		nu::UniformBuffer::Ptr mUniformBuffer;
 		nu::StagingBuffer::Ptr mStagingBuffer;
 
-		nu::Vulkan::DescriptorSetLayout::Ptr mDescriptorSetLayout;
-		nu::Vulkan::DescriptorPool::Ptr mDescriptorPool;
-		std::vector<nu::Vulkan::DescriptorSet::Ptr> mDescriptorSets;
+		VulkanDescriptorSetLayoutPtr mDescriptorSetLayout;
+		VulkanDescriptorPoolPtr mDescriptorPool;
+		std::vector<VulkanDescriptorSetPtr> mDescriptorSets;
 
-		nu::Vulkan::RenderPass::Ptr mRenderPass;
-		nu::Vulkan::PipelineLayout::Ptr mPipelineLayout; 
-		std::vector<nu::Vulkan::GraphicsPipeline::Ptr> mPipelines;
+		VulkanRenderPassPtr mRenderPass;
+		VulkanPipelineLayoutPtr mPipelineLayout; 
+		std::vector<VulkanGraphicsPipelinePtr> mPipelines;
 		enum PipelineNames
 		{
 			SolidTerrainPipeline = 0,
@@ -40,7 +39,7 @@ class RenderingTesselatedTerrain : public SampleBase
 
 		uint32_t mFrameIndex = 0;
 
-		virtual bool initialize(nu::Vulkan::WindowParameters windowParameters) override 
+		virtual bool initialize(VulkanWindowParameters windowParameters) override 
 		{
 			mCurrentPipeline = 0;
 
@@ -55,18 +54,18 @@ class RenderingTesselatedTerrain : public SampleBase
 			}
 
 			// Vertex data
-			if (!mModel.loadFromFile("../Data/Models/plane.obj", false, true, false, false))
+			if (!mModel.loadFromFile("../../Data/Models/plane.obj", false, true, false, false))
 			{
 				return false;
 			}
-			mModelVertexBuffer = nu::VertexBuffer::createVertexBuffer(*mLogicalDevice, mModel.size());
-			if (!mModelVertexBuffer || !mModelVertexBuffer->updateAndWait(mModel.size(), &mModel.data[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue.get(), {}, 50000000))
+			mModelVertexBuffer = nu::VertexBuffer::createVertexBuffer(VulkanDevice::get(), mModel.size());
+			if (!mModelVertexBuffer || !mModelVertexBuffer->updateAndWait(mModel.size(), &mModel.data[0], 0, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, mFramesResources.front().mCommandBuffer.get(), mGraphicsQueue, {}, 50000000))
 			{
 				return false;
 			}
 
 			// Staging buffer & Uniform buffer
-			mUniformBuffer = nu::UniformBuffer::createUniformBuffer(*mLogicalDevice, 2 * 16 * sizeof(float));
+			mUniformBuffer = nu::UniformBuffer::createUniformBuffer(VulkanDevice::get(), 2 * 16 * sizeof(float));
 			if (mUniformBuffer == nullptr)
 			{
 				return false;
@@ -85,12 +84,12 @@ class RenderingTesselatedTerrain : public SampleBase
 			int width = 1;
 			int height = 1;
 			std::vector<unsigned char> imageData;
-			if (!loadTextureDataFromFile("../Data/Textures/heightmap.png", 4, imageData, &width, &height))
+			if (!loadTextureDataFromFile("../../Data/Textures/heightmap.png", 4, imageData, &width, &height))
 			{
 				return false;
 			}
 
-			mHeightMap = nu::Vulkan::ImageHelper::createCombinedImageSampler(*mLogicalDevice, VK_IMAGE_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, { (uint32_t)width, (uint32_t)height, 1 }, 1, 1,
+			mHeightMap = VulkanImageHelper::createCombinedImageSampler(VulkanDevice::get(), VK_IMAGE_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, { (uint32_t)width, (uint32_t)height, 1 }, 1, 1,
 				VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT, VK_FILTER_LINEAR,
 				VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
 				VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, 0.0f, 0.0f, 1.0f, false, 1.0f, false, VK_COMPARE_OP_ALWAYS, VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
@@ -132,7 +131,7 @@ class RenderingTesselatedTerrain : public SampleBase
 					nullptr                                     // const VkSampler    * pImmutableSamplers
 				}
 			};
-			mDescriptorSetLayout = mLogicalDevice->createDescriptorSetLayout(descriptorSetLayoutBindings);
+			mDescriptorSetLayout = VulkanDevice::get().createDescriptorSetLayout(descriptorSetLayoutBindings);
 			if (mDescriptorSetLayout == nullptr || !mDescriptorSetLayout->isInitialized())
 			{
 				return false;
@@ -148,7 +147,7 @@ class RenderingTesselatedTerrain : public SampleBase
 					1                                           // uint32_t             descriptorCount
 				}
 			};
-			mDescriptorPool = mLogicalDevice->createDescriptorPool(false, 1, descriptorPoolSizes);
+			mDescriptorPool = VulkanDevice::get().createDescriptorPool(false, 1, descriptorPoolSizes);
 			if (mDescriptorPool == nullptr || !mDescriptorPool->isInitialized())
 			{
 				return false;
@@ -166,7 +165,7 @@ class RenderingTesselatedTerrain : public SampleBase
 			// TODO : Update more than one at once
 			mUniformBuffer->updateDescriptor(mDescriptorSets[0].get(), 0, 0);
 
-			nu::Vulkan::ImageDescriptorInfo imageDescriptorUpdate = {
+			VulkanImageDescriptorInfo imageDescriptorUpdate = {
 				mDescriptorSets[0]->getHandle(),            // VkDescriptorSet                      TargetDescriptorSet
 				1,                                          // uint32_t                             TargetDescriptorBinding
 				0,                                          // uint32_t                             TargetArrayElement
@@ -180,10 +179,10 @@ class RenderingTesselatedTerrain : public SampleBase
 				}
 			};
 
-			mLogicalDevice->updateDescriptorSets({ imageDescriptorUpdate }, {}, {}, {});
+			VulkanDevice::get().updateDescriptorSets({ imageDescriptorUpdate }, {}, {}, {});
 
 			// Render pass
-			mRenderPass = mLogicalDevice->initRenderPass();
+			mRenderPass = VulkanDevice::get().initRenderPass();
 
 			mRenderPass->addAttachment(mSwapchain->getFormat());
 			mRenderPass->setAttachmentLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR);
@@ -224,52 +223,52 @@ class RenderingTesselatedTerrain : public SampleBase
 
 			// Graphics pipeline
 
-			mPipelineLayout = mLogicalDevice->createPipelineLayout({ mDescriptorSetLayout->getHandle() }, {});
+			mPipelineLayout = VulkanDevice::get().createPipelineLayout({ mDescriptorSetLayout->getHandle() }, {});
 			if (mPipelineLayout == nullptr || !mPipelineLayout->isInitialized())
 			{
 				return false;
 			}
 
 			mPipelines.resize(PipelineNames::Count);
-			mPipelines[PipelineNames::SolidTerrainPipeline] = mLogicalDevice->initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
-			mPipelines[PipelineNames::LineTerrainPipeline] = mLogicalDevice->initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
+			mPipelines[PipelineNames::SolidTerrainPipeline] = VulkanDevice::get().initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
+			mPipelines[PipelineNames::LineTerrainPipeline] = VulkanDevice::get().initGraphicsPipeline(*mPipelineLayout, *mRenderPass, nullptr);
 
-			nu::Vulkan::GraphicsPipeline* solidTerrainPipeline = mPipelines[PipelineNames::SolidTerrainPipeline].get();
-			nu::Vulkan::GraphicsPipeline* lineTerrainPipeline = mPipelines[PipelineNames::LineTerrainPipeline].get();
+			VulkanGraphicsPipeline* solidTerrainPipeline = mPipelines[PipelineNames::SolidTerrainPipeline].get();
+			VulkanGraphicsPipeline* lineTerrainPipeline = mPipelines[PipelineNames::LineTerrainPipeline].get();
 
 			solidTerrainPipeline->setSubpass(0);
 			lineTerrainPipeline->setSubpass(0);
 
-			nu::Vulkan::ShaderModule::Ptr terrainVertexShaderModule = mLogicalDevice->initShaderModule();
-			if (terrainVertexShaderModule == nullptr || !terrainVertexShaderModule->loadFromFile("../Examples/9 - Rendering Tesselated Terrain/shader.vert.spv"))
+			VulkanShaderModulePtr terrainVertexShaderModule = VulkanDevice::get().initShaderModule();
+			if (terrainVertexShaderModule == nullptr || !terrainVertexShaderModule->loadFromFile("../../Examples/9 - Rendering Tesselated Terrain/shader.vert.spv"))
 			{
 				return false;
 			}
 			terrainVertexShaderModule->setVertexEntrypointName("main");
 
-			nu::Vulkan::ShaderModule::Ptr terrainTessellationControlShaderModule = mLogicalDevice->initShaderModule();
-			if (terrainTessellationControlShaderModule == nullptr || !terrainTessellationControlShaderModule->loadFromFile("../Examples/9 - Rendering Tesselated Terrain/shader.tesc.spv"))
+			VulkanShaderModulePtr terrainTessellationControlShaderModule = VulkanDevice::get().initShaderModule();
+			if (terrainTessellationControlShaderModule == nullptr || !terrainTessellationControlShaderModule->loadFromFile("../../Examples/9 - Rendering Tesselated Terrain/shader.tesc.spv"))
 			{
 				return false;
 			}
 			terrainTessellationControlShaderModule->setTessellationControlEntrypointName("main");
 
-			nu::Vulkan::ShaderModule::Ptr terrainTessellationEvaluationShaderModule = mLogicalDevice->initShaderModule();
-			if (terrainTessellationEvaluationShaderModule == nullptr || !terrainTessellationEvaluationShaderModule->loadFromFile("../Examples/9 - Rendering Tesselated Terrain/shader.tese.spv"))
+			VulkanShaderModulePtr terrainTessellationEvaluationShaderModule = VulkanDevice::get().initShaderModule();
+			if (terrainTessellationEvaluationShaderModule == nullptr || !terrainTessellationEvaluationShaderModule->loadFromFile("../../Examples/9 - Rendering Tesselated Terrain/shader.tese.spv"))
 			{
 				return false;
 			}
 			terrainTessellationEvaluationShaderModule->setTessellationEvaluationEntrypointName("main");
 
-			nu::Vulkan::ShaderModule::Ptr terrainGeometryShaderModule = mLogicalDevice->initShaderModule();
-			if (terrainGeometryShaderModule == nullptr || !terrainGeometryShaderModule->loadFromFile("../Examples/9 - Rendering Tesselated Terrain/shader.geom.spv"))
+			VulkanShaderModulePtr terrainGeometryShaderModule = VulkanDevice::get().initShaderModule();
+			if (terrainGeometryShaderModule == nullptr || !terrainGeometryShaderModule->loadFromFile("../../Examples/9 - Rendering Tesselated Terrain/shader.geom.spv"))
 			{
 				return false;
 			}
 			terrainGeometryShaderModule->setGeometryEntrypointName("main");
 
-			nu::Vulkan::ShaderModule::Ptr terrainFragmentShaderModule = mLogicalDevice->initShaderModule();
-			if (terrainFragmentShaderModule == nullptr || !terrainFragmentShaderModule->loadFromFile("../Examples/9 - Rendering Tesselated Terrain/shader.frag.spv"))
+			VulkanShaderModulePtr terrainFragmentShaderModule = VulkanDevice::get().initShaderModule();
+			if (terrainFragmentShaderModule == nullptr || !terrainFragmentShaderModule->loadFromFile("../../Examples/9 - Rendering Tesselated Terrain/shader.frag.spv"))
 			{
 				return false;
 			}
@@ -321,7 +320,7 @@ class RenderingTesselatedTerrain : public SampleBase
 
 		virtual bool draw() override 
 		{
-			auto prepareFrame = [&](nu::Vulkan::CommandBuffer* commandBuffer, uint32_t swapchainImageIndex, nu::Vulkan::Framebuffer* framebuffer) 
+			auto prepareFrame = [&](VulkanCommandBuffer* commandBuffer, uint32_t swapchainImageIndex, VulkanFramebuffer* framebuffer) 
 			{
 				if (!commandBuffer->beginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, nullptr))
 				{
@@ -335,7 +334,7 @@ class RenderingTesselatedTerrain : public SampleBase
 
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex()) 
 				{
-					nu::Vulkan::ImageTransition imageTransitionBeforeDrawing = {
+					VulkanImageTransition imageTransitionBeforeDrawing = {
 						mSwapchain->getImageHandle(swapchainImageIndex), // VkImage             image
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        currentAccess
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        newAccess
@@ -389,7 +388,7 @@ class RenderingTesselatedTerrain : public SampleBase
 
 				if (mPresentQueue->getFamilyIndex() != mGraphicsQueue->getFamilyIndex())
 				{
-					nu::Vulkan::ImageTransition imageTransitionBeforePresent = {
+					VulkanImageTransition imageTransitionBeforePresent = {
 						mSwapchain->getImageHandle(swapchainImageIndex),  // VkImage            image
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // VkAccessFlags        currentAccess
 						VK_ACCESS_MEMORY_READ_BIT,                // VkAccessFlags        newAccess
@@ -527,5 +526,3 @@ class RenderingTesselatedTerrain : public SampleBase
 			return true;
 		}
 };
-
-#endif // RENDERING_TESSELATED_TERRAIN_HPP

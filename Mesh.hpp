@@ -1,5 +1,4 @@
-#ifndef NU_MESH_HPP
-#define NU_MESH_HPP
+#pragma once
 
 #include "Math/Vector3.hpp"
 
@@ -29,5 +28,3 @@ struct Mesh
 };
 
 } // namespace nu
-
-#endif // NU_MESH_HPP

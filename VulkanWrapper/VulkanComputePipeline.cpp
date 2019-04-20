@@ -1,16 +1,15 @@
 #include "VulkanComputePipeline.hpp"
 
 #include "VulkanDevice.hpp"
+#include "VulkanPipelineCache.hpp"
+#include "VulkanPipelineLayout.hpp"
 #include "VulkanShaderModule.hpp"
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-ComputePipeline::Ptr ComputePipeline::createComputePipeline(Device& device, ShaderModule* computeShader, PipelineLayout* layout, PipelineCache* cache, VkPipelineCreateFlags additionalOptions)
+VulkanComputePipelinePtr VulkanComputePipeline::createComputePipeline(VulkanShaderModule* computeShader, VulkanPipelineLayout* layout, VulkanPipelineCache* cache, VkPipelineCreateFlags additionalOptions)
 {
-	ComputePipeline::Ptr computePipeline(new ComputePipeline(device, computeShader, layout, cache, additionalOptions));
+	VulkanComputePipelinePtr computePipeline(new VulkanComputePipeline(computeShader, layout, cache, additionalOptions));
 	if (computePipeline != nullptr)
 	{
 		if (!computePipeline->init())
@@ -21,40 +20,34 @@ ComputePipeline::Ptr ComputePipeline::createComputePipeline(Device& device, Shad
 	return computePipeline;
 }
 
-ComputePipeline::~ComputePipeline()
+VulkanComputePipeline::~VulkanComputePipeline()
 {
-	ObjectTracker::unregisterObject(ObjectType_ComputePipeline);
-
 	release();
+	
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-bool ComputePipeline::isInitialized() const
+bool VulkanComputePipeline::isInitialized() const
 {
 	return mComputePipeline != VK_NULL_HANDLE;
 }
 
-const VkPipeline& ComputePipeline::getHandle() const
+const VkPipeline& VulkanComputePipeline::getHandle() const
 {
 	return mComputePipeline;
 }
 
-const Device& ComputePipeline::getDeviceHandle() const
-{
-	return mDevice;
-}
-
-ComputePipeline::ComputePipeline(Device& device, ShaderModule* computeShader, PipelineLayout* layout, PipelineCache* cache, VkPipelineCreateFlags additionalOptions)
-	: mDevice(device)
-	, mComputePipeline(VK_NULL_HANDLE)
+VulkanComputePipeline::VulkanComputePipeline(VulkanShaderModule* computeShader, VulkanPipelineLayout* layout, VulkanPipelineCache* cache, VkPipelineCreateFlags additionalOptions)
+	: mComputePipeline(VK_NULL_HANDLE)
 	, mComputeShader(computeShader->getShaderStage())
 	, mLayout(layout)
 	, mCache(cache)
 	, mAdditionalOptions(additionalOptions)
 {
-	ObjectTracker::registerObject(ObjectType_ComputePipeline);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-bool ComputePipeline::init()
+bool VulkanComputePipeline::init()
 {
 	VkComputePipelineCreateInfo computePipelineCreateInfo = {
 		VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,   // VkStructureType                    sType
@@ -68,27 +61,25 @@ bool ComputePipeline::init()
 
 	VkPipelineCache cacheHandle = (mCache != nullptr) ? mCache->getHandle() : VK_NULL_HANDLE;
 
-	VkResult result = vkCreateComputePipelines(mDevice.getHandle(), cacheHandle, 1, &computePipelineCreateInfo, nullptr, &mComputePipeline);
+	VkResult result = vkCreateComputePipelines(getDeviceHandle(), cacheHandle, 1, &computePipelineCreateInfo, nullptr, &mComputePipeline);
 	if (result != VK_SUCCESS || mComputePipeline == VK_NULL_HANDLE)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not create a compute pipeline\n");
+		VULKAN_LOG_ERROR("Could not create a compute pipeline");
 		return false;
 	}
 
 	return true;
 }
 
-bool ComputePipeline::release()
+bool VulkanComputePipeline::release()
 {
 	if (mComputePipeline != VK_NULL_HANDLE)
 	{
-		vkDestroyPipeline(mDevice.getHandle(), mComputePipeline, nullptr);
+		vkDestroyPipeline(getDeviceHandle(), mComputePipeline, nullptr);
 		mComputePipeline = VK_NULL_HANDLE;
 		return true;
 	}
 	return false;
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

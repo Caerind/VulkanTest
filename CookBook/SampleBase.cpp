@@ -1,5 +1,8 @@
 #include "SampleBase.hpp"
 
+#include "../VulkanWrapper/VulkanPhysicalDevice.hpp"
+#include "../VulkanWrapper/VulkanQueue.hpp"
+
 MouseStateParameters::MouseStateParameters() 
 {
 	buttons[0].isPressed = false;
@@ -59,9 +62,9 @@ SampleBase::~SampleBase()
 
 void SampleBase::deinitialize()
 {
-	if (mLogicalDevice != nullptr)
+	if (VulkanDevice::initialized())
 	{
-		mLogicalDevice->waitForAllSubmittedCommands();
+		wait();
 	}
 }
 
@@ -119,77 +122,47 @@ bool SampleBase::isReady()
 
 void SampleBase::wait()
 {
-	mLogicalDevice->waitForAllSubmittedCommands();
+	VulkanDevice::get().waitForAllSubmittedCommands();
 }
 
 void SampleBase::onMouseEvent()
 {
 }
 
-bool SampleBase::initializeVulkan(nu::Vulkan::WindowParameters windowParameters, VkPhysicalDeviceFeatures* desiredDeviceFeatures)
+bool SampleBase::initializeVulkan(VulkanWindowParameters windowParameters, VkPhysicalDeviceFeatures* desiredDeviceFeatures)
 {
-	mInstance = nu::Vulkan::Instance::createInstance();
-	if (mInstance == nullptr)
+	if (!VulkanInstance::initialize())
 	{
 		return false;
 	}
 
-	mSurface = mInstance->createSurface(windowParameters);
+	mSurface = VulkanInstance::get().createSurface(windowParameters);
 	if (mSurface == nullptr)
 	{
 		return false;
 	}
 
-	const std::vector<nu::Vulkan::PhysicalDevice>& physicalDevices = mInstance->getPhysicalDevices();
-	for (uint32_t i = 0; i < physicalDevices.size(); i++)
+	for (uint32_t i = 0; i < VulkanInstance::get().getPhysicalDeviceCount(); i++)
 	{
-		const nu::Vulkan::PhysicalDevice& physicalDevice = physicalDevices[i];
+		VulkanPhysicalDevice& physicalDevice = VulkanInstance::get().getPhysicalDevice(i);
 
-		std::vector<uint32_t> requestedQueueFamilyIndexes;
+		physicalDevice.queryAllProperties();
 
-		uint32_t graphicsQueueFamilyIndex = physicalDevice.getGraphicsQueueFamilyIndex();
-		if (graphicsQueueFamilyIndex == nu::Vulkan::PhysicalDevice::InvalidQueueFamilyIndex)
-		{
-			continue;
-		}
+		VulkanQueueParameters queueParameters;
+		queueParameters.addQueueInfo(1, VulkanQueueParameters::Graphics);
+		queueParameters.addQueueInfo(1, VulkanQueueParameters::Compute);
+		queueParameters.addQueueInfo(1, VulkanQueueParameters::Present);
 
-		requestedQueueFamilyIndexes.push_back(graphicsQueueFamilyIndex);
-
-		uint32_t computeQueueFamilyIndex = physicalDevice.getComputeQueueFamilyIndex();
-		if (computeQueueFamilyIndex == nu::Vulkan::PhysicalDevice::InvalidQueueFamilyIndex)
-		{
-			continue;
-		}
-
-		if (computeQueueFamilyIndex != graphicsQueueFamilyIndex)
-		{
-			requestedQueueFamilyIndexes.push_back(computeQueueFamilyIndex);
-		}
-
-		uint32_t presentQueueFamilyIndex = physicalDevice.getPresentQueueFamilyIndex(mSurface.get());
-		if (presentQueueFamilyIndex == nu::Vulkan::PhysicalDevice::InvalidQueueFamilyIndex)
-		{
-			continue;
-		}
-
-		if (presentQueueFamilyIndex != graphicsQueueFamilyIndex && presentQueueFamilyIndex != computeQueueFamilyIndex)
-		{
-			requestedQueueFamilyIndexes.push_back(presentQueueFamilyIndex);
-		}
-
-		nu::Vulkan::PhysicalDevice& physicalDeviceRef = mInstance->getPhysicalDevice(i);
-		mLogicalDevice = nu::Vulkan::Device::createDevice(physicalDeviceRef, requestedQueueFamilyIndexes, desiredDeviceFeatures);
-		if (mLogicalDevice == nullptr || !mLogicalDevice->isInitialized())
+		VulkanPhysicalDevice& physicalDeviceRef = VulkanInstance::get().getPhysicalDevice(i);
+		if (!VulkanDevice::initialize(physicalDeviceRef, desiredDeviceFeatures, queueParameters, mSurface.get()))
 		{
 			continue;
 		}
 		else
 		{
-			mPhysicalDevice = &physicalDeviceRef;
-
-			mGraphicsQueue = mLogicalDevice->getQueue(graphicsQueueFamilyIndex, 0);
-			mComputeQueue = mLogicalDevice->getQueue(computeQueueFamilyIndex, 0);
-			mPresentQueue = mLogicalDevice->getQueue(presentQueueFamilyIndex, 0);
+			mGraphicsQueue = VulkanDevice::get().getQueue(0);
+			mComputeQueue = VulkanDevice::get().getQueue(1);
+			mPresentQueue = VulkanDevice::get().getQueue(2);
 
 			if (mGraphicsQueue == nullptr || mComputeQueue == nullptr || mPresentQueue == nullptr)
 			{
@@ -200,13 +173,13 @@ bool SampleBase::initializeVulkan(nu::Vulkan::WindowParameters windowParameters,
 		}
 	}
 
-	if (mLogicalDevice == nullptr || !mLogicalDevice->isInitialized())
+	if (!VulkanDevice::initialized())
 	{
 		return false;
 	}
 
 	// Prepare frame resources
-	mCommandPool = mLogicalDevice->createCommandPool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, mGraphicsQueue->getFamilyIndex());
+	mCommandPool = VulkanDevice::get().createCommandPool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, mGraphicsQueue->getFamilyIndex());
 	if (mCommandPool == nullptr || !mCommandPool->isInitialized())
 	{
 		return false;
@@ -215,25 +188,25 @@ bool SampleBase::initializeVulkan(nu::Vulkan::WindowParameters windowParameters,
 	const uint32_t framesCount = 3; // TODO : Unhardcode
 	for (uint32_t i = 0; i < framesCount; i++)
 	{
-		nu::Vulkan::CommandBuffer::Ptr commandBuffer = mCommandPool->allocatePrimaryCommandBuffer();
+		VulkanCommandBufferPtr commandBuffer = mCommandPool->allocatePrimaryCommandBuffer();
 		if (commandBuffer == nullptr || !commandBuffer->isInitialized())
 		{
 			return false;
 		}
 
-		nu::Vulkan::Semaphore::Ptr imageAcquiredSemaphore = mLogicalDevice->createSemaphore();
+		VulkanSemaphorePtr imageAcquiredSemaphore = VulkanDevice::get().createSemaphore();
 		if (imageAcquiredSemaphore == nullptr)
 		{
 			return false;
 		}
 
-		nu::Vulkan::Semaphore::Ptr readyToPresentSemaphore = mLogicalDevice->createSemaphore();
+		VulkanSemaphorePtr readyToPresentSemaphore = VulkanDevice::get().createSemaphore();
 		if (readyToPresentSemaphore == nullptr)
 		{
 			return false;
 		}
 
-		nu::Vulkan::Fence::Ptr drawingFinishedFence = mLogicalDevice->createFence(true);
+		VulkanFencePtr drawingFinishedFence = VulkanDevice::get().createFence(true);
 		if (drawingFinishedFence == nullptr)
 		{
 			return false;
@@ -249,7 +222,7 @@ bool SampleBase::initializeVulkan(nu::Vulkan::WindowParameters windowParameters,
 		);
 	}
 
-	mSwapchain = mLogicalDevice->createSwapchain(*(mSurface.get()), mFramesResources);
+	mSwapchain = VulkanDevice::get().createSwapchain(*(mSurface.get()), mFramesResources);
 	if (mSwapchain == nullptr)
 	{
 		return false;

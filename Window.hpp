@@ -1,5 +1,4 @@
-#ifndef NU_WINDOW_HPP
-#define NU_WINDOW_HPP
+#pragma once
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -39,13 +38,11 @@ class Window
 
 		bool pollEvent(Event& event);
 
-		const Vulkan::WindowParameters& getParameters() const;
+		const VulkanWindowParameters& getParameters() const;
 
 	private:
-		Vulkan::WindowParameters mParameters;
+		VulkanWindowParameters mParameters;
 		bool mOpen;
 };
 
 } // namespace nu
-
-#endif // NU_WINDOW_HPP

@@ -1,43 +1,20 @@
-#ifndef NU_VULKAN_FUNCTIONS_HPP
-#define NU_VULKAN_FUNCTIONS_HPP
+#pragma once
 
-// TODO : Move this
-#define VK_USE_PLATFORM_WIN32_KHR
-#define VK_NO_PROTOTYPES
-#include "../ThirdParty/vulkan.h"
+#include "VulkanCore.hpp"
 
-#ifdef VK_USE_PLATFORM_WIN32_KHR
-	#define PlatformConnectionType HINSTANCE
-	#define PlatformWindowType HWND
-#elif defined VK_USE_PLATFORM_XLIB_KHR
-	#define PlatformConnectionType Display*
-	#define PlatformWindowType ::Window
-#elif defined VK_USE_PLATFORM_XCB_KHR
-	#define PlatformConnectionType xcb_connection_t*
-	#define PlatformWindowType xcb_window_t
-#else
-	#error Unsupported platform
-#endif
+VULKAN_NAMESPACE_BEGIN
 
-#include "VulkanObjectTracker.hpp"
+#if (defined VULKAN_LINKING_DYNAMIC)
 
-#include <cstdio>
-
-namespace nu 
-{
-namespace Vulkan
-{
-
-#define NU_EXPORTED_VULKAN_FUNCTION(name) extern PFN_##name name;
-#define NU_GLOBAL_LEVEL_VULKAN_FUNCTION(name) extern PFN_##name name;
-#define NU_INSTANCE_LEVEL_VULKAN_FUNCTION(name) extern PFN_##name name;
-#define NU_INSTANCE_LEVEL_VULKAN_FUNCTION_FROM_EXTENSION(name, extension) extern PFN_##name name;
-#define NU_DEVICE_LEVEL_VULKAN_FUNCTION(name) extern PFN_##name name;
-#define NU_DEVICE_LEVEL_VULKAN_FUNCTION_FROM_EXTENSION(name, extension) extern PFN_##name name;
+#define VULKAN_EXPORTED_FUNCTION(name) extern PFN_##name name;
+#define VULKAN_GLOBAL_LEVEL_FUNCTION(name) extern PFN_##name name;
+#define VULKAN_INSTANCE_LEVEL_FUNCTION(name) extern PFN_##name name;
+#define VULKAN_INSTANCE_LEVEL_FUNCTION_FROM_EXTENSION(name, extension) extern PFN_##name name;
+#define VULKAN_DEVICE_LEVEL_FUNCTION(name) extern PFN_##name name;
+#define VULKAN_DEVICE_LEVEL_FUNCTION_FROM_EXTENSION(name, extension) extern PFN_##name name;
 
 #include "ListOfVulkanFunctions.inl"
 
-} // namespace Vulkan
-} // namespace nu
+#endif
 
-#endif // NU_VULKAN_FUNCTIONS_HPP
+VULKAN_NAMESPACE_END

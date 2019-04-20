@@ -1,49 +1,31 @@
-#ifndef NU_VULKAN_COMPUTE_PIPELINE_HPP
-#define NU_VULKAN_COMPUTE_PIPELINE_HPP
+#pragma once
 
 #include "VulkanFunctions.hpp"
 
-#include <memory>
+VULKAN_NAMESPACE_BEGIN
 
-#include "VulkanPipelineLayout.hpp"
-#include "VulkanPipelineCache.hpp"
-
-namespace nu
-{
-namespace Vulkan
-{
-
-class Device;
-class ShaderModule;
-class ComputePipeline
+class VulkanComputePipeline : public VulkanDeviceObject<VulkanObjectType_ComputePipeline>
 {
 	public:
-		typedef std::unique_ptr<ComputePipeline> Ptr;
+		static VulkanComputePipelinePtr createComputePipeline(VulkanShaderModule* computeShader, VulkanPipelineLayout* layout, VulkanPipelineCache* cache, VkPipelineCreateFlags additionalOptions);
 
-		static ComputePipeline::Ptr createComputePipeline(Device& device, ShaderModule* computeShader, PipelineLayout* layout, PipelineCache* cache, VkPipelineCreateFlags additionalOptions);
-
-		~ComputePipeline();
+		~VulkanComputePipeline();
 
 		bool isInitialized() const;
 		const VkPipeline& getHandle() const;
-		const Device& getDeviceHandle() const;
 
 	private:
-		ComputePipeline(Device& device, ShaderModule* computeShader, PipelineLayout* layout, PipelineCache* cache, VkPipelineCreateFlags additionalOptions);
+		VulkanComputePipeline(VulkanShaderModule* computeShader, VulkanPipelineLayout* layout, VulkanPipelineCache* cache, VkPipelineCreateFlags additionalOptions);
 
 		bool init();
 		bool release();
 
-		Device& mDevice;
 		VkPipeline mComputePipeline;
 
 		VkPipelineShaderStageCreateInfo mComputeShader;
-		PipelineLayout* mLayout;
-		PipelineCache* mCache;
+		VulkanPipelineLayout* mLayout;
+		VulkanPipelineCache* mCache;
 		VkPipelineCreateFlags mAdditionalOptions;
 };
 
-} // namespace Vulkan
-} // namespace nu
-
-#endif // NU_VULKAN_COMPUTE_PIPELINE_HPP
+VULKAN_NAMESPACE_END

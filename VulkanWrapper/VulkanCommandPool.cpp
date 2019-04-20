@@ -1,17 +1,15 @@
 #include "VulkanCommandPool.hpp"
 
+#include "VulkanCommandBuffer.hpp"
 #include "VulkanDevice.hpp"
 
 #include <algorithm>
 
-namespace nu
-{
-namespace Vulkan
-{
+VULKAN_NAMESPACE_BEGIN
 
-CommandPool::Ptr CommandPool::createCommandPool(Device& device, VkCommandPoolCreateFlags parameters, uint32_t queueFamily)
+VulkanCommandPoolPtr VulkanCommandPool::createCommandPool(VkCommandPoolCreateFlags parameters,VulkanU32 queueFamily)
 {
-	CommandPool::Ptr commandPool(new CommandPool(device));
+	VulkanCommandPoolPtr commandPool(new VulkanCommandPool());
 	if (commandPool != nullptr)
 	{
 		if (!commandPool->init(parameters, queueFamily))
@@ -22,16 +20,16 @@ CommandPool::Ptr CommandPool::createCommandPool(Device& device, VkCommandPoolCre
 	return commandPool;
 }
 
-CommandPool::~CommandPool()
+VulkanCommandPool::~VulkanCommandPool()
 {
-	ObjectTracker::unregisterObject(ObjectType_CommandPool);
-
 	release();
+	
+	VULKAN_OBJECTTRACKER_UNREGISTER();
 }
 
-CommandBuffer::Ptr CommandPool::allocatePrimaryCommandBuffer()
+VulkanCommandBufferPtr VulkanCommandPool::allocatePrimaryCommandBuffer()
 {
-	CommandBuffer::Ptr commandBuffer(new CommandBuffer(*this, CommandBufferType::Primary));
+	VulkanCommandBufferPtr commandBuffer(new VulkanCommandBuffer(*this, VulkanCommandBufferType::Primary));
 	if (commandBuffer != nullptr)
 	{
 		if (!commandBuffer->init())
@@ -42,9 +40,9 @@ CommandBuffer::Ptr CommandPool::allocatePrimaryCommandBuffer()
 	return commandBuffer;
 }
 
-CommandBuffer::Ptr CommandPool::allocateSecondaryCommandBuffer()
+VulkanCommandBufferPtr VulkanCommandPool::allocateSecondaryCommandBuffer()
 {
-	CommandBuffer::Ptr commandBuffer(new CommandBuffer(*this, CommandBufferType::Secondary));
+	VulkanCommandBufferPtr commandBuffer(new VulkanCommandBuffer(*this, VulkanCommandBufferType::Secondary));
 	if (commandBuffer != nullptr)
 	{
 		if (!commandBuffer->init())
@@ -55,42 +53,37 @@ CommandBuffer::Ptr CommandPool::allocateSecondaryCommandBuffer()
 	return commandBuffer;
 }
 
-bool CommandPool::reset()
+bool VulkanCommandPool::reset()
 {
-	VkResult result = vkResetCommandPool(mDevice.getHandle(), mCommandPool, 0);
+	// TODO : What is the 0 parameter ?
+	VkResult result = vkResetCommandPool(getDeviceHandle(), mCommandPool, 0);
 	if (result != VK_SUCCESS)
 	{
-		// TODO : Use Numea System Log
-		printf("Error occurred during command pool reset\n");
+		// TODO : Log more
+		VULKAN_LOG_ERROR("Error occurred during command pool reset");
 		return false;
 	}
 
 	return true;
 }
 
-bool CommandPool::isInitialized() const
+bool VulkanCommandPool::isInitialized() const
 {
 	return mCommandPool != VK_NULL_HANDLE;
 }
 
-const VkCommandPool& CommandPool::getHandle() const
+const VkCommandPool& VulkanCommandPool::getHandle() const
 {
 	return mCommandPool;
 }
 
-const VkDevice& CommandPool::getDeviceHandle() const
-{
-	return mDevice.getHandle();
-}
-
-CommandPool::CommandPool(Device& device)
+VulkanCommandPool::VulkanCommandPool()
 	: mCommandPool(VK_NULL_HANDLE)
-	, mDevice(device)
 {
-	ObjectTracker::registerObject(ObjectType_CommandPool);
+	VULKAN_OBJECTTRACKER_REGISTER();
 }
 
-bool CommandPool::init(VkCommandPoolCreateFlags parameters, uint32_t queueFamily)
+bool VulkanCommandPool::init(VkCommandPoolCreateFlags parameters, VulkanU32 queueFamily)
 {
 	VkCommandPoolCreateInfo commandPoolCreateInfo = {
 		VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,   // VkStructureType              sType
@@ -99,26 +92,24 @@ bool CommandPool::init(VkCommandPoolCreateFlags parameters, uint32_t queueFamily
 		queueFamily                                   // uint32_t                     queueFamilyIndex
 	};
 
-	VkResult result = vkCreateCommandPool(mDevice.getHandle(), &commandPoolCreateInfo, nullptr, &mCommandPool);
+	VkResult result = vkCreateCommandPool(getDeviceHandle(), &commandPoolCreateInfo, nullptr, &mCommandPool);
 	if (VK_SUCCESS != result || mCommandPool == VK_NULL_HANDLE)
 	{
-		// TODO : Use Numea System Log
-		printf("Could not create command pool\n");
+		VULKAN_LOG_ERROR("Could not create command pool");
 		return false;
 	}
 	return true;
 }
 
-bool CommandPool::release()
+bool VulkanCommandPool::release()
 {
 	if (mCommandPool != VK_NULL_HANDLE)
 	{
-		vkDestroyCommandPool(mDevice.getHandle(), mCommandPool, nullptr);
+		vkDestroyCommandPool(getDeviceHandle(), mCommandPool, nullptr);
 		mCommandPool = VK_NULL_HANDLE;
 		return true;
 	}
 	return false;
 }
 
-} // namespace Vulkan
-} // namespace nu
+VULKAN_NAMESPACE_END

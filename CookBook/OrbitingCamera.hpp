@@ -1,5 +1,4 @@
-#ifndef ORBITING_CAMERA_HPP
-#define ORBITING_CAMERA_HPP
+#pragma once
 
 #include "Camera.hpp"
 
@@ -31,5 +30,3 @@ class OrbitingCamera : public Camera
 		float mHorizontalAngle;
 		float mVerticalAngle;
 };
-
-#endif // ORBITING_CAMERA_HPP
